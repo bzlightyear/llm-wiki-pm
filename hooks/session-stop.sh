@@ -18,6 +18,12 @@ LOCKFILE="$WIKI/.wiki-lock"
 # Release lock on any exit path (early returns, errors, normal completion)
 trap 'rm -f "$LOCKFILE" 2>/dev/null || true' EXIT
 
+# ── Auto-commit wiki changes (runs every session end, not just on rotation) ──
+if [[ -d "$WIKI/.git" ]]; then
+  git -C "$WIKI" add -A >/dev/null 2>&1 || true
+  git -C "$WIKI" commit -m "wiki update $(date +%Y-%m-%d_%H:%M)" >/dev/null 2>&1 || true
+fi
+
 LOG_FILE="$WIKI/log.md"
 
 # ② Exit silently if log.md does not exist
@@ -61,8 +67,5 @@ printf '# Wiki Log\n\nRotated from %s on %s.\n' "$BASE_NAME" "$TODAY" > "$LOG_FI
 
 # ⑦ Report the rotation to stderr
 echo "Wiki log rotated: log.md -> $BASE_NAME ($ENTRY_COUNT entries)" >&2
-
-# Optional auto-commit -- add manually if desired
-cd "$WIKI" && git add -A && git commit -m "wiki update $(date +%Y-%m-%d)" 2>/dev/null || true
 
 exit 0
