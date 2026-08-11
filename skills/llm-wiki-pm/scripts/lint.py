@@ -20,6 +20,30 @@ TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
 TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
 INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
 
+# Interim workaround for the recurring wiki-search MCP bug that re-escapes
+# `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
+# upstream fix lands (wirux/mcp-markdown-vault#47). Global `\[` -> `[` is
+# safe: empirically the only literal `\[` this wiki has ever contained
+# outside this bug was one line of prose quoting a sed command describing
+# the bug itself — everywhere else it's corruption.
+ESCAPED_BRACKET_RE = re.compile(r"\\\[")
+
+
+def find_escaped_brackets(rel_path, text, auto_fix):
+    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None)."""
+    count = len(ESCAPED_BRACKET_RE.findall(text))
+    if not count:
+        return text, None
+    if auto_fix:
+        return (
+            ESCAPED_BRACKET_RE.sub("[", text),
+            f"de-escaped {count} corrupted '\\[' -> '[' in {rel_path}",
+        )
+    return text, (
+        f"{count} escaped bracket(s) (\\[ -> [ corruption): {rel_path} — "
+        f"run lint --auto-fix"
+    )
+
 # Grounding / freshness (anti-self-reinforcement). A wiki that only cites its own
 # pages drifts from reality. Sources pointing back into these dirs are secondhand;
 # a knowledge page needs at least one PRIMARY source (raw/, external/, web,
@@ -38,10 +62,25 @@ def parse_frontmatter(text):
     if not m:
         return None
     fm = {}
-    for line in m.group(1).splitlines():
+    lines = m.group(1).splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if ":" in line:
             k, _, v = line.partition(":")
-            fm[k.strip()] = v.strip()
+            key, val = k.strip(), v.strip()
+            if not val:
+                # possible block-style YAML list: key: \n  - item \n  - item
+                items = []
+                j = i + 1
+                while j < len(lines) and re.match(r"^[ \t]+-\s*(.*)$", lines[j]):
+                    items.append(re.match(r"^[ \t]+-\s*(.*)$", lines[j]).group(1).strip())
+                    j += 1
+                if items:
+                    val = "[" + ", ".join(items) + "]"
+                    i = j - 1
+            fm[key] = val
+        i += 1
     return fm
 
 
@@ -61,6 +100,8 @@ def load_taxonomy(schema_path):
 
 
 def slug(path):
+    if path.name == "README.md":
+        return path.parent.name
     return path.stem
 
 
@@ -170,6 +211,14 @@ def main():
             pages.append(p)
 
     slugs = {slug(p): p for p in pages}
+    # root-level architecture singletons (overview.md, index.md) are valid
+    # [[wikilink]] targets but live outside WIKI_DIRS — don't run them through
+    # the full page pipeline (frontmatter/tag/orphan/index checks), just make
+    # links to them resolve.
+    for root_name in ("overview.md", "index.md"):
+        root_p = wiki / root_name
+        if root_p.exists():
+            slugs.setdefault(slug(root_p), root_p)
     taxonomy = load_taxonomy(wiki / "SCHEMA.md")
 
     errors, warnings, info = [], [], []
@@ -184,8 +233,29 @@ def main():
     intentional_stubs = set()  # lifecycle: stub-intentional — exempt from orphan nag
     shareable_pages = []  # export allowlist (private-by-default model)
 
+    # escaped-bracket corruption also hits root-level singletons (log.md,
+    # overview.md, index.md, MY-INTEGRATIONS.md), which sit outside WIKI_DIRS
+    # and never pass through the per-page loop below.
+    for root_name in ("log.md", "overview.md", "index.md", "MY-INTEGRATIONS.md"):
+        root_p = wiki / root_name
+        if not root_p.exists():
+            continue
+        root_text = root_p.read_text()
+        fixed_root_text, root_note = find_escaped_brackets(
+            root_name, root_text, auto_fix
+        )
+        if root_note:
+            (fixes_applied if auto_fix else errors).append(root_note)
+            if auto_fix:
+                root_p.write_text(fixed_root_text)
+
     for p in pages:
         text = p.read_text()
+        text, escape_note = find_escaped_brackets(p.relative_to(wiki), text, auto_fix)
+        if escape_note:
+            (fixes_applied if auto_fix else errors).append(escape_note)
+            if auto_fix:
+                p.write_text(text)
         fm = parse_frontmatter(text)
 
         if fm is None:

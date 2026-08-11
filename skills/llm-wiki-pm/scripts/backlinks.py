@@ -22,7 +22,8 @@ def scan(wiki: Path, target: str, include_context: bool = False):
         for p in (wiki / d).rglob("*.md"):
             if p.name.startswith("lint-"):
                 continue
-            if p.stem == target:
+            self_slug = p.parent.name if p.name == "README.md" else p.stem
+            if self_slug == target:
                 continue  # self
             text = p.read_text()
             line_hits = []
