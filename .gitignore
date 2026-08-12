@@ -12,3 +12,7 @@ queries/
 .markdown_vault_mcp/
 meta/
 .claude/settings.json
+
+# Local editor/OS state, not plugin source
+.obsidian/workspace.json
+.DS_Store
