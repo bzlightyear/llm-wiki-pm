@@ -19,10 +19,14 @@ LOCKFILE="$WIKI/.wiki-lock"
 trap 'rm -f "$LOCKFILE" 2>/dev/null || true' EXIT
 
 # ── Auto-commit wiki changes (runs every session end, not just on rotation) ──
-if [[ -d "$WIKI/.git" ]]; then
-  git -C "$WIKI" add -A >/dev/null 2>&1 || true
-  git -C "$WIKI" commit -m "wiki update $(date +%Y-%m-%d_%H:%M)" >/dev/null 2>&1 || true
-fi
+# Disabled 2026-08-07: firing far more often than intended (SessionEnd fires
+# per short-lived backend session in this hosting environment, not once per
+# user conversation), producing dozens of near-duplicate commits. User commits
+# manually now.
+# if [[ -d "$WIKI/.git" ]]; then
+#   git -C "$WIKI" add -A >/dev/null 2>&1 || true
+#   git -C "$WIKI" commit -m "wiki update $(date +%Y-%m-%d_%H:%M)" >/dev/null 2>&1 || true
+# fi
 
 LOG_FILE="$WIKI/log.md"
 

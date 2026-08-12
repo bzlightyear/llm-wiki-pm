@@ -20,6 +20,73 @@ TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
 TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
 INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
 
+# Interim workaround for the recurring wiki-search MCP bug that re-escapes
+# `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
+# upstream fix lands (wirux/mcp-markdown-vault#47). Matches inside fenced
+# ```code blocks``` are skipped (see _fenced_ranges) — those are quoted
+# source that may legitimately contain literal `\[`, e.g. a page documenting
+# a diff.
+ESCAPED_BRACKET_RE = re.compile(r"\\\[")
+
+FENCE_LINE_RE = re.compile(r"^\s*```")
+INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+
+
+def _fenced_ranges(text):
+    """Char-offset (start, end) ranges covering fenced ```...``` blocks
+    (fence lines included). Content inside is quoted source, not prose."""
+    ranges = []
+    offset = 0
+    fence_start = None
+    for line in text.splitlines(keepends=True):
+        if FENCE_LINE_RE.match(line):
+            if fence_start is None:
+                fence_start = offset
+            else:
+                ranges.append((fence_start, offset + len(line)))
+                fence_start = None
+        offset += len(line)
+    return ranges
+
+
+def _inline_code_ranges(text, fenced):
+    """Char-offset ranges covering single-backtick inline code spans, e.g.
+    `\\[`. Spans already inside a fenced block are skipped so fence
+    delimiters aren't double-matched."""
+    ranges = []
+    for m in INLINE_CODE_RE.finditer(text):
+        if any(start <= m.start() < end for start, end in fenced):
+            continue
+        ranges.append((m.start(), m.end()))
+    return ranges
+
+
+def find_escaped_brackets(rel_path, text, auto_fix):
+    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None).
+    Ignores matches inside fenced code blocks and inline `code spans` —
+    quoted source may legitimately contain a literal '\\['."""
+    fenced = _fenced_ranges(text)
+    protected = fenced + _inline_code_ranges(text, fenced)
+    matches = [
+        m for m in ESCAPED_BRACKET_RE.finditer(text)
+        if not any(start <= m.start() < end for start, end in protected)
+    ]
+    count = len(matches)
+    if not count:
+        return text, None
+    if auto_fix:
+        new_text = text
+        for m in reversed(matches):
+            new_text = new_text[: m.start()] + "[" + new_text[m.end() :]
+        return (
+            new_text,
+            f"de-escaped {count} corrupted '\\[' -> '[' in {rel_path}",
+        )
+    return text, (
+        f"{count} escaped bracket(s) (\\[ -> [ corruption): {rel_path} — "
+        f"run lint --auto-fix"
+    )
+
 # Grounding / freshness (anti-self-reinforcement). A wiki that only cites its own
 # pages drifts from reality. Sources pointing back into these dirs are secondhand;
 # a knowledge page needs at least one PRIMARY source (raw/, external/, web,
@@ -38,10 +105,25 @@ def parse_frontmatter(text):
     if not m:
         return None
     fm = {}
-    for line in m.group(1).splitlines():
+    lines = m.group(1).splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if ":" in line:
             k, _, v = line.partition(":")
-            fm[k.strip()] = v.strip()
+            key, val = k.strip(), v.strip()
+            if not val:
+                # possible block-style YAML list: key: \n  - item \n  - item
+                items = []
+                j = i + 1
+                while j < len(lines) and re.match(r"^[ \t]+-\s*(.*)$", lines[j]):
+                    items.append(re.match(r"^[ \t]+-\s*(.*)$", lines[j]).group(1).strip())
+                    j += 1
+                if items:
+                    val = "[" + ", ".join(items) + "]"
+                    i = j - 1
+            fm[key] = val
+        i += 1
     return fm
 
 
@@ -61,6 +143,8 @@ def load_taxonomy(schema_path):
 
 
 def slug(path):
+    if path.name == "README.md":
+        return path.parent.name
     return path.stem
 
 
@@ -170,6 +254,14 @@ def main():
             pages.append(p)
 
     slugs = {slug(p): p for p in pages}
+    # root-level architecture singletons (overview.md, index.md) are valid
+    # [[wikilink]] targets but live outside WIKI_DIRS — don't run them through
+    # the full page pipeline (frontmatter/tag/orphan/index checks), just make
+    # links to them resolve.
+    for root_name in ("overview.md", "index.md"):
+        root_p = wiki / root_name
+        if root_p.exists():
+            slugs.setdefault(slug(root_p), root_p)
     taxonomy = load_taxonomy(wiki / "SCHEMA.md")
 
     errors, warnings, info = [], [], []
@@ -184,8 +276,29 @@ def main():
     intentional_stubs = set()  # lifecycle: stub-intentional — exempt from orphan nag
     shareable_pages = []  # export allowlist (private-by-default model)
 
+    # escaped-bracket corruption also hits root-level singletons (log.md,
+    # overview.md, index.md, MY-INTEGRATIONS.md), which sit outside WIKI_DIRS
+    # and never pass through the per-page loop below.
+    for root_name in ("log.md", "overview.md", "index.md", "MY-INTEGRATIONS.md"):
+        root_p = wiki / root_name
+        if not root_p.exists():
+            continue
+        root_text = root_p.read_text()
+        fixed_root_text, root_note = find_escaped_brackets(
+            root_name, root_text, auto_fix
+        )
+        if root_note:
+            (fixes_applied if auto_fix else errors).append(root_note)
+            if auto_fix:
+                root_p.write_text(fixed_root_text)
+
     for p in pages:
         text = p.read_text()
+        text, escape_note = find_escaped_brackets(p.relative_to(wiki), text, auto_fix)
+        if escape_note:
+            (fixes_applied if auto_fix else errors).append(escape_note)
+            if auto_fix:
+                p.write_text(text)
         fm = parse_frontmatter(text)
 
         if fm is None:
