@@ -22,21 +22,64 @@ INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
 
 # Interim workaround for the recurring wiki-search MCP bug that re-escapes
 # `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
-# upstream fix lands (wirux/mcp-markdown-vault#47). Global `\[` -> `[` is
-# safe: empirically the only literal `\[` this wiki has ever contained
-# outside this bug was one line of prose quoting a sed command describing
-# the bug itself — everywhere else it's corruption.
+# upstream fix lands (wirux/mcp-markdown-vault#47). Matches inside fenced
+# ```code blocks``` are skipped (see _fenced_ranges) — those are quoted
+# source that may legitimately contain literal `\[`, e.g. a page documenting
+# a diff.
 ESCAPED_BRACKET_RE = re.compile(r"\\\[")
+
+FENCE_LINE_RE = re.compile(r"^\s*```")
+INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+
+
+def _fenced_ranges(text):
+    """Char-offset (start, end) ranges covering fenced ```...``` blocks
+    (fence lines included). Content inside is quoted source, not prose."""
+    ranges = []
+    offset = 0
+    fence_start = None
+    for line in text.splitlines(keepends=True):
+        if FENCE_LINE_RE.match(line):
+            if fence_start is None:
+                fence_start = offset
+            else:
+                ranges.append((fence_start, offset + len(line)))
+                fence_start = None
+        offset += len(line)
+    return ranges
+
+
+def _inline_code_ranges(text, fenced):
+    """Char-offset ranges covering single-backtick inline code spans, e.g.
+    `\\[`. Spans already inside a fenced block are skipped so fence
+    delimiters aren't double-matched."""
+    ranges = []
+    for m in INLINE_CODE_RE.finditer(text):
+        if any(start <= m.start() < end for start, end in fenced):
+            continue
+        ranges.append((m.start(), m.end()))
+    return ranges
 
 
 def find_escaped_brackets(rel_path, text, auto_fix):
-    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None)."""
-    count = len(ESCAPED_BRACKET_RE.findall(text))
+    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None).
+    Ignores matches inside fenced code blocks and inline `code spans` —
+    quoted source may legitimately contain a literal '\\['."""
+    fenced = _fenced_ranges(text)
+    protected = fenced + _inline_code_ranges(text, fenced)
+    matches = [
+        m for m in ESCAPED_BRACKET_RE.finditer(text)
+        if not any(start <= m.start() < end for start, end in protected)
+    ]
+    count = len(matches)
     if not count:
         return text, None
     if auto_fix:
+        new_text = text
+        for m in reversed(matches):
+            new_text = new_text[: m.start()] + "[" + new_text[m.end() :]
         return (
-            ESCAPED_BRACKET_RE.sub("[", text),
+            new_text,
             f"de-escaped {count} corrupted '\\[' -> '[' in {rel_path}",
         )
     return text, (
