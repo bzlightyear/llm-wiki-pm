@@ -104,7 +104,9 @@ updated: YYYY-MM-DD
 | [[lead-pm]] | [[data-team]] | roadmap input | weekly |
 ```
 
-Update whenever a new person entity is added. Link to it from each person entity page.
+Update whenever a new person entity is added — this is triggered automatically
+by the core skill's entity-promotion scan (§2⑫), not a separate manual step.
+Link to it from each person entity page.
 
 Interaction frequency values:
 - `daily`: regular async chat or daily syncs

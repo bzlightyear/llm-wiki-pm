@@ -232,7 +232,10 @@ In brief:
 ⑩ Report every file touched; confirm before mass-updating (10+ pages).
 ⑪ **Crystallize** transcripts/research chains into a `queries/` digest (`references/crystallize-guide.md`).
 ⑫ **Entity promotion scan** — promote people/companies/products with 3+ attributes
-   to their own page (confirm first). Offer a persona page (`llm-wiki-persona`) for any promoted person.
+   to their own page (confirm first). Offer a persona page (`llm-wiki-persona`) for any promoted person. If the promoted entity is a person, update
+   `concepts/relationship-map.md`: create it (per SCHEMA.md's 3+ person-entity
+   rule) if it doesn't exist yet, or add the new person's org-chart row and
+   reflect them under their manager's `direct_reports` cell if it does.
 
 ### 3. Query
 ① **Search first**: `view(action=semantic_search)` → grep → file read.
