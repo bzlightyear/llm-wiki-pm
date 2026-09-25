@@ -82,6 +82,19 @@ Previously (2025-08): 2x our product.
 Don't overwrite old claims, preserve the history with dates when relevant
 to understanding trends.
 
+**Cite what actually exists.** Update has no raw-capture step, unlike Ingest — so
+when the information justifying an update arrived as chat, email or a verbal
+relay and was never saved to `raw/`, there are exactly two honest endings:
+
+```markdown
+capture it, then cite the file   [source: raw/internal/<slug>-YYYY-MM-DD.md]
+or cite how it actually arrived  [source: user, conversation, YYYY-MM-DD]
+```
+
+Never invent a third: a `raw/`-shaped slug for a file that was never captured.
+It reads as resolvable, survives page splits, and propagates into derived pages
+and archive snapshots, leaving a claim whose provenance no reader can follow.
+
 ### 4. Stale-claim sweep
 
 After updating the primary page, re-grep for variants:

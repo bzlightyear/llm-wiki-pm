@@ -267,6 +267,11 @@ copies the current page to `_archive/<slug>-<date>.md` before an overwrite
 ② **Show diff BEFORE writing**: old text, new text, reason. Confirm for any claim
    touching 5+ pages or changing stated strategy.
 ③ **Cite source**: every update names the raw source justifying it, in the body and log.
+   If that source is new external information not already in `raw/`, either capture it
+   there first (§2 ①) or cite it as `[source: user, conversation, YYYY-MM-DD]`. Never
+   coin a `raw/`-shaped slug for an artifact that was never captured — unlike Ingest,
+   this flow has no raw-capture step, so a fabricated slug yields a citation that
+   looks resolvable and no reader can ever follow.
 ④ **Stale-claim sweep**: after the update, re-search and fix all instances in the same pass.
 ⑤ **Bump `updated:`** on every page touched.
 ⑥ **Log**: `## [YYYY-MM-DD] update | <claim/page> | source: raw/...`, listing every file.
