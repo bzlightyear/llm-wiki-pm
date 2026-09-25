@@ -19,6 +19,9 @@ FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
 TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
 INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
+SOURCE_MARKER_RE = re.compile(r"\[source:\s*([^\]]*)\]", re.IGNORECASE)
+FRONTMATTER_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.*)$")
+BLOCK_ITEM_RE = re.compile(r"^[ \t]+-\s*(.*)$")
 
 # Interim workaround for the recurring wiki-search MCP bug that re-escapes
 # `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
@@ -230,6 +233,128 @@ def extract_sources(text):
     return [s for s in out if s]
 
 
+# ── Frontmatter validity + provenance cross-reference ──
+# Rationale and evidence: fork-chgs/LINT-FRONTMATTER-CHECKS-2026-09-23.md.
+# parse_frontmatter() partitions on the first ':' rather than parsing YAML, so
+# it accepts input that silently discards keys — a wiki-wide yaml.safe_load
+# found 23 unreadable pages while this script reported 0 errors. R1/R2 catch
+# the two structural corruption patterns; R5 catches duplicate keys, which
+# yaml.safe_load itself does NOT raise on (last-wins), so it must stay a
+# line-level check rather than folding into any parse attempt.
+
+
+def check_frontmatter_structure(rel_path, fm_block_text):
+    """R1/R2/R5 structural frontmatter errors. Takes the raw text between the
+    --- fences; returns a list of 🔴 error strings."""
+    errors = []
+    seen_keys = Counter()
+    last_key_closed_flow = False
+    orphan_count = 0
+
+    for line in fm_block_text.splitlines():
+        key_m = FRONTMATTER_KEY_RE.match(line)
+        if key_m:
+            key, val = key_m.group(1), key_m.group(2).strip()
+            seen_keys[key] += 1
+            # R1 — a key's value may not begin with a list-item dash
+            if re.match(r"^-\s", val):
+                errors.append(
+                    f"malformed frontmatter — block list item on key line "
+                    f"'{key}:' (R1): {rel_path}"
+                )
+            # a closed flow list leaves nothing for an indented item to join
+            last_key_closed_flow = val.startswith("[") and val.endswith("]")
+        elif BLOCK_ITEM_RE.match(line) and last_key_closed_flow:
+            # R2 — everything from here to the next key line is unreachable
+            orphan_count += 1
+
+    if orphan_count:
+        errors.append(
+            f"malformed frontmatter — {orphan_count} orphan block list item(s) "
+            f"under a closed flow list, unreachable by any parser (R2): {rel_path}"
+        )
+    for key, n in seen_keys.items():
+        if n > 1:
+            errors.append(
+                f"duplicate frontmatter key '{key}' (x{n}, last wins — earlier "
+                f"value silently discarded) (R5): {rel_path}"
+            )
+    return errors
+
+
+def _inline_citations(body):
+    """Raw citation strings from every `[source: ...]` marker, split on ';' so
+    multi-source markers yield one entry per source."""
+    citations = []
+    for m in SOURCE_MARKER_RE.finditer(body):
+        for part in m.group(1).split(";"):
+            part = part.strip()
+            # a marker containing a wikilink ("...; see [[page]]") is truncated
+            # at the link's own bracket — prose, not a source identifier
+            if part and "[[" not in part:
+                citations.append(part)
+    return citations
+
+
+def _is_conversation_citation(citation):
+    """`user, conversation (X), DATE` style markers carry their own commas and
+    parentheses; resolving them against a sources: entry is not reliable, so
+    they are never counted as dangling."""
+    return bool(re.match(r"^(user|conversation)\b", citation, re.IGNORECASE))
+
+
+def _citation_matches_source(citation, source):
+    """Deliberately permissive: the marker grammar is loose (bare slug, slug +
+    section name, qualified raw/ path), and a false 'dangling' report is worse
+    than a miss."""
+    c, s = citation.lower(), source.lower()
+    if c in s or s in c:
+        return True
+    candidate = c.split(",")[0].strip()
+    return bool(candidate) and candidate in s
+
+
+def check_provenance_cross_reference(rel_path, text, sources):
+    """R3 (inline marker resolving to no frontmatter source) and R4 (bulk
+    uncited sources). Returns {"info": [...], "warnings": [...]}.
+
+    R3 reports 🔵 info, never 🔴: the marker grammar is loose enough that a
+    strict tier would produce false positives and be tuned out. Frontmatter
+    sources: legitimately lists more than the body cites (ingest-guide ⑤), so
+    R4 is a ratio check, not set equality."""
+    notes = {"info": [], "warnings": []}
+    fm_m = FRONTMATTER_RE.match(text)
+    body = text[fm_m.end():] if fm_m else text
+    citations = _inline_citations(body)
+    if not citations:
+        return notes
+
+    unresolved = sum(
+        1
+        for c in citations
+        if not _is_conversation_citation(c)
+        and not any(_citation_matches_source(c, s) for s in sources)
+    )
+    if unresolved:
+        notes["info"].append(
+            f"{unresolved} inline [source:] marker(s) resolve to no frontmatter "
+            f"sources: entry (R3): {rel_path}"
+        )
+
+    # Only meaningful once a list is long enough for a ratio to mean something;
+    # a page citing 3 of 22 sources is the copy-paste signature this catches.
+    if len(sources) >= 5:
+        cited = sum(
+            1 for s in sources if any(_citation_matches_source(c, s) for c in citations)
+        )
+        if cited / len(sources) < 0.5:
+            notes["warnings"].append(
+                f"only {cited}/{len(sources)} frontmatter sources cited inline "
+                f"(R4) — check for a copy-pasted sources: list: {rel_path}"
+            )
+    return notes
+
+
 def main():
     args = sys.argv[1:]
     if not args:
@@ -304,6 +429,12 @@ def main():
         if fm is None:
             errors.append(f"missing frontmatter: {p.relative_to(wiki)}")
             continue
+        fm_block_m = FRONTMATTER_RE.match(text)
+        if fm_block_m:
+            errors.extend(
+                check_frontmatter_structure(p.relative_to(wiki), fm_block_m.group(1))
+            )
+
         missing = REQUIRED_FRONTMATTER - set(fm.keys())
         if missing:
             errors.append(
@@ -364,6 +495,10 @@ def main():
                 decision_bearing = any(t in ("decision", "strategy") for t in tags)
                 is_error = ptype in FACTUAL_TYPES or decision_bearing
                 (errors if is_error else warnings).append(msg)
+            # provenance cross-reference (R3 dangling marker, R4 bulk uncited)
+            prov = check_provenance_cross_reference(p.relative_to(wiki), text, srcs)
+            info.extend(prov["info"])
+            warnings.extend(prov["warnings"])
             # factual page with body but no inline provenance markers
             fm_m = FRONTMATTER_RE.match(text)
             body = text[fm_m.end():] if fm_m else text
