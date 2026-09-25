@@ -210,6 +210,29 @@ def get_superseded_by(fm):
     return v.strip("'\"")
 
 
+def _split_flow_list(rest):
+    """Split a YAML flow list's contents on top-level commas only, respecting
+    quoted entries. A naive split on ',' shreds any quoted source containing
+    commas — notably the `"user, conversation, DATE"` convention — into phantom
+    entries, inflating source counts and giving R3/R4 fragments to match on."""
+    items, buf, quote = [], "", None
+    for ch in rest:
+        if quote:
+            if ch == quote:
+                quote = None
+            else:
+                buf += ch
+        elif ch in "\"'":
+            quote = ch
+        elif ch == ",":
+            items.append(buf)
+            buf = ""
+        else:
+            buf += ch
+    items.append(buf)
+    return [i.strip() for i in items if i.strip()]
+
+
 def extract_sources(text):
     """Return source entries from frontmatter, handling both inline
     `sources: [a, b]` and the multiline `sources:\\n  - a\\n  - b` YAML forms."""
@@ -223,7 +246,7 @@ def extract_sources(text):
             _, _, rest = line.partition(":")
             rest = rest.strip()
             if rest.startswith("["):
-                out += [s.strip().strip("'\"") for s in rest.strip("[]").split(",")]
+                out += _split_flow_list(rest.strip("[]"))
             for nxt in lines[i + 1:]:
                 if re.match(r"^\s*-\s+", nxt):
                     out.append(re.sub(r"^\s*-\s+", "", nxt).strip().strip("'\""))

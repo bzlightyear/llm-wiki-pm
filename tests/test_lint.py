@@ -81,6 +81,32 @@ def test_r5_duplicate_key_fires_and_still_parses_as_yaml():
 
 
 # ---------------------------------------------------------------------------
+# extract_sources — quote-aware flow-list parsing
+# ---------------------------------------------------------------------------
+
+
+def test_quoted_source_with_commas_stays_one_entry():
+    t = '---\nsources: [raw/a.md, "user, conversation, 2026-08-14", raw/b.md]\n---\n\nbody\n'
+    assert lint.extract_sources(t) == [
+        "raw/a.md",
+        "user, conversation, 2026-08-14",
+        "raw/b.md",
+    ]
+
+
+def test_unquoted_conversational_entry_still_splits():
+    # genuinely ambiguous in YAML — the commas do create separate entries, so
+    # this must keep reporting the fragments rather than silently repairing it
+    t = "---\nsources: [raw/a.md, user, conversation, 2026-08-14]\n---\n\nbody\n"
+    assert lint.extract_sources(t) == ["raw/a.md", "user", "conversation", "2026-08-14"]
+
+
+def test_block_style_and_single_quotes():
+    t = "---\nsources:\n  - raw/a.md\n  - 'user, conversation, 2026-08-14'\n---\n\nbody\n"
+    assert lint.extract_sources(t) == ["raw/a.md", "user, conversation, 2026-08-14"]
+
+
+# ---------------------------------------------------------------------------
 # R3 / R4 — provenance cross-reference
 # ---------------------------------------------------------------------------
 
