@@ -569,9 +569,23 @@ template. The server never overwrites the file and says to edit it. So:
 3. **Snapshot (pre).** On any existing page targeted by Write, Edit, MultiEdit,
    `vault.update`, `vault.delete`, or any `edit` op: copy to
    `_archive/<slug>-<date>.md`, where slug = `lint.py`'s `slug()`, which fixes the
-   README collision (N14). `overview` and `index` are removed from the *snapshot*
-   exemption (they stay exempt from the freshness gate), which mitigates ISSUE-2.
-   `briefings/` joins the gated set.
+   README collision (N14). `briefings/` joins the gated set. The two root files
+   the page rule skips get their own rule:
+   - `overview.md` is snapshotted **only on a whole-file replacement**: `Write`,
+     `vault.update` or `vault.delete`. Never on `Edit`, `MultiEdit` or an MCP
+     `edit` op. The ISSUE-2 risk is the indexer (K2) replacing the page
+     wholesale, and K2's instructions give it the `Write` tool for that. A
+     regeneration done section by section through `Edit` would not be caught;
+     that gap is accepted. The routine daily edits arrive as `Edit` and stay
+     covered by git. Snapshotting every edit day
+     would cost about 80 KB per active day for the two root files (the wiki had
+     36 active days in two months, roughly 2.9 MB, more than the whole
+     `_archive/` today) and would bury page snapshots under copies of the two
+     most-edited files.
+   - `index.md` is **never** snapshotted. It is derived: `lint --auto-fix` or K2
+     can rebuild it from the pages, so a copy protects nothing that can't be
+     regenerated.
+   Both stay exempt from the freshness gate, as today.
 4. **Raw guard (pre).** Any Write/Edit/MCP op on an *existing* `raw/` record →
    additionalContext: "records are write-once; create a new record with
    `corrects:`". New records pass silently.
@@ -684,14 +698,14 @@ with a message when no node is found. No network and no real MCP needed.
 | PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed (issue status not checked in this session). Post-validate now reports it at write time. |
 | PATCH-4 relationship-map wiring | **Keep.** Its end-to-end verification is still pending and unrelated to this design. |
 | ISSUE-1 action-item update mechanism | **Keep open, re-scoped.** Shares RC6. I8's horizon mechanism is the reusable piece; action-item status is out of scope here. |
-| ISSUE-2 indexer overview regeneration | **Keep open, mitigated.** Removing `overview` from the snapshot exemption (section 5.11, item 3) makes a regeneration recoverable. The destructive behavior itself is untouched. |
+| ISSUE-2 indexer overview regeneration | **Keep open, mitigated.** Snapshotting `overview.md` on whole-file replacements (section 5.11, item 3) makes a regeneration recoverable without a daily copy. The destructive behavior itself is untouched. |
 | ISSUE-3 conversational citations / legend drift | **Close when steps 5–7 and M1–M6 land.** Part A → I2 + conversation records + reconstructed records. Part B → I4 + legend grammar. Its open question "lint or pre-write hook?" is answered: both, with lint authoritative and a non-blocking post-write hook for same-turn feedback. Its proposed rule ("exempt `conversation, <date>` only if the dated file exists") is superseded: conversational citations stop being a special case. |
 
 ### PLUGIN-REVIEW items touched
 
 | Item | Disposition |
 |---|---|
-| A4 snapshot hook | **Reopen/extend**: MCP matchers, README collision, `overview`/`index` snapshot, lint `--auto-fix` snapshots. |
+| A4 snapshot hook | **Reopen/extend**: MCP matchers, README collision, `overview.md` snapshot on whole-file replacement only (`index.md` never), lint `--auto-fix` snapshots. |
 | A11 wiki-search.sh path + smoke test | **Reopen**: the shipped fix introduced the stderr bug, and the smoke test was never added (section 5.13). |
 | A13 micro-capture | **Revise**: +1 write per capture, stated and justified (section 4). |
 | A14 tests | **Extend**: parser, hooks-on-MCP, post-image, launcher smoke. |
@@ -778,7 +792,7 @@ fork-only. Semver is per CONTRIBUTING's table.
 | 0 | Scrub real names from `tests/test_lint.py` and the two fork-chgs docs (N12, D8) | — | — | Fork (public repo hygiene) |
 | 1 | `wiki-search.sh` `-f` fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver | — | patch | **Up** |
-| 3 | Hooks: MCP matchers; `slug()`-named snapshots; overview/index snapshot; `briefings/` gated; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
+| 3 | Hooks: MCP matchers; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
 | 4 | `wikifm.py` profile parser; lint, pre-write and backlinks switch to it; delete the old parsers (replaces PATCH-3a, fe14c2f); PyYAML-oracle tests | — | patch | **Up** |
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `capture.py`; SKILL.md §2/§4 edits; revise `32e42a3` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
 | 6 | Lint: R6, R3 exact, R7 grammar, R8 legend, R9 record uniqueness, R10 horizon, R11 contract, R4 on `split_from`; all at 🟡/🔵 initially; `--cited-sources`; auto-fix for mechanical markers and legend append; auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I4 counts | 4, 5 | minor | **Up** |
