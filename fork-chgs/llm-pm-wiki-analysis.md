@@ -1,4 +1,11 @@
 # Prompt
+
+> Kept as written for provenance. Section 0 of
+> [SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md)
+> corrects several claims below (version dates in findings 14 and 17, the
+> 18-page count in finding 10, and the current counts for findings 2 and 4);
+> where they differ, the design doc supersedes this prompt.
+
 I maintain a personal PM wiki built on llm-wiki-pm, a Claude Code skill I've forked from anh-chu/llm-wiki-pm. I need a comprehensive design for the rules that govern how wiki files, frontmatter sources, and inline citations get written — one that makes broken references impossible to create, instead of another round of patches layered on earlier patches.
 
 <background>
