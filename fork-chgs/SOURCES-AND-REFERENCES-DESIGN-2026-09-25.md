@@ -103,11 +103,11 @@ to a file. I7 makes violations recoverable, and I8 makes them revisitable.
 
 | # | Invariant | Single spec location | Write paths that can violate it | Enforcement | Resulting guarantee |
 |---|---|---|---|---|---|
-| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint 🔴 for all | Detected in the same turn for Write/Edit/MultiEdit/MCP writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
+| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint 🔴 for all (R12, with R1/R2/R5 as specific messages) | Detected in the same turn for Write/Edit/MultiEdit/MCP writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
 | I2 | **Declared ⇒ exists.** Every `sources:` entry is a canonical path (`raw/<dir>/<id>.md` or `<wiki-dir>/<slug>.md`) to a file that exists. | `citation-spec.md`, "Declarations" section | Same as I1, plus any rename or deletion under `raw/` or of a page (B1, B3, V3) | Post-validate hook (stat each path); lint 🔴 (R6) | Same as I1. Because IDs have a closed grammar, a malformed entry *cannot be written by a correct writer*, and no serializer can split one. That is the only prevention-by-construction in the design. |
 | I3 | **Cited ⇒ declared.** Every inline citation ID on a page equals the stem of exactly one entry in that page's own `sources:`. | `citation-spec.md`, "Inline grammar" section | Any body edit, including split children and MCP `string_replace` | Post-validate hook; lint 🔴 (R3 rewritten as exact match) | Same as I1. With I2, this closes the chain claim → ID → declared path → file. |
 | I4 | **Legend = declarations.** If a page has a `## Sources` legend, the set of IDs it lists equals the set declared in `sources:`. | `citation-spec.md`, "Legend" section | Any edit that adds a source to one site and not the other (ISSUE-3 part B) | Lint 🟡 (R8); `--auto-fix` appends missing IDs, never deletes | Detected. Drift can no longer survive silently across edits, as the ISSUE-3 instance did across six edits. |
-| I5 | **Records are unique and write-once.** Every `raw/` record's ID (stem of a `.md` file outside `raw/assets/`) is unique across `raw/` and disjoint from all page slugs, and a record is never modified after creation. | `citation-spec.md`, "Records" section; `AGENTS.md` "No raw/ mutations" points there | W1, W4, V1–V2 (create or overwrite raw), fetcher worker (K1), Bash | Pre-write hook warns on any Write/Edit/MCP edit to an *existing* `raw/` file; lint 🔴 on ID collisions | Uniqueness is fully detected. Immutability is detected at write time for tool writes only. A Bash or Obsidian edit to a record is invisible except in git. |
+| I5 | **Records are unique and write-once.** Every `raw/` record's ID (stem of a `.md` file outside `raw/assets/`) is unique across `raw/` and disjoint from all page slugs, and a record is never modified after creation. | `citation-spec.md`, "Records" section; `AGENTS.md` "No raw/ mutations" points there | W1, W4, V1–V2 (create or overwrite raw), fetcher worker (K1), Bash | Pre-write hook warns on any Write/Edit/MCP edit to an *existing* `raw/` file; lint 🔴 on ID collisions (R9) | Uniqueness is fully detected. Immutability is detected at write time for tool writes only. A Bash or Obsidian edit to a record is invisible except in git. |
 | I6 | **Links resolve.** Every `[[target]]` on a live page resolves to exactly one page slug. Slugs are unique across the page directories. | `SCHEMA.md` Conventions (unchanged format; CONTRIBUTING protects it) | Rename, split, archive, supersede (W7–W10), MCP writes that escape `[` | post-write link check (existing); lint 🔴 (existing), supersession auto-fix | Unchanged from today, plus `briefings/` coverage and the escape check at write time. |
 | I7 | **Recoverable.** Before an agent tool overwrites, deletes or archives a page, a pre-image exists in `_archive/<slug>-<date>.md`, or in git. | `AGENTS.md` "Snapshot before destructive ops" (kept as the behavioral rule), with the mechanism in `hooks/README.md` | Every page writer | PreToolUse hook extended to MCP `vault`/`edit`; lint `--auto-fix` snapshots before writing; Bash/script writers keep the behavioral rule | Guaranteed (best-effort I/O) for the first tool write per page per day, **including MCP writes after this change**. Not guaranteed for Bash, script, Obsidian or git writes, or for the second write of the day to the same page. For those, git is the undo, and the wiki is a git repo. |
 | I8 | **Revisitable.** A page whose only primary sources are conversation records (or reconstructed records) carries a verification horizon: after 30 days without a newer `last_verified:`, lint surfaces it. | `citation-spec.md`, "Revisit" section | Time. Nothing writes this violation, it accrues. | Lint 🔵 (R10), listed in `_status.md` | Surfaced, never forced. This is the revisit obligation ISSUE-1 and ISSUE-3 lack (brief item 13). |
@@ -321,7 +321,8 @@ most one example. That makes it the single spec location for I1–I5 and I8.
   Directory routing is as in `ingest-guide ①`. `worker-source-fetcher`'s table is
   replaced by a pointer to it.
 - Record frontmatter (all optional except `source_type` and `captured`, which
-  lint 🟡s when missing on *new* records):
+  lint 🟡s when missing (R13), only on records whose filename date is after the
+  rule ships, so existing records are never flagged):
 
 ```yaml
 ---
@@ -517,7 +518,7 @@ marker is an ID site, not a link site.
 - **Every scalar is a string.** Dates are validated by regex (`created`,
   `updated`, `last_verified`: `YYYY-MM-DD`), never type-coerced. This makes the
   MCP's quote-stripping irrelevant (N6).
-- Anything else is a profile violation (🔴). R1 and R2 become two specific
+- Anything else is a profile violation (🔴, R12). R1 and R2 become two specific
   messages of this check.
 - Required keys: `title, created, updated, type, tags, sources` (as `lint.py`
   today). `coverage` is recommended and 🟡 on factual types (as today).
@@ -675,6 +676,32 @@ with a message when no node is found. No network and no real MCP needed.
 
 ---
 
+### 5.15 Lint rule catalog
+
+Every R-numbered rule this document mentions, in one place. R1–R5 exist today
+(commit `faaf2d8`); R6–R13 are proposed. "Now" is the tier after plan step 6;
+"3.0" is the tier after plan step 11. 🔴 error, 🟡 warning, 🔵 info.
+
+| Rule | Checks for | Invariant | Status | Now | 3.0 | Auto-fix |
+|---|---|---|---|---|---|---|
+| R1 | A list item on the same line as its key (`tags: - x`) | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No |
+| R2 | Block list items under an already-closed `[...]` list | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | Merge into one block list, reporting item counts before and after |
+| R3 | An inline citation ID that equals the stem of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | Proposes adding the declaration; a human confirms |
+| R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept | 🟡 | 🟡; 🔴 on `split_from` pages | No |
+| R5 | The same frontmatter key twice | I1 | Exists, kept | 🔴 | 🔴 | No |
+| R6 | A `sources:` entry that isn't a canonical path to an existing file | I2 | New | 🟡 | 🔴 | No |
+| R7 | An inline citation that breaks the grammar (section 5.4): wrapped, nested `source:`, "X vs. Y", raw path form, URL, wikilink | I3 | New | 🟡 | 🟡 | Mechanical classes (path form, wraps, nested prefix, "vs.") |
+| R8 | A `## Sources` legend whose IDs differ from the declared IDs | I4 | New | 🟡 | 🟡 | Appends missing IDs; never deletes |
+| R9 | Two records with the same ID, or a record ID equal to a page slug | I5 | New | 🔴 | 🔴 | No |
+| R10 | A page whose primary sources are all conversation or reconstructed records and whose `last_verified` is absent or older than 30 days | I8 | New | 🔵 | 🔵 | No |
+| R11 | `meta/contract.md` is still the MCP's default contract | none (competing spec) | New | 🟡 | 🟡 | No |
+| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check) | 🔴 | 🔴 | No |
+| R13 | A record without `source_type` or `captured`, dated after the rule ships | I5 | New | 🟡 | 🟡 | No |
+
+Other checks keep their current tiers and have no R-number: escaped `\[`
+(PATCH-3d/3e), broken wikilinks, orphans, index drift, self-referential
+sourcing, missing inline provenance, `coverage:`, stale `last_verified`.
+
 ## 6. Dispositions
 
 ### Fork commits
@@ -795,7 +822,7 @@ fork-only. Semver is per CONTRIBUTING's table.
 | 3 | Hooks: MCP matchers; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
 | 4 | `wikifm.py` profile parser; lint, pre-write and backlinks switch to it; delete the old parsers (replaces PATCH-3a, fe14c2f); PyYAML-oracle tests | — | patch | **Up** |
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `capture.py`; SKILL.md §2/§4 edits; revise `32e42a3` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
-| 6 | Lint: R6, R3 exact, R7 grammar, R8 legend, R9 record uniqueness, R10 horizon, R11 contract, R4 on `split_from`; all at 🟡/🔵 initially; `--cited-sources`; auto-fix for mechanical markers and legend append; auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I4 counts | 4, 5 | minor | **Up** |
+| 6 | Lint: R6, R3 exact, R7 grammar, R8 legend, R9 record uniqueness, R10 horizon, R11 contract, R12 profile, R13 record fields, R4 on `split_from`; tiers per the section 5.15 table (🟡/🔵 initially, except R9 and R12, which have no existing violations and start at 🔴); `--cited-sources`; auto-fix for mechanical markers and legend append; auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I4 counts | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check) | 3, 4, 6 | minor | **Up** |
 | 8 | Vault contract template + scaffold copy | 5 | minor | **Up** |
 | 9 | Worker agents → user-level symlinks; delete the wiki's copy; verify `CLAUDE_SKILL_DIR` in subagents | — | — | Fork (install layout) |
@@ -856,7 +883,9 @@ non-empty, so an empty list already passes, but that is accidental and should be
 made explicit.
 
 **D7. Severity timeline.** Recommend 🟡 for R3/R6/R7 through the migration, then
-🔴 in a 3.0.0. The alternative (🔴 now) turns the session-start health line red
+🔴 for R3 and R6 in a 3.0.0. R7 stays 🟡: a citation that breaks the format but
+still resolves is cosmetic, and one that no longer resolves is already an R3
+error. The alternative (🔴 now) turns the session-start health line red
 on day one for a known, scheduled backlog.
 
 **D8. Public-repo hygiene (N12).** Two existing fork docs and one test file carry
