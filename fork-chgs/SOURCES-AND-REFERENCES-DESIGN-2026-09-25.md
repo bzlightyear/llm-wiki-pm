@@ -18,7 +18,9 @@ counts, never quoted.
 
 Reference convention: `§N` always means an operation number in the core
 `SKILL.md` (for example §2 Ingest, §4 Update). "Section N" means a section of
-this document; other files' sections are named with the file.
+this document; other files' sections are named with the file. A-numbers (A3,
+A11, …) always mean PLUGIN-REVIEW-2026-07-15 items; this document's own IDs
+use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D).
 
 ---
 
@@ -101,11 +103,11 @@ to a file. I7 makes violations recoverable, and I8 makes them revisitable.
 
 | # | Invariant | Single spec location | Write paths that can violate it | Enforcement | Resulting guarantee |
 |---|---|---|---|---|---|
-| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, M1–M4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint 🔴 for all | Detected in the same turn for Write/Edit/MultiEdit/MCP writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
-| I2 | **Declared ⇒ exists.** Every `sources:` entry is a canonical path (`raw/<dir>/<id>.md` or `<wiki-dir>/<slug>.md`) to a file that exists. | `citation-spec.md`, "Declarations" section | Same as I1, plus any rename or deletion under `raw/` or of a page (B1, B3, M3) | Post-validate hook (stat each path); lint 🔴 (R6) | Same as I1. Because IDs have a closed grammar, a malformed entry *cannot be written by a correct writer*, and no serializer can split one. That is the only prevention-by-construction in the design. |
+| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint 🔴 for all | Detected in the same turn for Write/Edit/MultiEdit/MCP writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
+| I2 | **Declared ⇒ exists.** Every `sources:` entry is a canonical path (`raw/<dir>/<id>.md` or `<wiki-dir>/<slug>.md`) to a file that exists. | `citation-spec.md`, "Declarations" section | Same as I1, plus any rename or deletion under `raw/` or of a page (B1, B3, V3) | Post-validate hook (stat each path); lint 🔴 (R6) | Same as I1. Because IDs have a closed grammar, a malformed entry *cannot be written by a correct writer*, and no serializer can split one. That is the only prevention-by-construction in the design. |
 | I3 | **Cited ⇒ declared.** Every inline citation ID on a page equals the stem of exactly one entry in that page's own `sources:`. | `citation-spec.md`, "Inline grammar" section | Any body edit, including split children and MCP `string_replace` | Post-validate hook; lint 🔴 (R3 rewritten as exact match) | Same as I1. With I2, this closes the chain claim → ID → declared path → file. |
 | I4 | **Legend = declarations.** If a page has a `## Sources` legend, the set of IDs it lists equals the set declared in `sources:`. | `citation-spec.md`, "Legend" section | Any edit that adds a source to one site and not the other (ISSUE-3 part B) | Lint 🟡 (R8); `--auto-fix` appends missing IDs, never deletes | Detected. Drift can no longer survive silently across edits, as the ISSUE-3 instance did across six edits. |
-| I5 | **Records are unique and write-once.** Every `raw/` record's ID (stem of a `.md` file outside `raw/assets/`) is unique across `raw/` and disjoint from all page slugs, and a record is never modified after creation. | `citation-spec.md`, "Records" section; `AGENTS.md` "No raw/ mutations" points there | W1, W4, M1–M2 (create or overwrite raw), fetcher worker (A1), Bash | Pre-write hook warns on any Write/Edit/MCP edit to an *existing* `raw/` file; lint 🔴 on ID collisions | Uniqueness is fully detected. Immutability is detected at write time for tool writes only. A Bash or Obsidian edit to a record is invisible except in git. |
+| I5 | **Records are unique and write-once.** Every `raw/` record's ID (stem of a `.md` file outside `raw/assets/`) is unique across `raw/` and disjoint from all page slugs, and a record is never modified after creation. | `citation-spec.md`, "Records" section; `AGENTS.md` "No raw/ mutations" points there | W1, W4, V1–V2 (create or overwrite raw), fetcher worker (K1), Bash | Pre-write hook warns on any Write/Edit/MCP edit to an *existing* `raw/` file; lint 🔴 on ID collisions | Uniqueness is fully detected. Immutability is detected at write time for tool writes only. A Bash or Obsidian edit to a record is invisible except in git. |
 | I6 | **Links resolve.** Every `[[target]]` on a live page resolves to exactly one page slug. Slugs are unique across the page directories. | `SCHEMA.md` Conventions (unchanged format; CONTRIBUTING protects it) | Rename, split, archive, supersede (W7–W10), MCP writes that escape `[` | post-write link check (existing); lint 🔴 (existing), supersession auto-fix | Unchanged from today, plus `briefings/` coverage and the escape check at write time. |
 | I7 | **Recoverable.** Before an agent tool overwrites, deletes or archives a page, a pre-image exists in `_archive/<slug>-<date>.md`, or in git. | `AGENTS.md` "Snapshot before destructive ops" (kept as the behavioral rule), with the mechanism in `hooks/README.md` | Every page writer | PreToolUse hook extended to MCP `vault`/`edit`; lint `--auto-fix` snapshots before writing; Bash/script writers keep the behavioral rule | Guaranteed (best-effort I/O) for the first tool write per page per day, **including MCP writes after this change**. Not guaranteed for Bash, script, Obsidian or git writes, or for the second write of the day to the same page. For those, git is the undo, and the wiki is a git repo. |
 | I8 | **Revisitable.** A page whose only primary sources are conversation records (or reconstructed records) carries a verification horizon: after 30 days without a newer `last_verified:`, lint surfaces it. | `citation-spec.md`, "Revisit" section | Time. Nothing writes this violation, it accrues. | Lint 🔵 (R10), listed in `_status.md` | Surfaced, never forced. This is the revisit obligation ISSUE-1 and ISSUE-3 lack (brief item 13). |
@@ -190,14 +192,14 @@ today's hooks fire. **Refs** = what it writes into reference sites.
 | H2 | pre-write: `_archive/<stem>-<date>.md` snapshots | stem, not slug, so all `README.md` pages collide (1 collision exists) |
 | H3 | post-write: `_status.md` appends | async |
 | H4 | session-stop: rotates `log.md` with `mv`, removes lock | |
-| A1 | worker-source-fetcher: new `raw/**` | writes `private:` into raw frontmatter (14 records carry it) and tells callers to flag `private: true` (v2.20.0 missed it, N5); its slug table disagrees with `ingest-guide ①` routing |
-| A2 | worker-wiki-indexer: rewrites `index.md`, `overview.md` | `overview` is exempt from snapshot, so an ISSUE-2 regeneration has no pre-image |
-| A3 | worker-lint | runs W14 |
-| M1 | MCP `vault.create` / `create_from_template` | new file; contract.md template when no content |
-| M2 | MCP `vault.update` | whole-file overwrite, no snapshot today |
-| M3 | MCP `vault.delete` | **deletion with no snapshot today** |
-| M4 | MCP `edit` (append, prepend, replace, delete-section, line_replace, string_replace, frontmatter_set; batch ≤50 paths) | AST round-trip, `\[` bug |
-| M5 | MCP `system.save_overview` | `meta/overview.md` (not a wiki page) |
+| K1 | worker-source-fetcher: new `raw/**` | writes `private:` into raw frontmatter (14 records carry it) and tells callers to flag `private: true` (v2.20.0 missed it, N5); its slug table disagrees with `ingest-guide ①` routing |
+| K2 | worker-wiki-indexer: rewrites `index.md`, `overview.md` | `overview` is exempt from snapshot, so an ISSUE-2 regeneration has no pre-image |
+| K3 | worker-lint | runs W14 |
+| V1 | MCP `vault.create` / `create_from_template` | new file; contract.md template when no content |
+| V2 | MCP `vault.update` | whole-file overwrite, no snapshot today |
+| V3 | MCP `vault.delete` | **deletion with no snapshot today** |
+| V4 | MCP `edit` (append, prepend, replace, delete-section, line_replace, string_replace, frontmatter_set; batch ≤50 paths) | AST round-trip, `\[` bug |
+| V5 | MCP `system.save_overview` | `meta/overview.md` (not a wiki page) |
 | B1–B6 | Bash `mv`/`sed`/heredoc, ad-hoc scripts (the page-splitting script), Obsidian edits, `git` checkout/merge, user hand-edits, lint auto-fix | no hooks ever; lint only |
 
 ---
