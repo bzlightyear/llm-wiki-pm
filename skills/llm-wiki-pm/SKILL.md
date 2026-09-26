@@ -163,7 +163,8 @@ only on a problem.
 
 **① Wiki exists?** Resolve `$WIKI` (see Wiki Location); if the dir is missing:
 "Wiki directory not found. Scaffold a new wiki or run `/llm-wiki-pm:set-wiki-path`."
-**② SCHEMA.md exists?** If absent, offer to scaffold from `templates/SCHEMA.md`. No
+**② SCHEMA.md exists?** If absent, offer to scaffold from
+`${CLAUDE_SKILL_DIR}/templates/SCHEMA.md`. No
 write operation proceeds until it exists.
 **③ MY-INTEGRATIONS.md (optional).** If present, apply its Routing Notes to ingest
 defaults and read `## Sweep Registry` (canonical source list). No file = generic
