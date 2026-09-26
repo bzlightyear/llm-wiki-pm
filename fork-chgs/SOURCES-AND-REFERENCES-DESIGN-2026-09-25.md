@@ -206,6 +206,8 @@ today's hooks fire. **Refs** = what it writes into reference sites.
 
 ## 3. Root causes
 
+Plain-language explanations of each root cause are in Appendix A.
+
 | RC | Root cause | Findings it explains |
 |---|---|---|
 | **RC1** | **No source identity.** There is no definition of a source ID or a resolution function. Each of three declaration sites accepts free text, and "is this a source?" is answered by a prefix test (`not startswith(entities/…)`). **This is the biggest root cause.** | 1, 2, 3, 4, 6, 12, 14, 16; R3's permissive matcher; N3, N4, N7 |
@@ -921,3 +923,280 @@ whether async hook output reaches the model; whether hooks fire inside
 subagents and whether `CLAUDE_SKILL_DIR` is set there; the status of
 wirux/mcp-markdown-vault#47; the origin of the LINT doc's 18th hybrid page;
 token counts (reported as bytes).
+
+---
+
+## Appendix A. Root causes in plain terms
+
+The same seven root causes as section 3, explained without the jargon.
+
+### RC1. Sources have no identity
+
+RC1 is about *how a source is named*.
+
+**How it works today:** a wiki page mentions its sources in three places: the
+list at the top of the page (`sources:`), the tags beside individual claims
+(`[source: ...]`), and sometimes a Sources section at the bottom. Each place
+accepts whatever text the writer chooses. The top list usually holds a file
+path, the tags hold a shortened name, and the bottom section holds a sentence
+of description.
+
+**The problem:** nothing defines what a source *is*, and nothing turns any of
+that text into a file you can open. So:
+
+- The same kind of source gets written a dozen different ways.
+- A typo in a path looks exactly like a real path, and nothing notices.
+- To check whether a tag matches the list at the top, lint has to guess whether
+  two pieces of text are "close enough" to mean the same thing.
+- The three places drift apart, because nothing ties them together.
+
+**The analogy:** it's like a library where books have no catalog numbers.
+Every reference describes the book in its own words ("the pricing report",
+"pricing, January", "that analyst PDF"), and finding the actual book depends on
+someone guessing right.
+
+**Why it's a root cause:** most of the other defects (the many shapes, the
+split entries, the invented citation, the typo'd paths, the fuzzy matching)
+come from accepting free text as a source. Fixing each one separately leaves
+the door open for the next variant.
+
+**What the design does:** every source gets a catalog number, which is simply
+its filename. The same number is used in all three places, and a lookup either
+finds exactly one file or reports an error (section 5.4). Because the number
+can't contain commas or spaces, no file format can mangle it.
+
+### RC2. The honest path for chat facts cost more than the shortcut
+
+RC2 is about facts you tell the agent in chat, like "remember that we decided X".
+
+**The rule:** every fact in the wiki should point back to a saved original, a
+file in `raw/`, so anyone can check where it came from. For a chat fact, the
+rule since v2.0.0 has been to save a summary of the conversation into `raw/`
+first, then cite that file.
+
+**The problem:** saving the conversation was only described inside the full
+ingest procedure, a long checklist meant for articles, transcripts and similar
+sources. Doing all of that for a single sentence was heavy. In v2.20.0 the
+author added a shortcut for single facts (PLUGIN-REVIEW A13) that deliberately
+skips the checklist. The shortcut says to label the fact
+`source: conversation | <date>` and move on. It never says to save anything.
+
+So the wiki offered two paths for the same situation:
+
+- **The proper path** saves the conversation to a file, then cites it. It's
+  slower, and it's buried in a long procedure.
+- **The shortcut** writes "conversation, <date>" as the source and saves
+  nothing. It's fast and sits right up front in the main instructions.
+
+The agent naturally took the shortcut. The result is citations that look like
+sources but point to nothing: no file exists for any of the 18 dates the wiki
+cites conversations from. It's like a receipt that says "paid in cash, Tuesday"
+with nothing to show what was bought.
+
+**Why it got worse:** there was no single agreed way to write the shortcut
+label, so it appears in several different forms, which is part of the 12
+shapes. Written without quotes, some of those forms get split in two by the
+frontmatter format. When a fact arrived in chat during an Update, one session
+invented a raw-looking filename for it, which is the phantom citation. A later
+fork fix (`32e42a3`) made "user, conversation, DATE" an officially allowed form
+for Updates, which added yet another shape instead of closing the gap.
+
+**Why it's a root cause, not just a bug:** telling the agent to "be careful"
+won't fix it while the careless option is the easy one.
+
+**What the design does:** it makes the honest option cheap instead (section
+5.6). Saving a chat fact becomes one small file, written by a helper script in
+a single step, and citing that file is the only accepted form. The shortcut
+stays short, one step longer than today, and it no longer produces citations
+that lead nowhere.
+
+### RC3. No agreed format, three different readers
+
+RC3 is about *how the information at the top of each page gets read*.
+
+**How it works today:** that information (the frontmatter) is written in YAML,
+a format that allows many ways to write the same thing. A list, for example,
+can go on one line inside brackets or on separate lines with dashes. The tools
+don't use a real YAML reader. Instead there are three homemade ones: two inside
+lint and a copy inside the before-change hook.
+
+**The problem:**
+
+- No document says which of YAML's many forms a wiki page may use, so each
+  homemade reader supports a different subset and guesses at the rest.
+- A page that one reader accepts, another can misread without any warning.
+  Mixed list styles and duplicated keys were both read "successfully" while
+  whole fields silently disappeared.
+- An earlier local patch (PATCH-3a) taught one reader to handle one-per-line
+  lists by gluing the items back together with commas, which reintroduced the
+  comma confusion another fix had just removed.
+- Obsidian, which does use a real reader, sometimes disagreed with all three.
+  That is how some of the corruption was found.
+
+**The analogy:** it's like three clerks reading the same handwritten form, each
+guessing differently at the unclear letters, and none of them ever saying
+"I can't read this".
+
+**Why it's a root cause:** as long as the readers guess, a malformed page can
+pass every check while the data inside it is being lost.
+
+**What the design does:** it writes down exactly which forms are allowed
+(section 5.10), and every tool uses one shared reader. Anything outside the
+allowed forms is reported instead of guessed at.
+
+### RC4. The safety checks guard only some of the doors
+
+RC4 is about *where the safety checks are attached*.
+
+**How the checks work today:** the wiki's safety nets are hooks, small scripts
+that run automatically around a change. One runs before a change: it saves a
+backup copy and warns if a page has no sources. One runs after: it checks for
+broken links. They're wired to three specific editing tools in Claude Code:
+Write, Edit and MultiEdit. A hook fires only when one of those three tools is
+used.
+
+**The problem:** those three tools aren't the only way files change. At least
+five other ways to modify the wiki slip past the hooks entirely:
+
+- **The wiki-search MCP** can create, rewrite and delete files with its own
+  tools. The hooks don't recognize them, so there's no backup and no check.
+  That's why its write tools were left off the allowlist.
+- **Shell commands and scripts.** A `mv`, a `sed`, or a one-off Python script
+  like the page-splitting pass edits files directly.
+- **Lint's own auto-fix** rewrites links and the index with no backup first.
+- **Session start** runs lint, which quietly writes a report file into
+  `queries/` every session (N1).
+- **You, in Obsidian**, or git operations like checkout or merge.
+
+There are also gaps in coverage by location:
+
+- **`briefings/`**, where daily briefs go, sits outside the folders the hooks
+  and lint look at (N2).
+- **Pages named `README.md`** all get backed up under the same name, so all but
+  the first one each day are lost (N14).
+
+**The analogy:** it's like a building where the security guard checks badges at
+the front door only, while there are side doors, a loading dock and windows.
+The guard does a good job, just at one entrance.
+
+**Why it's a root cause:** no matter how good the checks are, they only protect
+changes that come through the watched door. Several of the corruptions found
+earlier came through the unwatched ones.
+
+**What the design does:**
+
+- **More doors watched:** the hooks are extended to recognize the MCP's write
+  tools (section 5.11), and `briefings/` joins the watched folders.
+- **A check that looks at the file itself:** a new after-change check reads the
+  file from disk after it changes, rather than trusting what the tool said it
+  would do.
+- **A regular sweep for the rest:** for the doors that can never be watched
+  (shell, scripts, Obsidian, git), lint runs at every session start and reports
+  rule violations. Nothing can change the wiki without being noticed by the
+  next session at the latest.
+
+It detects problems; it doesn't prevent them. The hooks still never block a
+change, per the author's rule.
+
+### RC5. No rules for pages made from other pages
+
+RC5 is about *what a new page inherits when it's made from an existing one*.
+
+**How it works today:** several operations create a page out of another page:
+
+- **Splitting** a page that has grown past 200 lines.
+- **Promoting** a person, company or product mentioned on a concept page to a
+  page of their own.
+- **Superseding** an old page with a new one.
+- **Crystallizing** a meeting or research thread into a digest page.
+
+**The problem:** none of these says which sources the new page should carry.
+The easy move is to copy the whole source list across. So:
+
+- Split-off pages claimed sources their text never used. The worst case listed
+  22 sources while citing 3.
+- One invented citation was copied along with everything else, into ten files
+  including backup copies.
+- Links pointing at a section that moves to a new page can stop leading anywhere
+  useful, and nothing checks for it.
+
+**The analogy:** it's like photocopying a book's full bibliography onto every
+chapter, so each chapter claims to rely on sources it never mentions.
+
+**Why it's a root cause:** these operations are exactly where errors multiply.
+One mistake on a parent page becomes the same mistake on every child, and none
+of it looks wrong, because every copied path is real.
+
+**What the design does:** a written procedure for splits and the similar
+operations (section 5.8). A new page lists exactly the sources its own text
+cites (a lint helper computes the list), it records which page it came from,
+and it gets a stricter check against copied source lists.
+
+### RC6. Nothing ever comes back to check
+
+RC6 is about *what happens to a citation after it's written*.
+
+**How it works today:** every rule in the wiki applies at the moment of
+writing: cite a source, show a diff, update the log.
+
+**The problem:** once a citation or an action item is on a page, nothing ever
+brings it back for review. There is no expiry date, no "last checked"
+requirement, and no step in any workflow that revisits it. So:
+
+- Things that were true when written quietly go stale.
+- A secondhand fact looks just as solid a year later as a verified one.
+- Mistakes that slip through at write time stay forever. In ISSUE-3, a source
+  missing from one page's Sources section survived six later edits to that page.
+- Action items in meeting digests stay frozen at "pending" long after they were
+  resolved elsewhere (ISSUE-1).
+
+**The analogy:** it's like groceries with no expiration dates. Everything in the
+fridge looks equally fresh, and nothing tells you which items to check.
+
+**Why it's a root cause:** write-time rules can only be as good as the
+information available at that moment. Without a way back, the wiki's accuracy
+can only decline.
+
+**What the design does:** a revisit rule (R10, section 5.12). A page that rests
+only on things said in conversation is flagged after 30 days unless someone has
+re-checked it against a real source. The same idea could later apply to the
+overview page's action items, which is left to the follow-on design.
+
+### RC7. Copies of the same instructions drift apart
+
+RC7 is about *guidance that exists in more than one place*.
+
+**How it works today:** the same rules are written out in several places:
+
+- two identical copies of the helper agents, one in the plugin and one in the
+  wiki
+- the page templates
+- the wiki-search MCP's own settings file (`meta/contract.md`)
+- the README and contributing guide
+- sub-skills written before the rules they describe changed
+
+**The problem:** when one copy is updated, the others aren't, and an agent that
+reads a stale copy follows outdated rules. For example:
+
+- The source-saving helper still applies a privacy label the plugin retired in
+  v2.20.0 (N5).
+- The PRD template teaches a citation form that lint can't read (N3).
+- The wiki-search settings file describes a different page format altogether,
+  and the MCP tells agents to follow it.
+- Four different places (lint, the contributing guide, a helper agent and the
+  MCP settings file) list four different sets of "required" fields (N4).
+
+**The analogy:** it's like an office where the same procedure is pinned to four
+different noticeboards and only one of them was updated. Whoever reads an old
+notice follows the old procedure.
+
+**Why it's a root cause:** fixing a rule in one place gives a false sense that
+it's fixed everywhere, and the stale copies keep producing the old defects.
+
+**What the design does:**
+
+- **One home per rule:** each rule lives in `references/citation-spec.md`, and
+  every other place points there instead of restating it.
+- **One set of helper agents:** the two copies become one shared set.
+- **Settings file rewritten:** the wiki-search settings file points at the
+  wiki's own schema instead of describing its own.
