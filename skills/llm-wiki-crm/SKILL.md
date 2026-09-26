@@ -23,7 +23,7 @@ CRM layer on top of the PM wiki. Tracks relationship health, account status, fea
 ## New CRM Frontmatter Fields
 
 These fields extend the core wiki SCHEMA.md. Add them to entity pages as relevant.
-See `skills/llm-wiki-crm/templates/SCHEMA-crm-fields.md` for a merge-ready patch.
+See `${CLAUDE_SKILL_DIR}/templates/SCHEMA-crm-fields.md` for a merge-ready patch.
 
 ### Person Entity Additions
 

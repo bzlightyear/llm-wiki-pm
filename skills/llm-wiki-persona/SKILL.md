@@ -36,7 +36,7 @@ SCHEMA compliance, min 2 outbound `[[wikilinks]]`, and a log entry.
 
 ## Persona page workflow
 
-Use `${CLAUDE_PLUGIN_ROOT}/skills/llm-wiki-pm/templates/persona.md` as the
+Use `${CLAUDE_SKILL_DIR}/../llm-wiki-pm/templates/persona.md` as the
 starting point. Slug: `<name>-persona.md` under `entities/`.
 
 ① **Confirm data sources**: ask user which communication channels have actual
