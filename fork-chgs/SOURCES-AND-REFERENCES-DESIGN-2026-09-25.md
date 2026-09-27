@@ -20,7 +20,7 @@ Reference convention: `§N` always means an operation number in the core
 `SKILL.md` (for example §2 Ingest, §4 Update). "Section N" means a section of
 this document; other files' sections are named with the file. A-numbers (A3,
 A11, …) always mean PLUGIN-REVIEW-2026-07-15 items; this document's own IDs
-use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D).
+use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D, F).
 
 ---
 
@@ -35,7 +35,8 @@ use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D).
 2. **The fix is one identifier with one resolution rule.** A *source ID* is the
    file stem of a `raw/` record (or the slug of a wiki page). Frontmatter declares
    the path, inline markers cite the ID, a legend (if present) lists the IDs, and
-   resolution is exact: `id == stem(path)` and `path` exists. IDs are
+   resolution is exact: `id == slug(path)` and `path` exists (`slug()` is the
+   file stem, or the folder name for a `README.md` page, section 5.2). IDs are
    `[a-z0-9][a-z0-9._-]*`, so they cannot contain a comma, space or bracket.
    That makes YAML quoting and flow-vs-block style irrelevant, which matters
    because the wiki-search MCP rewrites both.
@@ -88,11 +89,19 @@ text-level line insertion: an Edit tool call, an ad-hoc script, or an MCP
 `line_replace`/`append`. Git cannot tell these apart, because the commit spans
 six days of sessions.
 
-The round-trip does have two real effects. (1) It converts flow lists to block
-style. (2) It re-quotes minimally under YAML 1.2 rules, so a date that was
-quoted to stay a string is emitted plain. PyYAML (YAML 1.1) then loads that
-value as a `datetime.date`, not a string. Any parser this design adopts must
-load every scalar as a string.
+The round-trip does have real effects. It was reproduced on 2026-09-26 with the
+installed MCP's own js-yaml (v2.3.0 loads and dumps frontmatter with js-yaml's
+default schema). (1) It converts flow lists to block style. (2) It rewrites every
+*unquoted* date as a timestamp (`2026-09-03` → `2026-09-03T00:00:00.000Z`),
+which is N15, reported upstream as wirux/mcp-markdown-vault#49. (3) It keeps
+quoted dates quoted.
+
+That means the unquoted `last_verified` in `5cc416c` was **not** produced by
+this MCP version, even though the same commit's block-list conversion was. The
+writer of that one value is unconfirmed; an Edit or Obsidian's properties editor
+are the likely candidates. Either way, a quoted date can end up unquoted, and
+PyYAML (YAML 1.1) then loads it as a `datetime.date`, not a string. Any parser
+this design adopts must load every scalar as a string.
 
 ---
 
@@ -105,7 +114,7 @@ to a file. I7 makes violations recoverable, and I8 makes them revisitable.
 |---|---|---|---|---|---|
 | I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint 🔴 for all (R12, with R1/R2/R5 as specific messages) | Detected in the same turn for Write/Edit/MultiEdit/MCP writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
 | I2 | **Declared ⇒ exists.** Every `sources:` entry is a canonical path (`raw/<dir>/<id>.md` or `<wiki-dir>/<slug>.md`) to a file that exists. | `citation-spec.md`, "Declarations" section | Same as I1, plus any rename or deletion under `raw/` or of a page (B1, B3, V3) | Post-validate hook (stat each path); lint 🔴 (R6) | Same as I1. Because IDs have a closed grammar, a malformed entry *cannot be written by a correct writer*, and no serializer can split one. That is the only prevention-by-construction in the design. |
-| I3 | **Cited ⇒ declared.** Every inline citation ID on a page equals the stem of exactly one entry in that page's own `sources:`. | `citation-spec.md`, "Inline grammar" section | Any body edit, including split children and MCP `string_replace` | Post-validate hook; lint 🔴 (R3 rewritten as exact match) | Same as I1. With I2, this closes the chain claim → ID → declared path → file. |
+| I3 | **Cited ⇒ declared.** Every inline citation ID on a page equals the `slug()` of exactly one entry in that page's own `sources:` (section 5.2). | `citation-spec.md`, "Inline grammar" section | Any body edit, including split children and MCP `string_replace` | Post-validate hook; lint 🔴 (R3 rewritten as exact match) | Same as I1. With I2, this closes the chain claim → ID → declared path → file. |
 | I4 | **Legend = declarations.** If a page has a `## Sources` legend, the set of IDs it lists equals the set declared in `sources:`. | `citation-spec.md`, "Legend" section | Any edit that adds a source to one site and not the other (ISSUE-3 part B) | Lint 🟡 (R8); `--auto-fix` appends missing IDs, never deletes | Detected. Drift can no longer survive silently across edits, as the ISSUE-3 instance did across six edits. |
 | I5 | **Records are unique and write-once.** Every `raw/` record's ID (stem of a `.md` file outside `raw/assets/`) is unique across `raw/` and disjoint from all page slugs, and a record is never modified after creation. | `citation-spec.md`, "Records" section; `AGENTS.md` "No raw/ mutations" points there | W1, W4, V1–V2 (create or overwrite raw), fetcher worker (K1), Bash | Pre-write hook warns on any Write/Edit/MCP edit to an *existing* `raw/` file; lint 🔴 on ID collisions (R9) | Uniqueness is fully detected. Immutability is detected at write time for tool writes only. A Bash or Obsidian edit to a record is invisible except in git. |
 | I6 | **Links resolve.** Every `[[target]]` on a live page resolves to exactly one page slug. Slugs are unique across the page directories. | `SCHEMA.md` Conventions (unchanged format; CONTRIBUTING protects it) | Rename, split, archive, supersede (W7–W10), MCP writes that escape `[` | post-write link check (existing); lint 🔴 (existing), supersession auto-fix | Unchanged from today, plus `briefings/` coverage and the escape check at write time. |
@@ -241,8 +250,10 @@ New findings (N) not in the brief. Appendix B explains each one in plain terms:
 - **N5** `worker-source-fetcher` still writes `private:` into raw records and
   instructs `private: true` on pages. 14 raw records carry it.
   **Impact:** The helper that saves sources keeps stamping files with a privacy label nothing reads, which suggests a protection that doesn't exist and has already put the label on 14 records.
-- **N6** MCP quote-stripping changes a YAML 1.1 type (string → date), see section 0.
-  **Impact:** An edit through the wiki-search tool can silently turn a date stored as text into a real date value, harmless to today's tools but a trap for any future tool that reads the files with a standard YAML library.
+- **N6** A date can lose its quotes (one observed case, in `5cc416c`; writer
+  unconfirmed, see section 0), and an unquoted date is a date object, not text,
+  to YAML 1.1 readers such as PyYAML. The MCP's own date damage is N15.
+  **Impact:** A date stored as text can silently become a real date value, harmless to today's tools but a trap for any future tool that reads the files with a standard YAML library.
 - **N7** Marker defects beyond the brief, measured over 1,070 markers: 55 span a
   newline; 9 are hard-wrapped *inside* the slug; 8 carry a nested `source:`
   prefix; 5 cite two sources joined by "vs."; 6 cite a structural file; 4 are
@@ -274,6 +285,20 @@ New findings (N) not in the brief. Appendix B explains each one in plain terms:
   `queries/<slug>/README.md` page snapshots to `_archive/README-<date>.md`.
   Only the first one per day survives (1 such file exists).
   **Impact:** Directory-style pages named `README.md` all share one backup filename, so on a day when several are edited only the first gets a backup, and the backup doesn't say which page it came from.
+- **N15** 13 pages store dates as full timestamps (`YYYY-MM-DDT00:00:00.000Z`)
+  instead of `YYYY-MM-DD`: 13 `created`, 3 `last_verified` and 1 `updated`
+  values. **Cause confirmed:** the wiki-search MCP's frontmatter merge
+  (`mcp-tools.js` ~291–305, also `batch-edit.js` and
+  `markdown-file-repository.js`) loads and dumps with js-yaml's default schema,
+  which parses an unquoted date as a date object and writes it back as a
+  timestamp. It was reproduced with the MCP's own js-yaml, and entered the wiki
+  in four separate commits, so it recurs. It is the same full-file round-trip as
+  PATCH-3d's bracket escaping (#47), and it is reported upstream as
+  wirux/mcp-markdown-vault#49. Python 3.9's `datetime.fromisoformat` rejects the
+  trailing `Z`, so lint's 90-day staleness and 120-day `last_verified` checks
+  (`lint.py:537-593`) and session-start's stale/decay scan silently skip those
+  values.
+  **Impact:** 3 pages' verification dates and 1 page's update date are invisible to every staleness check, so those pages can never be flagged as stale, and nothing reports that the check was skipped.
 
 ---
 
@@ -355,22 +380,48 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
 ```
 
   `private:` is dropped from records (the page allowlist model governs export).
-- **Write-once.** After creation a record is never edited. A correction is a new
-  record whose `corrects:` field names the old ID. Pre-write warns on any edit to
-  an existing record (section 5.11).
+- **Write-once.** After creation a record is never edited. Pre-write warns on
+  any edit to an existing record (section 5.11). If a saved record is itself
+  wrong (a capture error, which has happened once in 156 records), save a new
+  record, note in its body which record it replaces, and run the Update flow
+  (§4) on the pages that cite the old one. A change in the world, or a later
+  statement that differs from an earlier one, is not a correction: the old record
+  is still an accurate capture, and the pages are revised through the Update flow
+  as usual. No special field or rule is needed for either case.
 
 ### 5.2 Page slugs and IDs
 
 - Page slug = filename stem, or the parent directory name for `README.md`
   (lint's existing `slug()`). Grammar as for IDs; unique across `entities/`,
   `concepts/`, `comparisons/`, `queries/`, and `briefings/` (added, section 5.11).
+- **`slug()` is the one ID function** for every reference site. For a raw record
+  it returns the filename stem (records are never named `README.md`). For a
+  directory page, `queries/<slug>/README.md`, it returns the folder name, so the
+  page is linked as `[[<slug>]]`, declared by its path
+  `queries/<slug>/README.md`, cited as `[source: <slug>, …]`, and snapshotted as
+  `_archive/<slug>-<date>.md`.
+- **Other files inside a directory page.** Any other `.md` file in the folder
+  must be either a real page (full frontmatter and a slug unique across the
+  wiki, like a research sprint's part pages) or an artifact stored under the
+  folder's `assets/` subfolder, which lint and the hooks skip. A bare `deck.md`
+  next to `README.md`, as `output-formats.md` shows today, would be scanned as a
+  page with no frontmatter, and two directory pages each holding one would
+  collide on the slug `deck`. Non-markdown artifacts (`.py`, `.png`, `.csv`,
+  `.pdf`) may stay beside `README.md`, since lint only scans `.md` files.
 - A wiki page may be a source (crystallize digest, concept page, persona's
   entity page). Its ID is its slug and it is declared by path. It is a
   **secondary** source for grounding purposes.
 - Not sources: `log.md`, `index.md`, `SCHEMA.md`, `MY-INTEGRATIONS.md`,
-  `_status.md`, `_archive/**`, absolute paths, anything outside the wiki. Facts
-  that live only in `SCHEMA.md` (an org chart, 3 pages today) are moved into a
-  record or a page. SCHEMA is governance, not evidence.
+  `_status.md`, `_archive/**`, absolute paths, anything outside the wiki.
+  `SCHEMA.md` is Orient context, not a citable source: it is edited over time,
+  so a citation to it would later point at different text without anyone
+  noticing. Context kept in SCHEMA (for example the owner's role or org notes in
+  its Domain section) stays where it is, because Orient reads it every session.
+  A page that relies on one of those facts cites a user-statement record
+  (`stated_by: user`) instead, exactly as for a fact stated in chat. 3 pages cite
+  SCHEMA this way today (section 7). Where org structure should live, and
+  whether Orient should read the relationship map, is left to the follow-on
+  design on Orient content.
 
 ### 5.3 Frontmatter `sources:`
 
@@ -405,7 +456,7 @@ Starts from `AGENTS.md`'s `[source: raw-slug, location]`, now formally:
 ```
 marker   = "[source: " cite *( "; " cite ) "]"      ; one line, no newline inside
 cite     = id [ ", " location ]
-id       = [a-z0-9][a-z0-9._-]*                     ; must equal stem() of a sources: entry on this page
+id       = [a-z0-9][a-z0-9._-]*                     ; must equal slug() of a sources: entry on this page
 location = 1*( any char except "[" "]" ";" newline ) ; page, section, timestamp, "query <ref>"
 ```
 
@@ -431,7 +482,7 @@ pricing-2026-01-15, p.3]                          wrapped marker (R7, auto-fixab
 
 Resolution is exact and page-local: split the marker on `"; "`, take the text
 before the first `", "` as the ID, and look it up in
-`{stem(p): p for p in sources}`. No substring matching and no conversational
+`{slug(p): p for p in sources}`, using the `slug()` function from section 5.2. No substring matching and no conversational
 exemption. `_citation_matches_source` and `_is_conversation_citation` are
 deleted.
 
@@ -604,8 +655,8 @@ template. The server never overwrites the file and says to edit it. So:
      regenerated.
    Both stay exempt from the freshness gate, as today.
 4. **Raw guard (pre).** Any Write/Edit/MCP op on an *existing* `raw/` record →
-   additionalContext: "records are write-once; create a new record with
-   `corrects:`". New records pass silently.
+   additionalContext: "records are write-once; save a new record and run an
+   Update (§4)". New records pass silently.
 5. **Freshness gate (pre).** Unchanged message, but it judges the *post-edit*
    text: Edit and MultiEdit apply `old_string → new_string` to the disk content
    first (fixes the brief-item-7 inversion). MCP `edit` ops are not simulated,
@@ -625,6 +676,12 @@ template. The server never overwrites the file and says to edit it. So:
    git, detected within one session boundary.
 8. **lint `--auto-fix`** imports the snapshot function and snapshots each page
    before writing it.
+9. **MCP write path (checklist, not enforced).** Until the MCP's full-file
+   round-trip is fixed (#47, #49, follow-on F2, or the step 12 patch), change
+   frontmatter with the Edit tool, not MCP `frontmatter_set` or `vault.update`,
+   and prefer Edit over MCP `string_replace` for body edits. This is one line
+   in SKILL.md's Tool Selection rules. Nothing can enforce it, so items 6 and 7
+   and R12's auto-fix catch what slips through.
 
 Honest summary: **prevented by construction**: comma-shredding and quoting
 dependence (ID grammar); ID typos from capture (`capture.py` prints the ID);
@@ -634,11 +691,12 @@ everything, for all writers. **Not detected**: edits to a record through Bash,
 Obsidian or git (git history only); a same-day second overwrite's pre-image
 (git only).
 
-Permission note: with snapshots covering MCP writes, `mcp__wiki-search__edit`
-can move onto the allowlist. `mcp__wiki-search__vault` should stay on ask
-because permissions match on tool name, so allowing `vault` would also allow
-`vault.delete`. Snapshotting makes a delete recoverable, but it shouldn't make
-one silent.
+Permission note: keep both `mcp__wiki-search__edit` and `mcp__wiki-search__vault`
+on ask. Snapshots make MCP writes recoverable, but every MCP frontmatter or
+`string_replace` edit can still damage content elsewhere in the page (#47,
+#49). `vault` stays on ask regardless, because permissions match on tool name,
+so allowing `vault` would also allow `vault.delete`. Revisit `edit` once
+follow-on F2 or the step 12 patch has fixed the round-trip.
 
 ### 5.12 Revisit obligation (I8)
 
@@ -702,7 +760,7 @@ Every R-numbered rule this document mentions, in one place. R1–R5 exist today
 |---|---|---|---|---|---|---|
 | R1 | A list item on the same line as its key (`tags: - x`) | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No |
 | R2 | Block list items under an already-closed `[...]` list | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | Merge into one block list, reporting item counts before and after |
-| R3 | An inline citation ID that equals the stem of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | Proposes adding the declaration; a human confirms |
+| R3 | An inline citation ID that equals the `slug()` of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | Proposes adding the declaration; a human confirms |
 | R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept | 🟡 | 🟡; 🔴 on `split_from` pages | No |
 | R5 | The same frontmatter key twice | I1 | Exists, kept | 🔴 | 🔴 | No |
 | R6 | A `sources:` entry that isn't a canonical path to an existing file | I2 | New | 🟡 | 🔴 | No |
@@ -711,7 +769,7 @@ Every R-numbered rule this document mentions, in one place. R1–R5 exist today
 | R9 | Two records with the same ID, or a record ID equal to a page slug | I5 | New | 🔴 | 🔴 | No |
 | R10 | A page whose primary sources are all conversation or reconstructed records and whose `last_verified` is absent or older than 30 days | I8 | New | 🔵 | 🔵 | No |
 | R11 | `meta/contract.md` is still the MCP's default contract | none (competing spec) | New | 🟡 | 🟡 | No |
-| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check) | 🔴 | 🔴 | No |
+| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check) | 🔴 | 🔴 | Only for timestamp dates at exactly midnight (N15): rewrites them as `YYYY-MM-DD`, which is lossless |
 | R13 | A record without `source_type` or `captured`, dated after the rule ships | I5 | New | 🟡 | 🟡 | No |
 
 Other checks keep their current tiers and have no R-number: escaped `\[`
@@ -738,7 +796,7 @@ sourcing, missing inline provenance, `coverage:`, stale `last_verified`.
 | PATCH-3a block-list parsing | **Replace** with `wikifm` lists-as-lists. Joining into `"[a, b]"` reintroduces comma ambiguity for `extract_tags` and makes the two parsers disagree. |
 | PATCH-3b `slug()` README | **Keep; offer upstream.** It is now also the snapshot naming function. |
 | PATCH-3c overview/index link targets | **Keep; offer upstream.** Extend the same registration to `briefings/`. |
-| PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed (issue status not checked in this session). Post-validate now reports it at write time. |
+| PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed. Checked 2026-09-26: #47 is open with no maintainer response, and the repo has had no activity since 2026-06-02. A comment now links it to #49, the date bug from the same code path. Post-validate now reports escaped brackets at write time. The real fix is follow-on F2. |
 | PATCH-4 relationship-map wiring | **Keep.** Its end-to-end verification is still pending and unrelated to this design. |
 | ISSUE-1 action-item update mechanism | **Keep open, re-scoped.** Shares RC6. I8's horizon mechanism is the reusable piece; action-item status is out of scope here. |
 | ISSUE-2 indexer overview regeneration | **Keep open, mitigated.** Snapshotting `overview.md` on whole-file replacements (section 5.11, item 3) makes a regeneration recoverable without a daily copy. The destructive behavior itself is untouched. |
@@ -772,7 +830,7 @@ Current state against the new rules:
 | · `conversation, DATE` | 26 | → same |
 | · shredded `conversation` + bare date | 5 pages (10 items; 4 unquoted flow, 1 frozen block) | → same, one entry |
 | · `user, conversation (context), DATE` | 2 | → same; the context goes into the record title |
-| · structural-file references (SCHEMA org chart ×3; log/index/overview/SCHEMA on 2 brief pages ×8) | 11 | org-chart facts → a record or `concepts/` page; briefs → `sources: []` + `lifecycle: dated-digest` (see D6) |
+| · structural-file references (SCHEMA org chart ×3; log/index/overview/SCHEMA on 2 brief pages ×8) | 11 | org-chart facts → one dated user-statement record capturing them, cited by the 3 pages (SCHEMA itself unchanged); briefs → `sources: []` + `lifecycle: dated-digest` (see D6) |
 | · free text / absolute path outside the wiki | 2 | → capture a record of what was read, or remove; `gaps:` note |
 | Inline markers | 1,070 on 209 pages: 841 bare raw IDs, 9 raw paths, 5 page IDs, 1 wikilink, **217 conversational**, **35 other defects** | below |
 | · conversational | 217 | → reconstructed record ID (M2) |
@@ -786,6 +844,7 @@ Current state against the new rules:
 | `## Sources` legends | 49 pages, 166 bullets: 136 prose, 19 conversational, 7 wikilinks, 4 raw paths | M6 |
 | Raw records without frontmatter / with `private:` | 11 / 14 | leave records untouched (write-once); lint rules for new records only |
 | Raw record/asset stem pairs | 2 | allowed (asset exclusion) |
+| Timestamp-format dates (N15) | 17 values on 13 pages | normalize to `YYYY-MM-DD` in M4 (lossless: every time part is `T00:00:00.000Z`) |
 | `_archive/README-<date>.md` collision | 1 file | rename by hand to the right slug if its origin can be identified from git, else leave |
 | `meta/contract.md` default | 1 | hand-edit (M7) |
 
@@ -804,7 +863,8 @@ counts must be visible):
   the M2 paths, and the 217 conversational markers to the M2 IDs, keeping any
   parenthetical context as the marker location.
 - **M4** Auto-fix the mechanical marker classes (path form, wraps, nested
-  prefix, "vs.", multi-line).
+  prefix, "vs.", multi-line), and normalize timestamp-format dates to
+  `YYYY-MM-DD` (N15).
 - **M5** Human pass on the 13 manual markers, the 11 structural-file entries,
   the 2 free-text entries, and the 31 undeclared citations.
 - **M6** Legends: prefix each bullet with its ID where the annotation matches a
@@ -835,24 +895,39 @@ fork-only. Semver is per CONTRIBUTING's table.
 | 0 | Scrub real names from `tests/test_lint.py` and the two fork-chgs docs (N12, D8) | — | — | Fork (public repo hygiene) |
 | 1 | `wiki-search.sh` `-f` fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver | — | patch | **Up** |
-| 3 | Hooks: MCP matchers; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
+| 3 | Hooks: MCP matchers; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
 | 4 | `wikifm.py` profile parser; lint, pre-write and backlinks switch to it; delete the old parsers (replaces PATCH-3a, fe14c2f); PyYAML-oracle tests | — | patch | **Up** |
-| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `capture.py`; SKILL.md §2/§4 edits; revise `32e42a3` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
-| 6 | Lint: R6, R3 exact, R7 grammar, R8 legend, R9 record uniqueness, R10 horizon, R11 contract, R12 profile, R13 record fields, R4 on `split_from`; tiers per the section 5.15 table (🟡/🔵 initially, except R9 and R12, which have no existing violations and start at 🔴); `--cited-sources`; auto-fix for mechanical markers and legend append; auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I4 counts | 4, 5 | minor | **Up** |
+| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2); `capture.py`; SKILL.md §2/§4 edits and the Tool Selection line to edit frontmatter with the Edit tool, not the MCP (section 5.11, item 9); revise `32e42a3` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
+| 6 | Lint: R6, R3 exact, R7 grammar, R8 legend, R9 record uniqueness, R10 horizon, R11 contract, R12 profile (with the midnight-timestamp auto-fix), R13 record fields, R4 on `split_from`; tiers per the section 5.15 table (🟡/🔵 initially, except R9 and R12, which have no existing violations and start at 🔴); `--cited-sources`; skip `assets/` subfolders of directory pages; auto-fix for mechanical markers and legend append; auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I4 counts | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check) | 3, 4, 6 | minor | **Up** |
 | 8 | Vault contract template + scaffold copy | 5 | minor | **Up** |
 | 9 | Worker agents → user-level symlinks; delete the wiki's copy; verify `CLAUDE_SKILL_DIR` in subagents | — | — | Fork (install layout) |
 | 10 | Wiki migration M1–M8 (dry-run, review, apply, commit in the wiki repo) | 5, 6 | — | Fork (wiki content) |
 | 11 | Promote R3/R6 to 🔴 | 10 | **major (3.0.0)**: it narrows the valid value space of `sources:`, a frontmatter-schema change that makes existing wikis report errors | **Up**, with the migration script |
+| 12 | *Optional (D11).* Pinned local copy of the MCP (v2.3.0) with a version-checked patch that passes `{schema: yaml.CORE_SCHEMA}` to the frontmatter `load`/`dump` calls; `wiki-search.sh` runs it instead of the npx cache; a test in `tests/test_wiki_search.py` asserts `created: 2026-09-03` survives a `frontmatter_set` round-trip | 1 | — | Fork |
+
+### Frontmatter changes and semver
 
 No new *required* frontmatter field and no directory-layout change, so nothing
-before step 11 is major. New optional fields: `split_from` (pages); `source_type`,
-`captured`, `stated_by`, `asset`, `corrects`, `reconstructed`,
-`reconstructed_on` (records).
+before step 11 is major. The design adds these fields, none of them required by
+the schema:
+
+| Field | Goes on | Purpose | Status | Defined in |
+|---|---|---|---|---|
+| `split_from` | wiki pages | names the page a split-off page came from | optional; tightens R4 on that page | section 5.8 |
+| `source_type` | raw records | kind of source (web, transcript, conversation, …) | recommended; R13 warns if missing on new records | section 5.1 |
+| `captured` | raw records | date the source was saved | recommended; R13 warns if missing on new records | section 5.1 |
+| `stated_by` | raw records (conversations) | who said it: `user` or a person's page slug | optional | section 5.1 |
+| `asset` | raw records | path to the original PDF or slides in `raw/assets/` | optional | section 5.1 |
+| `reconstructed` | raw records (migration only) | marks the 18 rebuilt conversation records | set by the migration | section 7, step M2 |
+| `reconstructed_on` | raw records (migration only) | date they were rebuilt | set by the migration | section 7, step M2 |
+
+### SKILL.md size and upstream conflict surface
 
 **Net SKILL.md size change (estimate):** §2 fast path +~120 bytes; §4 ③
-−~250 bytes (402 → ~150); §4 snapshot sentence +~40; References list +~80.
-**Net ≈ −10 bytes, i.e. flat** (24,625 → ~24,615). The new rules cost the
+−~250 bytes (402 → ~150); §4 snapshot sentence +~40; References list +~80;
+Tool Selection line on MCP frontmatter edits +~150.
+**Net ≈ +140 bytes, i.e. about +0.6%** (24,625 → ~24,765). The new rules cost the
 always-on budget nothing. They live in `citation-spec.md` (est. ~6–7 KB, read on
 demand, like `ingest-guide.md`) and in lint and hooks.
 
@@ -910,8 +985,16 @@ accepting that the strings remain in git history, or rewriting history if that
 matters to you. Your call: history rewrite is destructive for anyone who forked.
 
 **D9. `mcp__wiki-search__edit` on the allowlist after step 3?** Recommend
-**yes** once the MCP-matcher test passes. Keep `vault` on ask (it includes
-delete).
+**no, not yet.** Snapshots make its writes recoverable, but every frontmatter or
+`string_replace` edit can still damage other parts of the page (#47, #49).
+Revisit once follow-on F2 or the step 12 patch fixes the round-trip. Keep `vault`
+on ask in any case (it includes delete).
+
+**D11. Run a locally patched copy of the MCP now (plan step 12)?** It stops new
+timestamp dates at the source for about a day's work, but the patch has to be
+re-applied and re-tested on any MCP upgrade, and it's fork-only. Recommend
+**yes, if new timestamps keep appearing after step 5's Edit-tool rule**;
+otherwise leave it to follow-on F2. It does not fix the bracket escaping (#47).
 
 **D10. Upstream first or fork first?** Recommend offering steps 1–4 upstream
 right away (bug fixes plus a refactor, low controversy), and opening an *issue*
@@ -919,6 +1002,35 @@ for step 5's citation spec before a PR, since it changes the micro-capture
 contract the author designed.
 
 ---
+
+## 10. Follow-on work (after this design)
+
+Two pieces of work were deliberately left out of this design. They are recorded
+here so they aren't lost.
+
+**F1. Orient content and `overview.md` freshness (separate design).**
+`overview.md` only ever grows (70 KB), its action items and decisions are frozen
+copies from meeting digests, and later updates never flow back into it, so Orient
+loads stale and sometimes wrong information every session. The same design
+covers what else Orient should load. The org chart kept in SCHEMA's Domain
+section is weeks older than `concepts/relationship-map.md`, which Orient never
+reads. The proposal is a pointer from SCHEMA to the map, plus Orient reading only
+a compact org-chart section of it. Starting points: ISSUE-1, ISSUE-2, and I8's
+revisit mechanism.
+
+**F2. Fork `wirux/mcp-markdown-vault`.** The MCP's full-file round-trip causes
+the bracket escaping (#47) and the timestamp dates (#49, N15), and its
+maintainer has not responded since June 2026. The fork would be thin, on top of
+upstream, with one fix per branch and a regression test in the project's vitest
+suite: `CORE_SCHEMA` for #49 first, then text-preserving `frontmatter_set` and
+`string_replace` for #47, and possibly #45 (orphaned server processes). Each fix
+also goes back upstream as a pull request. `wiki-search.sh` then runs a pinned
+build of the fork (a fork-only launcher difference). Costs: owning a
+Node/TypeScript build and its dependency updates, and a small recurring merge fix
+when upstream changes `wiki-search.sh`. Once it lands, the Edit-tool rule
+(section 5.11, item 9) and D9's "keep on ask" can be retired. R12's auto-fix, the
+escaped-bracket check and the MCP hook matchers stay as safety nets. Step 12, if
+adopted, is superseded.
 
 ## Provenance of this document
 
@@ -934,8 +1046,7 @@ wiki repo covered `c910309`, `c4de70c` and `5cc416c`.
 Not verified in this session, and flagged where used: that PreToolUse and
 PostToolUse hooks fire on MCP tool calls on this install (documented behavior);
 whether async hook output reaches the model; whether hooks fire inside
-subagents and whether `CLAUDE_SKILL_DIR` is set there; the status of
-wirux/mcp-markdown-vault#47; the origin of the LINT doc's 18th hybrid page;
+subagents and whether `CLAUDE_SKILL_DIR` is set there; the origin of the LINT doc's 18th hybrid page;
 token counts (reported as bytes).
 
 ---
@@ -1219,7 +1330,7 @@ it's fixed everywhere, and the stale copies keep producing the old defects.
 
 ## Appendix B. New findings in plain terms
 
-The fourteen new findings from section 3 (N1–N14), each explained without the
+The fifteen new findings from section 3 (N1–N15), each explained without the
 jargon: what it is, what it costs, and how the plan fixes it.
 
 ### N1. Every session start writes a lint report
@@ -1369,11 +1480,13 @@ they are, since saved records are never edited.
 
 ### N6. The wiki-search tool can change a date's type
 
-**What N6 is:** when the wiki-search MCP edits a page, it re-writes the whole
-block of information at the top, and in doing so it drops quote marks it
-considers unnecessary. A date written as `'2026-09-14'` (quoted, so it's text)
-comes back as `2026-09-14` (unquoted). To some YAML readers, including PyYAML,
-the one Python tools usually use, an unquoted date is no longer text but a real date value.
+**What N6 is:** a date written with quote marks, like `'2026-09-14'`, is
+text. Without the quote marks, `2026-09-14`, some YAML readers (including
+PyYAML, the one Python tools usually use) treat it as a real date value instead
+of text. One commit in the wiki shows a quoted date losing its quotes. At first
+this was blamed on the wiki-search MCP, but testing its actual code showed it
+keeps quoted dates quoted, so the writer of that one change is unconfirmed. (The
+MCP damages *unquoted* dates in a different way; that's N15.)
 
 **The impact:**
 
@@ -1383,12 +1496,12 @@ the one Python tools usually use, an unquoted date is no longer text but a real 
   library, including a future version of lint, gets text for some pages and
   date values for others. Comparisons and string handling can then fail in
   confusing ways.
-- **Rules about quoting can't be relied on.** Any rule that says "this value must
-  be quoted" would be undone the next time the MCP edits the page.
+- **Rules about quoting can't be relied on.** Quotes can be lost without anyone
+  noticing, so a rule that says "this value must be quoted" isn't a safe
+  foundation.
 
 **The fix (plan step 4):** the single shared reader treats every value as text
-and checks dates by their pattern, so it doesn't matter whether the MCP keeps
-the quotes.
+and checks dates by their pattern, so it doesn't matter whether a date is quoted.
 
 ### N7. Citations written in ways no tool can follow
 
@@ -1566,3 +1679,49 @@ day.
 **The fix (plan step 3):** name backups by the page's real name (the folder name
 for a `README.md`), the same way lint already names pages. Each backup then
 points at exactly one page.
+
+### N15. Some dates are stored in a format the checks can't read
+
+**What N15 is:** dates at the top of a page are normally written as
+`2026-09-03`. On 13 pages some dates are written as full timestamps instead,
+`2026-09-03T00:00:00.000Z`: 13 creation dates, 3 last-verified dates and 1
+last-updated date.
+
+**The cause is confirmed.** When the wiki-search MCP changes a page's
+frontmatter, it reads the whole block and writes it back using a library
+(js-yaml) whose default setting treats an unquoted date as a date and writes it
+back as a timestamp. That was reproduced with the MCP's own copy of the library.
+The timestamps arrived in four separate commits, so it keeps happening. It's the
+same "rebuild the whole file" behavior that escapes brackets (PATCH-3d, upstream
+issue #47). It has been reported to the MCP's maintainer as issue #49, who has
+not responded to anything since June 2026.
+
+**The impact:**
+
+- **Staleness checks silently skip them.** Lint and the session-start scan use a
+  Python date reader that, on the Python version on this machine, rejects the
+  trailing `Z`. The error is swallowed, so the check is simply skipped with no
+  message.
+- **Pages that can never go stale.** The page with a timestamp `updated` date will
+  never appear in the stale-pages list, and the three with timestamp
+  `last_verified` dates will never be flagged for re-verification, however old
+  they get.
+- **The creation dates are harmless for now.** Nothing checks `created` except
+  that it exists, so those 13 values cause no visible problem today.
+- **It supports not trusting `last_verified`.** A date that no check can read gives
+  a false sense that the page has been looked after.
+
+**The fix:** the minimum workarounds now, a real fix later.
+
+- **Avoid it (plan step 5):** change frontmatter with the Edit tool, not the
+  MCP (section 5.11, item 9).
+- **Catch and heal it (plan steps 4, 6 and 7):** the shared reader checks every
+  date against the `YYYY-MM-DD` pattern and reports anything else (R12). The
+  post-write check reports it in the same turn, and lint `--auto-fix` turns a
+  midnight timestamp back into a plain date.
+- **Clean up (plan step 10):** the migration rewrites the 17 existing values.
+  That's lossless, because every one has a time of exactly midnight.
+- **Optionally stop it at the source (plan step 12):** run a pinned local copy
+  of the MCP patched to read dates as text (D11).
+- **Fix it properly later (follow-on F2):** fork the MCP.
+
