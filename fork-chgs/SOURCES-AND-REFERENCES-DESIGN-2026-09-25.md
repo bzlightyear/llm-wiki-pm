@@ -218,48 +218,62 @@ Plain-language explanations of each root cause are in Appendix A.
 | RC6 | **Nothing revisits a citation.** Write-time rules only. There is no horizon, verification date, or status that brings a citation back. | 13, ISSUE-1, ISSUE-3 |
 | RC7 | **Duplicated surfaces drift.** Two worker copies, templates showing one shape, a default MCP contract, stale README/CONTRIBUTING, sub-skills that predate AGENTS.md's grammar. | 9, 15, 18, 20; N5, N8, N9 |
 
-New findings (N) not in the brief:
+New findings (N) not in the brief. Appendix B explains each one in plain terms:
 
 - **N1** `session-start.sh:136` runs lint in `--json` mode, and `lint.py:753` writes
   the report before the `--json` early return. Every session start writes a page
   into `queries/`.
+  **Impact:** Starting any session quietly writes a lint report into the wiki, which clutters `queries/` and your git changes and can overwrite a report from a lint run you did yourself earlier that day, but it never damages page content.
 - **N2** `llm-wiki-maintain` writes `briefings/YYYY-MM-DD.md`. `briefings/` is in
   neither `WIKI_DIRS` (lint) nor the pre-write gate, so briefs are unlinted,
   unsnapshotted, and invisible as link targets.
+  **Impact:** Daily briefs get no backup before they change and no checks after, and lint can't tell a correct link to a brief from a broken one.
 - **N3** Three documented citation forms that lint cannot resolve:
   `[source: [[wiki-page]]]` (`prd-templates.md:91`, truncated by the marker
   regex), `(per [[raw/articles/…]])` (`update-guide.md:77`, `output-formats.md:89-90`,
   which lint would report as a broken wikilink), and `[source: <url>, <date>]`
   (crm:104, research:197).
+  **Impact:** Templates and guides teach agents three ways of citing that lint can't match to anything, so following the instructions faithfully produces citations reported as broken or unresolvable.
 - **N4** Four definitions of required frontmatter disagree: `lint.py:15` (6 keys
   incl. `created`), CONTRIBUTING (incl. `coverage`, no `created`),
   worker-link-validator (4 keys), `meta/contract.md` (`status`, no `sources`).
+  **Impact:** Whether a page counts as complete depends on which document you ask, so an agent that follows one of them can produce pages another tool flags as missing fields.
 - **N5** `worker-source-fetcher` still writes `private:` into raw records and
   instructs `private: true` on pages. 14 raw records carry it.
+  **Impact:** The helper that saves sources keeps stamping files with a privacy label nothing reads, which suggests a protection that doesn't exist and has already put the label on 14 records.
 - **N6** MCP quote-stripping changes a YAML 1.1 type (string → date), see section 0.
+  **Impact:** An edit through the wiki-search tool can silently turn a date stored as text into a real date value, harmless to today's tools but a trap for any future tool that reads the files with a standard YAML library.
 - **N7** Marker defects beyond the brief, measured over 1,070 markers: 55 span a
   newline; 9 are hard-wrapped *inside* the slug; 8 carry a nested `source:`
   prefix; 5 cite two sources joined by "vs."; 6 cite a structural file; 4 are
   free prose; 2 cite a script path; 1 wraps a wikilink.
+  **Impact:** 35 inline citations are written in ways no tool can follow, which adds noise to lint's missing-citation reports and leaves readers unable to trace those claims.
 - **N8** `llm-wiki-prd` still says "Orient gate (enforced) … refuse any write",
   the fake-gate label A7 removed from the core skill.
+  **Impact:** The PRD sub-skill still claims a write gate is enforced when nothing enforces it, which misleads the agent and anyone reading the skill about what is actually guaranteed.
 - **N9** `worker-link-validator` resolves links only in
   entities/concepts/comparisons, so every link into `queries/` reads as broken.
+  **Impact:** If the link-checking helper is ever used, it would report hundreds of working links into `queries/` as broken and bury any real problem.
 - **N10** `raw/` record and binary asset share a stem in 2 cases (extracted
   `.md` plus the original PDF/PPTX). Harmless once IDs are defined over `.md`
   records outside `raw/assets/`.
+  **Impact:** Two saved sources share a name with their original PDF or slide file, which is harmless today but would make a citation ambiguous under the new naming rules unless those originals are excluded.
 - **N11** 11 of 153 raw `.md` records have no frontmatter; 2 raw files are
   referenced by no page.
+  **Impact:** 11 saved sources carry no description of where or when they came from, and two were saved but never used, so their provenance is weaker or their purpose unclear.
 - **N12** Three public fork files contain real wiki page slugs, a real marker
   string, or real names (`tests/test_lint.py:115,129`,
   `LINT-FRONTMATTER-CHECKS-2026-09-23.md` 6 lines, `llm-wiki-pm-changelog.md`
   7 lines). See open decision D8.
+  **Impact:** Private wiki names are published in the public fork on GitHub, in two docs and a test file.
 - **N13** `hooks/wiki-search.sh:12`: the stderr bug from the brief is confirmed by
   running the launcher in an empty directory. It was introduced by the v2.20.0 fix
   for A11, and A11's smoke test was never written.
+  **Impact:** Every session started outside a wiki folder logs a misleading "No such file or directory" error from the wiki-search tool, which does no harm but looks like a failure and wastes troubleshooting time.
 - **N14** `pre-write.sh:39` names snapshots by filename stem, so every
   `queries/<slug>/README.md` page snapshots to `_archive/README-<date>.md`.
   Only the first one per day survives (1 such file exists).
+  **Impact:** Directory-style pages named `README.md` all share one backup filename, so on a day when several are edited only the first gets a backup, and the backup doesn't say which page it came from.
 
 ---
 
@@ -1200,3 +1214,355 @@ it's fixed everywhere, and the stale copies keep producing the old defects.
 - **One set of helper agents:** the two copies become one shared set.
 - **Settings file rewritten:** the wiki-search settings file points at the
   wiki's own schema instead of describing its own.
+
+---
+
+## Appendix B. New findings in plain terms
+
+The fourteen new findings from section 3 (N1–N14), each explained without the
+jargon: what it is, what it costs, and how the plan fixes it.
+
+### N1. Every session start writes a lint report
+
+**What N1 is:** every time a Claude Code session starts, the session-start hook
+runs lint to fill in the health line ("Health check: N issues…"). Lint is only
+meant to report numbers back to the hook in that mode, but it also writes its
+full report into the wiki as `queries/lint-<today>.md`. So opening a session
+changes the wiki, even if you never touch it.
+
+**The impact:**
+
+- **The wiki keeps changing even when you don't.** Every day you open any
+  session, a new report file appears or today's gets rewritten. The production
+  wiki's `queries/` held 41 of them after about eight weeks, and 29 wiki commits
+  include lint report changes. They show up in `git status` as work to commit,
+  mixed in with real edits.
+- **A manual lint run can be overwritten.** There's one report file per day. If
+  you run lint yourself, especially with `--auto-fix`, and then start another
+  session that day, the automatic run replaces your report. The record of what
+  your run found or fixed is gone. Only the one-line summary in `log.md`
+  survives.
+- **Search results get noisier (likely, not tested).** The wiki-search MCP
+  indexes every markdown file it finds. Lint excludes its own reports when
+  checking the wiki, but the search index probably doesn't, so page names
+  mentioned in dozens of reports can crowd search results.
+- **It's a write nobody watches.** This is one of the side doors from RC4. The
+  report is written by a script, so none of the hooks see it.
+
+None of this damages page content. The reports are harmless in themselves; the
+cost is clutter, noisy diffs, and the occasional lost manual report.
+
+**The fix (plan step 6):** when lint runs in the hook's quick-check mode, it
+returns its numbers and writes no file. A report only appears when someone
+deliberately runs lint. Existing reports can stay as history or be cleared out.
+
+### N2. Daily briefs live outside every check
+
+**What N2 is:** the daily-maintenance sub-skill files each day's brief as
+`briefings/YYYY-MM-DD.md`, then later moves old ones to `_archive/briefings/`
+with a shell `mv`. But `briefings/` isn't one of the folders the hooks or lint
+know about. They only look at `entities/`, `concepts/`, `comparisons/` and
+`queries/`.
+
+**The impact:**
+
+- **No backup before a brief changes.** The before-change hook ignores the
+  folder, so editing or rewriting a brief leaves no copy in `_archive/`.
+- **No checks after.** Broken links, missing sources and bad frontmatter inside
+  a brief are never reported.
+- **Links to briefs can't be checked.** Lint doesn't know briefs exist, so it
+  would report a link to one from a content page as broken even when it's
+  correct. The production wiki's only link to a brief sits in `index.md`, which
+  lint doesn't check for broken links, so the problem hasn't surfaced yet.
+- **The archive move is unwatched too.** Rotating briefs into
+  `_archive/briefings/` is a shell command, another side door from RC4.
+
+**The fix (plan steps 3 and 6):** `briefings/` joins the folders the hooks watch
+and lint scans, and brief names become valid link targets.
+
+### N3. The docs teach citations lint can't follow
+
+**What N3 is:** three places in the plugin's own templates and guides show
+citation formats that the checking tools can't match to anything:
+
+- **A wikilink inside a citation** (`[source: [[wiki-page]]]`), shown in the PRD
+  template. Lint's citation reader stops at the first closing bracket, so it
+  sees only `[[wiki-page` and can't match it.
+- **A wikilink to a raw file** (`per [[raw/articles/...]]`), shown in the update
+  guide and the output-formats guide. Lint only knows page names, so it would
+  report this as a broken link, an error.
+- **A web address as the source** (`[source: <url>, <date>]`), shown in the CRM
+  and research sub-skills. A web address isn't a saved file and can't be matched
+  to a `sources:` entry.
+
+**The impact:**
+
+- **Following the instructions produces errors.** An agent that copies the
+  template exactly gets citations that lint reports as broken or unresolvable.
+  The agent did nothing wrong; the template is inconsistent with the checker.
+- **It undermines trust in lint.** Once reports include warnings caused by the
+  official templates, people learn to ignore them, and real problems get
+  ignored along with them.
+- **Mostly a future cost so far.** These forms are rare in the production wiki
+  today (a handful), but every PRD, CRM enrichment or research sprint that
+  follows the templates adds more.
+
+**The fix (plan steps 5 and 6):** the templates and guides are updated to the
+one citation format (section 5.4) and point at the single spec. Lint's R7 then
+flags any leftover old-style citation by name, with an automatic fix for the
+simple cases.
+
+### N4. Four different lists of required fields
+
+**What N4 is:** four places each say which fields every page must have at the
+top, and they disagree:
+
+- **Lint** requires title, created, updated, type, tags and sources.
+- **The contributing guide** lists title, type, tags, sources, updated and
+  coverage. It adds `coverage` and leaves out `created`.
+- **The link-checking helper agent** checks only title, type, tags and updated.
+- **The wiki-search MCP's settings file** (`meta/contract.md`) lists title,
+  tags, type, created, updated and a `status` field, with no sources at all.
+
+**The impact:**
+
+- **"Complete" depends on who you ask.** A page can pass one check and fail
+  another. An agent that follows the contributing guide leaves out `created`,
+  and lint then reports an error.
+- **The MCP's version is actively misleading.** The MCP tells agents to read its
+  settings file for page conventions, so an agent writing through the MCP is
+  pointed at a schema with no `sources` field at all.
+- **Fixes don't stick.** Correcting one list leaves the other three to keep
+  steering agents the old way (RC7).
+
+**The fix (plan steps 2, 4 and 8):** one definition of the required fields,
+enforced by lint (R12, section 5.10). The contributing guide and the helper
+agent are corrected to match, and the MCP's settings file is rewritten to point
+at the wiki's own schema.
+
+### N5. The source-saving helper still uses a retired privacy label
+
+**What N5 is:** the helper agent that saves web pages and pasted text into
+`raw/` (K1) still writes `private: true` or `private: false` at the top of each
+file it saves. It also tells the main agent to mark resulting wiki pages
+`private: true`. The plugin retired that label in v2.20.0. Every page is now
+private automatically, and only pages marked `shareable: true` can be exported.
+The v2.20.0 cleanup missed this helper.
+
+**The impact:**
+
+- **A false sense of protection.** The label looks like a privacy control but
+  nothing reads it, so it gives someone reading the file the wrong idea about
+  what keeps it private.
+- **It has already spread.** 14 saved records in the production wiki carry the
+  label.
+- **The helper's filing rules also disagree with the ingest guide.** It names
+  and describes saved files differently from the main ingest guide, so the same
+  kind of source ends up filed differently depending on who saved it. Under this
+  design a filename becomes a permanent citation ID, so one rule matters.
+
+No private information has leaked because of it; the export rule is unaffected.
+
+**The fix (plan step 2):** remove the label from the helper, and replace its
+filing table with a pointer to the ingest guide. The 14 existing records stay as
+they are, since saved records are never edited.
+
+### N6. The wiki-search tool can change a date's type
+
+**What N6 is:** when the wiki-search MCP edits a page, it re-writes the whole
+block of information at the top, and in doing so it drops quote marks it
+considers unnecessary. A date written as `'2026-09-14'` (quoted, so it's text)
+comes back as `2026-09-14` (unquoted). To some YAML readers, including PyYAML,
+the one Python tools usually use, an unquoted date is no longer text but a real date value.
+
+**The impact:**
+
+- **Harmless today.** The wiki's own tools read these values as plain text
+  either way, and the dates themselves are unchanged.
+- **A trap for later.** Any tool that reads the files with a standard YAML
+  library, including a future version of lint, gets text for some pages and
+  date values for others. Comparisons and string handling can then fail in
+  confusing ways.
+- **Rules about quoting can't be relied on.** Any rule that says "this value must
+  be quoted" would be undone the next time the MCP edits the page.
+
+**The fix (plan step 4):** the single shared reader treats every value as text
+and checks dates by their pattern, so it doesn't matter whether the MCP keeps
+the quotes.
+
+### N7. Citations written in ways no tool can follow
+
+**What N7 is:** measuring all 1,070 inline citations in the production wiki
+turned up a set of defects beyond the ones already known:
+
+- **9 are broken across a line inside the source name**, so the name is split in
+  two.
+- **8 contain a doubled prefix** (`source: source: ...`).
+- **5 cite two sources joined by "vs."** instead of the separator the format
+  uses.
+- **6 cite a structural file**, such as the schema page, instead of a source.
+- **4 are free prose** rather than a source name.
+- **2 cite a script file.**
+- **1 wraps a wikilink.**
+
+That's 35 in total. Separately, 55 citations run across more than one line; many
+of those still work, but they're fragile.
+
+**The impact:**
+
+- **Readers can't trace those claims.** A citation that doesn't name a real
+  source gives no way to check the claim it supports.
+- **Noise in lint's reports.** These show up among the missing-citation reports
+  (R3), mixed in with real gaps, which makes the real ones harder to spot.
+- **They can't be fixed by guessing.** The current lint matches loosely to avoid
+  false alarms, which also means it can't point at exactly what's wrong.
+
+**The fix (plan steps 6 and 10):** the new format rule (R7) names each of these
+defects specifically. Lint repairs the mechanical ones automatically (line
+breaks, doubled prefixes, "vs."), and the migration hands the rest (13 citations)
+to a person to fix.
+
+### N8. A sub-skill still claims a gate is enforced
+
+**What N8 is:** the plugin review (PLUGIN-REVIEW A7) found that the core skill
+described its "orient first" rule as *enforced*, with the agent refusing to
+write until it had read the key files. Nothing actually enforced that. The core
+skill was relabeled as a checklist in v2.20.0, but the PRD sub-skill still says
+"Orient gate (enforced): … refuse any write".
+
+**The impact:**
+
+- **It overstates what's guaranteed.** Anyone reading the PRD sub-skill would
+  think writes are blocked until orientation happens. They aren't.
+- **It can make the agent behave inconsistently.** The same rule reads as a hard
+  gate in one skill and a checklist in another.
+- **Small, but it's the pattern the review set out to remove.** Guardrails that
+  claim to fire but can't are exactly the problem PLUGIN-REVIEW named.
+
+**The fix (plan step 2):** a one-line change to match the core skill's checklist
+wording.
+
+### N9. The link-checking helper would report hundreds of false breaks
+
+**What N9 is:** the link-checking helper agent checks each `[[link]]` by looking
+for the target in `entities/`, `concepts/` and `comparisons/`. It never looks in
+`queries/`, where digests, research and filed answers live.
+
+**The impact:**
+
+- **Hundreds of false alarms.** The production wiki has 411 links into
+  `queries/` across 138 pages. Every one would be reported as broken.
+- **Real problems get buried.** A genuinely broken link would be lost in that
+  list.
+- **Latent so far.** The helper only runs when asked, and lint (which does check
+  `queries/`) is what normally reports broken links, so this hasn't caused
+  visible trouble yet.
+
+**The fix (plan step 2):** the helper uses lint's link check instead of keeping
+its own, so there's one definition of a valid link.
+
+### N10. Two saved sources share a name with their original file
+
+**What N10 is:** when a PDF or slide deck is saved, the original goes in
+`raw/assets/` and an extracted text version goes in another `raw/` folder. In two
+cases the text version and the original have the same name apart from the file
+extension.
+
+**The impact:**
+
+- **Harmless today.** Nothing currently uses the bare name to find a file.
+- **A potential ambiguity under the new rules.** This design uses a file's name,
+  without the extension, as its citation ID. Without a rule, those two names
+  would each point at two files.
+
+**The fix (plan step 5):** the ID rule (section 5.1) counts only text records
+and excludes `raw/assets/`, so the original file is reached through its text
+record and each ID points at exactly one file. No files need to change.
+
+### N11. Some saved sources lack details, and two are unused
+
+**What N11 is:** 11 of the 153 saved text records in `raw/` have no information
+block at the top: no capture date, source type or original location. Separately,
+2 of the 156 files in `raw/` aren't referenced by any page.
+
+**The impact:**
+
+- **Weaker provenance for 11 records.** Without a capture date or origin, it's
+  harder to judge how current or reliable they are, or to find the original
+  again.
+- **Two sources saved for nothing (so far).** Either an ingest stopped partway,
+  or they're waiting to be used. Either way, nothing in the wiki draws on them.
+- **Small in scale.** Most records are complete and nearly all are used.
+
+**The fix (plan step 6, partly):** a new rule (R13) requires the key details on
+records saved *after* it ships. Existing records are left alone because saved
+records are never edited. The design doesn't address the two unused files; they
+can be cited or left as they are.
+
+### N12. Private wiki names appear in the public fork
+
+**What N12 is:** the fork is public on GitHub, but three files in it contain
+names from the private wiki: a test file uses a real page name and a real
+citation string, and two earlier fork-chgs documents quote real page names and
+citations as examples.
+
+**The impact:**
+
+- **Private information is publicly readable.** Anyone browsing the fork can
+  see names of customers, colleagues or internal projects that were meant to
+  stay in the private wiki.
+- **It's already in git history.** Scrubbing the files stops it being visible in
+  current versions, but the old versions stay reachable unless the history is
+  rewritten.
+- **It goes against the plugin's own practice.** The upstream author scrubbed
+  real names from distributed files in v2.20.0 for this reason.
+
+**The fix (plan step 0):** replace the names with placeholders. Whether to also
+rewrite git history is open decision D8, because a history rewrite causes
+problems for anyone who has already copied the fork.
+
+### N13. The wiki-search launcher logs a false error
+
+**What N13 is:** the script that starts the wiki-search MCP first looks for a
+`.wiki-path` file in the current folder. It reads the file in a way that makes
+the shell itself complain when the file doesn't exist, before the script's
+"ignore errors" handling can take effect. So every session started in a folder
+without `.wiki-path` logs "No such file or directory". This was reproduced
+directly.
+
+**The impact:**
+
+- **It looks like a failure when nothing failed.** The launcher carries on
+  correctly and falls back to the next way of finding the wiki.
+- **It wastes troubleshooting time.** Anyone investigating a real connection
+  problem sees this message first in the MCP's logs and may chase the wrong
+  cause.
+- **It slipped through because there was no test.** It was introduced by the
+  v2.20.0 fix for PLUGIN-REVIEW A11, whose requested smoke test was never
+  written.
+
+**The fix (plan step 1):** check whether the file exists before reading it, as
+the session-start hook already does, and add the smoke test A11 asked for
+(section 5.13).
+
+### N14. All README pages share one backup name
+
+**What N14 is:** some wiki pages are folders, like a PRD or a research sprint,
+whose main page is called `README.md`. The before-change hook names each backup
+after the file's name, so every one of these pages is backed up as
+`_archive/README-<date>.md`. The hook also makes only one backup per name per
+day.
+
+**The impact:**
+
+- **Lost backups.** If two folder-style pages are edited on the same day, only
+  the first gets a backup; the second is silently skipped.
+- **Unlabeled backups.** A backup named `README-<date>.md` doesn't say which page
+  it came from. The production wiki has 4 folder-style pages and one such backup
+  file, whose origin isn't recorded.
+- **Undo doesn't work for them.** Recovering one of these pages means digging
+  through git, which only helps if the change was committed.
+
+**The fix (plan step 3):** name backups by the page's real name (the folder name
+for a `README.md`), the same way lint already names pages. Each backup then
+points at exactly one page.
