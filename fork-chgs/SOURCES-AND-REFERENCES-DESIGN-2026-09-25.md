@@ -209,7 +209,12 @@ today's hooks fire. **Refs** = what it writes into reference sites.
 | V3 | MCP `vault.delete` | **deletion with no snapshot today** |
 | V4 | MCP `edit` (append, prepend, replace, delete-section, line_replace, string_replace, frontmatter_set; batch ≤50 paths) | AST round-trip, `\[` bug |
 | V5 | MCP `system.save_overview` | `meta/overview.md` (not a wiki page) |
-| B1–B6 | Bash `mv`/`sed`/heredoc, ad-hoc scripts (the page-splitting script), Obsidian edits, `git` checkout/merge, user hand-edits, lint auto-fix | no hooks ever; lint only |
+| B1 | Bash `mv`/`sed`/heredoc | No hooks ever; lint only |
+| B2 | Ad-hoc scripts (for example the page-splitting script) | No hooks ever; lint only |
+| B3 | Obsidian edits (including renames) | No hooks ever; lint only |
+| B4 | `git` checkout/merge | No hooks ever; lint only |
+| B5 | User hand-edits outside Claude Code | No hooks ever; lint only |
+| B6 | lint `--auto-fix` (same writer as W15) | No hooks ever; lint only |
 
 ---
 

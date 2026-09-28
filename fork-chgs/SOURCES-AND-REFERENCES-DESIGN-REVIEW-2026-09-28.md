@@ -206,7 +206,7 @@ cites resolve exactly today. The problems sit around that core:
   - **Fix: serve the frequent writer.** Give `wikifm.py` a text-preserving
     `set_field(text, key, value)` / `set_list(...)`, and require it in SKILL.md
     Tool Selection for any script that edits frontmatter, and in lint auto-fix and
-    `migrate_sources.py`. That turns B2 from lint-only into correct-by-construction
+    `migrate_sources.py`. That turns ad-hoc scripts (B2) from lint-only into correct-by-construction
     for the common case.
   - **Fix the doc:** narrow 5.11 item 9 and D9 to `frontmatter_set` and the AST
     operations.
@@ -299,7 +299,7 @@ cites resolve exactly today. The problems sit around that core:
 
 - **Affects:** 5.8 Split step 3, R4 row, frontmatter-changes table.
 - **What goes wrong:** splits are real. There were 15 "history splits" in one week,
-  done by an ad-hoc script (a B2 path), and 25 pages are over 200 lines now. So the
+  done by an ad-hoc script (B2), and 25 pages are over 200 lines now. So the
   procedure and `--cited-sources` earn their place. But the 🔴 escalation only fires
   if the splitter sets `split_from` by hand. If the splitter used
   `--cited-sources`, the escalation is redundant. If it didn't, it most likely
