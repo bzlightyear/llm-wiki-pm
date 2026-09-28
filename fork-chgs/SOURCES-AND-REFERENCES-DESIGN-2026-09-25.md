@@ -1012,7 +1012,7 @@ otherwise leave it to follow-on NW2. It does not fix the bracket escaping (#47).
 
 ## 10. Follow-on work (after this design)
 
-Two pieces of work were deliberately left out of this design. They are recorded
+Three pieces of work were deliberately left out of this design. They are recorded
 here so they aren't lost.
 
 **NW1. Orient content and `overview.md` freshness (separate design).**
@@ -1038,6 +1038,16 @@ when upstream changes `wiki-search.sh`. Once it lands, the Edit-tool rule
 (section 5.11, item 9) and D9's "keep on ask" can be retired. R12's auto-fix, the
 escaped-bracket check and the MCP hook matchers stay as safety nets. Step 12, if
 adopted, is superseded.
+
+**NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
+mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
+are 257 of the log's 480 entries, with up to 37 on a single day. That buries the
+entries recording actual wiki work, and pushes the log toward `session-stop.sh`'s
+500-entry rotation roughly twice as fast. The rotation is what forces migration
+step M2 to read rotated `log-*.md` files (review finding F14). Options: append
+at most one lint entry per day, updating it in place, or stop appending and rely
+on the per-day report in `queries/`. Found in the design review
+(SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md, F14).
 
 ## Provenance of this document
 

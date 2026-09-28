@@ -19,7 +19,7 @@ semantic-search measurement. Finding F4 summarizes it.
 
 Labels: F1–F16 are this review's findings. All other IDs (I, R, M, N, NW, W, …)
 are the design's own: for example, M1–M8 are its migration steps (section 7) and
-NW1–NW2 its follow-on work (section 10).
+NW1–NW3 its follow-on work (section 10).
 
 Severity: **High** means a rule or guarantee in the design doesn't hold as written, or
 builds on a false premise. **Med** means a real cost or side effect the design doesn't
@@ -447,6 +447,8 @@ cites resolve exactly today. The problems sit around that core:
   (`session-stop.sh:46`). 257 of those entries are lint lines.
 - If rotation runs before the migration, those dates move to `log-2026.md`.
 - **Recommendation: fix** by having migration step M2 read `log*.md`.
+- **Follow-on:** the lint entries that fill the log are recorded as design
+  follow-on NW3 (section 10), outside this design's scope.
 
 ### F15. Migration table gaps
 
