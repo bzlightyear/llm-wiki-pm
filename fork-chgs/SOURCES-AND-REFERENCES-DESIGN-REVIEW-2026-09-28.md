@@ -391,11 +391,30 @@ cites resolve exactly today. The problems sit around that core:
 ### F12. Briefings become link targets, but weekly rotation breaks those links
 
 - **Severity:** Low.
-- `llm-wiki-maintain/SKILL.md:68-69` moves briefs older than 7 days with `mv` and
-  doesn't rewrite inbound links, unlike §6 Archive.
-- Only `index.md` links a brief today, and index isn't link-checked.
-- **Recommendation: fix** by making the rotation step rewrite inbound links to
-  plain text, as §6 does.
+- **Affects:** N2, 5.9 (`briefings/` joins the resolvable set), S2 rotation,
+  `llm-wiki-maintain/SKILL.md:68-69, 83`.
+- **What goes wrong:** the maintain skill moves briefs older than 7 days into
+  `_archive/briefings/` with `mv`, and doesn't rewrite inbound links (unlike §6
+  Archive). Once the design makes briefs real pages, every link or citation to a
+  rotated brief breaks. The skill gives no reason for the 7-day rotation.
+- **Evidence:**
+  - It is already happening. `index.md` links two briefs, and one of them was
+    rotated, so that link is broken today. Nobody noticed, because lint doesn't
+    check links in `index.md`.
+  - One digest cites a current brief by path, including in its list of sources.
+    Rotation would break that path, and under the design's R6 it becomes an error.
+  - Nothing in the plugin reads a filed brief. Filing is optional
+    (`llm-wiki-brief/SKILL.md:98`), and the weekly brief doesn't read daily ones.
+    Briefs are small and already exempt from the orphan warning
+    (`lifecycle: dated-digest`).
+- **Recommendation: drop the rotation.**
+  - Delete step ⑤ "Brief rotation" from `llm-wiki-maintain/SKILL.md`, and the
+    `_archive/briefings/` line from its "Brief lifecycle convention". Briefs stay
+    in `briefings/` permanently.
+  - For the existing wiki, move the rotated briefs from `_archive/briefings/` back
+    to `briefings/`. That also repairs the broken index link.
+  - Rewriting links on rotation (the earlier recommendation) is unnecessary once
+    nothing moves.
 
 ### F13. MCP hook details the design doesn't handle
 
@@ -539,5 +558,5 @@ cites resolve exactly today. The problems sit around that core:
 11. **Section 1, V1, 5.10:** fix the `vault.create` and "wiki version wins" claims.
     Keep R11 as the backstop (F10).
 12. **I6/R9, S2 rotation, 5.11 item 2, M2, section 7:** page-slug collision check;
-    rotation rewrites links; filter `action`/`dryRun`; read `log*.md`; add the
+    drop brief rotation (restore rotated briefs); filter `action`/`dryRun`; read `log*.md`; add the
     attachment, raw-dir and root-file cases (F11–F15).
