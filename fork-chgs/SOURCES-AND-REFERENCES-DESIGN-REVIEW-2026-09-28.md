@@ -19,7 +19,7 @@ semantic-search measurement. Finding F4 summarizes it.
 
 Labels: F1–F16 are this review's findings. All other IDs (I, R, M, N, NW, W, …)
 are the design's own: for example, M1–M8 are its migration steps (section 7) and
-NW1–NW3 its follow-on work (section 10).
+NW1–NW4 its follow-on work (section 10).
 
 Severity: **High** means a rule or guarantee in the design doesn't hold as written, or
 builds on a false premise. **Med** means a real cost or side effect the design doesn't
@@ -453,13 +453,31 @@ cites resolve exactly today. The problems sit around that core:
 ### F15. Migration table gaps
 
 - **Severity:** Low.
-- One `sources:` entry declares a non-`.md` file under `raw/attachments/`. It's
-  R6-invalid under the canonical rule and not listed in section 7.
-- Two raw dirs (`clippings`, `attachments`) are in no routing table, contrary to
-  "routing as in ingest-guide ①".
-- One page references a root file whose name has spaces. It is neither a structural
-  file in 5.2's list nor a page.
-- **Recommendation: fix** by adding these three cases to section 7's table.
+- **Affects:** section 7 (migration table), 5.1 (records and routing), 5.2 (files
+  that are never sources).
+- **What goes wrong:** three cases in the wiki aren't covered by section 7 or
+  5.1–5.2.
+  - **A non-markdown file declared as a source.** One concept page's `sources:`
+    lists a saved `.html` file under `raw/attachments/`. Under the canonical rule a
+    source must be a `.md` record, so this entry becomes an R6 error that the
+    migration doesn't fix.
+  - **Two `raw/` folders outside the routing rules.** `raw/attachments/` (1 file)
+    and `raw/clippings/` (1 file) aren't in `ingest-guide ①`'s routing table,
+    although 5.1 says "routing is as in ingest-guide ①". This is harmless for
+    citation resolution, which finds records in any `raw/` folder.
+  - **Root-level files that aren't pages.** Besides the structural files 5.2
+    lists, the wiki root holds three extra markdown files, including an
+    action-items file. Pages mention it in prose, but no page cites or links any of
+    them, so they aren't a sources problem. The action-items file is a problem of
+    its own, recorded as follow-on NW4.
+- **Recommendation: fix.**
+  - Add a migration row: save a markdown record for the `.html` source (keep the
+    original under `raw/assets/`, as for PDFs) and cite that record.
+  - Add a migration row, or an ingest-guide edit, that either admits
+    `raw/attachments/` and `raw/clippings/` as record folders or moves their files
+    into routed folders.
+  - Add the extra root files to 5.2's "not sources" list, so an agent that cites
+    one gets a clear R6 message. Handle the action-items file under NW4.
 
 ### F16. Step 0 scope check (informational)
 

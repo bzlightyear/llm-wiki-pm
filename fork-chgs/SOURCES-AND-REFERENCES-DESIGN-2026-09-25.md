@@ -1012,7 +1012,7 @@ otherwise leave it to follow-on NW2. It does not fix the bracket escaping (#47).
 
 ## 10. Follow-on work (after this design)
 
-Three pieces of work were deliberately left out of this design. They are recorded
+Four pieces of work were deliberately left out of this design. They are recorded
 here so they aren't lost.
 
 **NW1. Orient content and `overview.md` freshness (separate design).**
@@ -1048,6 +1048,32 @@ step M2 to read rotated `log-*.md` files (review finding F14). Options: append
 at most one lint entry per day, updating it in place, or stop appending and rely
 on the per-day report in `queries/`. Found in the design review
 (SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md, F14).
+
+**NW4. The action-items file is outside the plugin's rules.**
+- **What it is:** a root-level markdown file of open action items, ranked by
+  urgency (about 400 lines, about 90 items). An agent created it at the user's
+  request in a chat session, and it is regenerated or partly updated only when the
+  user asks (39 `log.md` entries).
+- **Why it drifts:**
+  - It sits outside every page folder, so lint, the hooks and `index.md` skip it.
+  - It has no frontmatter, sources or links, and no skill defines when or how it
+    is updated.
+  - Wiki pages mention it in prose, but none link to it.
+- **Related work:** it has the same staleness problem as ISSUE-1 (action-item
+  status never updated after capture; `llm-wiki-pm-changelog.md` notes action
+  items have no real page type) and as NW1 (frozen action items in `overview.md`).
+- **Options:**
+  1. **Make it a first-class page,** for example `queries/open-action-items.md`,
+     with standard frontmatter, sources and links. Define in the maintain skill
+     when it is updated (for example on every run that ingests meetings), and let
+     lint check it.
+  2. **Remove it and generate the list on demand** from the action items in
+     meeting digests, through a brief-skill command. There is no separate file to
+     go stale, but it only works once digests' action items are marked done when
+     resolved, which is ISSUE-1's open problem.
+
+  They aren't exclusive: option 1 now, and option 2 once ISSUE-1 is solved.
+- **Found in:** the design review (F15).
 
 ## Provenance of this document
 
