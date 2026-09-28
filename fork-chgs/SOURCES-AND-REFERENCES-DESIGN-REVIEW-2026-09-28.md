@@ -419,11 +419,26 @@ cites resolve exactly today. The problems sit around that core:
 ### F13. MCP hook details the design doesn't handle
 
 - **Severity:** Low.
-- The `edit` tool's `dryRun: true` writes nothing (`mcp-tools.js:162`), but
-  post-validate would re-report the unchanged file as if the call had broken it.
-- The `vault` matcher also fires on `list`, `read` and `stat`, one Python start per
-  read (about 0.02 s).
-- **Recommendation: fix** by filtering on `action` and `dryRun` in step 3.
+- **Affects:** 5.11 items 1–3 and 6 (MCP matchers, snapshot, post-validate), F4.
+- **What goes wrong:** hooks match on tool name, so they fire on every call to that
+  tool, whatever the call does.
+  - **Preview edits.** The `edit` tool's `dryRun: true` writes nothing
+    (`mcp-tools.js:162`), but post-validate would re-read the unchanged file and
+    report its existing problems as if the call had caused them.
+  - **Reads.** The `vault` matcher also fires on `list`, `read` and `stat`, one
+    Python start per read (about 0.02 s). It's harmless but wasted.
+- **Interaction with F4:** with F4's permission rule blocking the `edit` tool, the
+  preview case can't occur on this wiki, and only the `vault` filter matters. The
+  rule is a per-user Claude Code setting that a plugin can't install, though, so
+  fork installs without it still hit both cases.
+- **Recommendation: fix.**
+  - **In step 3's hooks, keep both filters:** skip calls with `dryRun: true`, and
+    for `vault`, act only on `create`, `update` and `delete`, exiting at once on
+    reads. That's a couple of lines, and it keeps the hooks correct with or without
+    the block.
+  - **Document the block for other users.** Add the F4 permission rule, under both
+    tool-name forms, to the plugin README's install notes, so other installs can
+    turn it on.
 
 ### F14. Migration step M2 assumes the old conversation dates are still in `log.md`
 
@@ -558,5 +573,6 @@ cites resolve exactly today. The problems sit around that core:
 11. **Section 1, V1, 5.10:** fix the `vault.create` and "wiki version wins" claims.
     Keep R11 as the backstop (F10).
 12. **I6/R9, S2 rotation, 5.11 item 2, M2, section 7:** page-slug collision check;
-    drop brief rotation (restore rotated briefs); filter `action`/`dryRun`; read `log*.md`; add the
+    drop brief rotation (restore rotated briefs); filter `action`/`dryRun` in
+    the hooks and document F4's permission rule in the README; read `log*.md`; add the
     attachment, raw-dir and root-file cases (F11–F15).
