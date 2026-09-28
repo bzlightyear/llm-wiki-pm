@@ -15,10 +15,14 @@ or source slugs appear in this report.
 Companion document: [WIKI-SEARCH-MCP-TOOLS-2026-09-28.md](WIKI-SEARCH-MCP-TOOLS-2026-09-28.md)
 lists every wiki-search MCP tool and operation with its risk, the full usage
 counts under both tool-name forms, the transcript-coverage gap, and the
-semantic-search measurement. Finding H4 summarizes it.
+semantic-search measurement. Finding F4 summarizes it.
+
+Labels: F1–F16 are this review's findings. All other IDs (I, R, M, N, NW, W, …)
+are the design's own: for example, M1–M8 are its migration steps (section 7) and
+NW1–NW2 its follow-on work (section 10).
 
 Severity: **High** means a rule or guarantee in the design doesn't hold as written, or
-builds on a false premise. **Medium** means a real cost or side effect the design doesn't
+builds on a false premise. **Med** means a real cost or side effect the design doesn't
 state. **Low** means a correction or small gap.
 
 ---
@@ -48,8 +52,10 @@ cites resolve exactly today. The problems sit around that core:
 
 ## Findings
 
-### H1. R10 / I8 clears on `last_verified`, which is not a verification signal (pattern 2)
+### F1. R10 / I8 clears on `last_verified`, which is not a verification signal (pattern 2)
 
+- **Severity:** High. It's the exact failure the earlier pass removed from R14, and it
+  sits under the design's only answer to RC6.
 - **Affects:** I8, section 5.12, R10, section 7 "What cannot be recovered", M8.
 - **What goes wrong:** R10 stops flagging a conversation-only page once
   `last_verified` is newer than 30 days. Any ordinary edit that bumps both dates
@@ -65,8 +71,6 @@ cites resolve exactly today. The problems sit around that core:
 - **Frequency:** after migration R10 would flag about 4 pages. That's my count of pages
   whose primary sources are all conversational, approximated by regex over
   `sources:`.
-- **Severity:** High. It's the exact failure the earlier pass removed from R14, and it
-  sits under the design's only answer to RC6.
 - **Recommendation: fix or drop.**
   - Preferred fix: make R10 date-free. Flag a page while every primary source
     resolves to a `source_type: conversation` or `reconstructed: true` record, and
@@ -78,8 +82,10 @@ cites resolve exactly today. The problems sit around that core:
   - Out of scope but same flaw: the existing 120-day `last_verified` warning
     (`lint.py:537-548`).
 
-### H2. Date-quote damage is far larger than N15, and the single-parser plan misses session-start
+### F2. Date-quote damage is far larger than N15, and the single-parser plan misses session-start
 
+- **Severity:** High. A health metric users see every session is wrong today, and it
+  stays wrong after the change.
 - **Affects:** N15, N6, section 5.10 "One parser", R12 auto-fix, M4, step 4,
   step 12.
 - **What goes wrong:** the MCP (and PyYAML) serialize string dates as
@@ -108,8 +114,6 @@ cites resolve exactly today. The problems sit around that core:
     2026-09-25, so they keep arriving.
   - New timestamp values entered in 5 commits, not 4 (`2e819d8`, `889710d`,
     `a0afb9e`, `85b1963`, `76b1603`).
-- **Severity:** High. A health metric users see every session is wrong today, and it
-  stays wrong after the change.
 - **Recommendation: fix.**
   - Put `session-start.sh`'s scan on `wikifm` in step 4, and list it in 5.10 and RC3.
     There are at least four parsers, not three.
@@ -119,10 +123,12 @@ cites resolve exactly today. The problems sit around that core:
     unquoted, as M4 says, sets the next MCP round-trip up to re-timestamp the value.
   - Correct N15's impact text: it's 115 pages for lint and 92 for session-start,
     not 1 and 3.
-  - If step 12 is kept, it has to keep strings quoted. Otherwise drop it (see H4).
+  - If step 12 is kept, it has to keep strings quoted. Otherwise drop it (see F4).
 
-### H3. R12 has 21 existing violations; the "start at 🔴" rationale is false
+### F3. R12 has 21 existing violations; the "start at 🔴" rationale is false
 
+- **Severity:** High. It turns the health line red on day one, the outcome D7 was
+  written to avoid.
 - **Affects:** section 5.10 profile, section 5.15 table, step 6 ("R9 and R12
   … have no existing violations and start at 🔴").
 - **What goes wrong:** the profile allows only `  - item` lines in a block list. 15
@@ -132,18 +138,20 @@ cites resolve exactly today. The problems sit around that core:
   migration, so from step 6 on the session-start line reports 🔴 on 21 pages.
 - **Evidence:** a frontmatter scan of the scratch copy. Union: 21 pages (13 timestamp,
   15 continuation). BaseLoader parses all 15 continuation pages without error.
-- **Severity:** High. It turns the health line red on day one, the outcome D7 was
-  written to avoid.
 - **Recommendation: fix.** Extend the profile so an indented non-dash line continues
   the previous list item (folded with one space, as YAML does), and add a fixture
   for it to the PyYAML-oracle tests. Ship R12 at 🟡 until M4 has normalized dates,
   or move date normalization ahead of R12's promotion.
 
-### H4. MCP edits were a real but abandoned path; the frequent unhooked writer is ignored
+### F4. MCP edits were a real but abandoned path; the frequent unhooked writer is ignored
 
+- **Severity:** High for prioritization. The damaging operations have been avoided
+  by convention since 2026-08-11, so a permission rule gives certainty for almost
+  nothing. Step 12 and NW2 cost a Node build and upgrade work to make safe tools
+  nobody needs, and the active unhooked path gets no write-time help.
 - **Affects:** Bottom line item 4, I1/I7 "including MCP writes", section 1 "Which
   invariants inherit the MCP hole", 5.11 items 1–3, 6 and 9, permission note, D9,
-  D11/step 12, F2.
+  D11/step 12, NW2.
 - **What goes wrong:** the design treats MCP writes as a live path that needs hook
   coverage, a patched MCP and eventually a fork. The evidence says MCP edits were
   used in early August, damaged pages, and were then deliberately avoided. Ad-hoc
@@ -189,10 +197,6 @@ cites resolve exactly today. The problems sit around that core:
     have `defaultMode: "auto"` and no `ask` rules, so an unlisted MCP tool is decided
     by auto mode, not necessarily by a prompt (unverified how auto mode treats these
     tools).
-- **Severity:** High for prioritization. The damaging operations have been avoided
-  by convention since 2026-08-11, so a permission rule gives certainty for almost
-  nothing. Step 12 and F2 cost a Node build and upgrade work to make safe tools
-  nobody needs, and the active unhooked path gets no write-time help.
 - **Recommendations:**
   - **Prefer prevention:** add a `permissions.deny` (or explicit `permissions.ask`)
     entry for `mcp__wiki-search__edit`, in both its plugin-prefixed and plain
@@ -201,7 +205,7 @@ cites resolve exactly today. The problems sit around that core:
     call.
   - **Simplify:** keep the MCP hook matchers, but match both name forms (for
     example `mcp__.*wiki-search__(vault|edit)`), because upstream users install the
-    plugin and get the prefixed names. Drop step 12, and defer F2 unless MCP edits
+    plugin and get the prefixed names. Drop step 12, and defer NW2 unless MCP edits
     are wanted back.
   - **Fix: serve the frequent writer.** Give `wikifm.py` a text-preserving
     `set_field(text, key, value)` / `set_list(...)`, and require it in SKILL.md
@@ -216,8 +220,9 @@ cites resolve exactly today. The problems sit around that core:
     review's, rest on transcripts that miss about a third of the wiki-editing
     days.
 
-### M1. Step 6's auto-fixes would run unattended before the reviewed migration
+### F5. Step 6's auto-fixes would run unattended before the reviewed migration
 
+- **Severity:** Med.
 - **Affects:** step 6, M4, M6, section 5.15 auto-fix column, maintain sub-skill.
 - **What goes wrong:** `llm-wiki-maintain/SKILL.md:74-75` runs `lint.py --auto-fix` in
   autonomous mode because "it's non-destructive". Step 6 extends auto-fix to rewrite
@@ -229,14 +234,14 @@ cites resolve exactly today. The problems sit around that core:
 - **Evidence:** the auto-fixable classes in section 7 are 55 multi-line + 9 path-form + 8
   nested-prefix + 5 "vs." markers, dates on 13 pages, and appends to up to 49
   legend pages.
-- **Severity:** Medium.
 - **Recommendation: fix.** Put the new classes behind a separate flag
   (`--auto-fix=content`) that maintain never passes, or ship them only with step 10.
   Change the maintain line to name what auto-fix still does unattended (index
   backfill, de-escape).
 
-### M2. R13 requires fields no writer produces; its date filter is blind to 27% of record shapes
+### F6. R13 requires fields no writer produces; its date filter is blind to 27% of record shapes
 
+- **Severity:** Med (pattern 2 variant: the rule depends on a field without a writer).
 - **Affects:** section 5.1 record frontmatter, R13, frontmatter-changes table, steps 2 and 5.
 - **What goes wrong:** R13 warns when `source_type` or `captured` is missing on new
   records, but the record writers don't produce them:
@@ -257,15 +262,15 @@ cites resolve exactly today. The problems sit around that core:
   - N11's 11 frontmatter-less records came from two weeks (1 + 10).
   - Nothing reads `captured`. Only R10 reads `source_type`, and only for
     `conversation`, which `capture.py` writes.
-- **Severity:** Medium (pattern 2 variant: the rule depends on a field without a writer).
 - **Recommendation: drop R13.** Have `capture.py` and M2 write
   `source_type: conversation`, and keep 5.1's block as a recommended template. If
   R13 stays, steps 2 and 5 must change the fetcher and ingest-guide ① to emit
   `source_type` and `captured`, and R13 should key on a frozen baseline list of
   legacy record IDs, not on a filename date.
 
-### M3. Legend machinery (I4, R8, M6) costs more than the problem it solves
+### F7. Legend machinery (I4, R8, M6) costs more than the problem it solves
 
+- **Severity:** Med (pattern 1).
 - **Affects:** I4, 5.5, R8, M6, D4.
 - **What goes wrong:** no skill, template or AGENTS.md prescribes a `## Sources`
   legend (grep over `skills/` and `AGENTS.md`: 0 hits). Legends are an agent habit,
@@ -274,43 +279,81 @@ cites resolve exactly today. The problems sit around that core:
   human-confirmed migration of up to 136 prose bullets.
 - **Evidence:** legend headings added per ISO week: W32 20, W33 6, W35 17, W36 6,
   W37–38 0, W39 2. Drift instances found: 1 (ISSUE-3).
-- **Severity:** Medium (pattern 1).
 - **Recommendation: drop I4, R8, M6 and the legend grammar.** Declare legends optional
   free prose that isn't a declaration site. `sources:` plus markers already give
   exact resolution. This takes D4's alternative against its recommendation, for the
   cost reason above.
 
-### M4. "Every write path is detected by the next session" rests on a lint call that swallows failure
+### F8. "Every write path is detected by the next session" rests on a lint call that swallows failure
 
+- **Severity:** Med.
 - **Affects:** Bottom line item 4c, 5.11 item 7, honest summary.
 - **What goes wrong:** `session-start.sh:136` runs lint inside
   `if LINT_OUT=$(… 2>/dev/null)`. On a crash the counts stay 0 and the health line
   reads clean. Step 4 replaces every parser with new code, so a `wikifm` exception
-  on an unexpected shape (H3 is an example) would silently turn "detected by next
+  on an unexpected shape (F3 is an example) would silently turn "detected by next
   session" into "reported as clean".
 - **Evidence:** `session-start.sh:134-142`. Lint runtime on the scratch copy is 0.10 s,
   so the cost of a fix isn't a concern.
-- **Severity:** Medium.
 - **Recommendation: fix.** On a nonzero exit or unparseable JSON, put "lint failed:
   health unknown" into `additionalContext`. Add a test that runs `wikifm.parse` over
   every page of a scratch wiki copy and requires 0 exceptions.
 
-### M5. `split_from` + R4-🔴 depends on a manual field set on a path hooks don't see
+### F9. Splits need a command, not a manual label; `split_from` + R4-🔴 catches almost nothing
 
-- **Affects:** 5.8 Split step 3, R4 row, frontmatter-changes table.
-- **What goes wrong:** splits are real. There were 15 "history splits" in one week,
-  done by an ad-hoc script (B2), and 25 pages are over 200 lines now. So the
-  procedure and `--cited-sources` earn their place. But the 🔴 escalation only fires
-  if the splitter sets `split_from` by hand. If the splitter used
-  `--cited-sources`, the escalation is redundant. If it didn't, it most likely
-  didn't set `split_from` either.
-- **Severity:** Medium (pattern 2).
-- **Recommendation: simplify.** Keep the procedure and `--cited-sources`. Drop
-  `split_from` and the R4 escalation, or make `--cited-sources` print the
-  child's whole `sources:` block plus `split_from`, so the tool is the writer.
+- **Severity:** Med (pattern 2).
+- **Affects:** 5.8 Split, R4 row, `--cited-sources` (step 6), frontmatter-changes
+  table, entity promotion (W7).
+- **What goes wrong:**
+  - **Splits are frequent, and they spread damage.** There were 15 "history splits"
+    in one week, done in two batches by agent-written ad-hoc scripts (B2), and 25
+    pages are over 200 lines now. A split copies whatever is wrong on the parent onto
+    every child: the design's own history shows one invented citation copied into
+    ten files.
+  - **The 🔴 escalation depends on a label set by hand.** It fires only if the
+    splitting agent adds `split_from`. An agent that follows the procedure and uses
+    `--cited-sources` already gets a correct list, so the escalation adds nothing.
+    An agent that writes its own script skips both, so the escalation never
+    switches on.
+  - **The label would also be permanent and could go stale.** A labeled child is
+    held to the stricter rule forever, even when a later edit legitimately declares
+    a source it's built from. If the parent is renamed or archived, `split_from`
+    points at nothing.
+  - **The procedure has six manual steps and misses one.** It never trims the
+    parent's `sources:` to what the parent still cites after sections move out.
+  - **Agents won't find it where it's documented.** The 200-line rule lives in
+    SCHEMA.md (template `templates/SCHEMA.md:124`, and the wiki's own copy), in
+    `lint-guide.md:25` and in lint's "split candidate" warning, not in SKILL.md.
+    The design puts the split procedure in `citation-spec.md`, which agents read
+    only on demand, so an agent doing a bulk cleanup may never open it.
+- **Recommendation: fix, then drop.**
+  - **Add a split command** (for example `scripts/split_page.py`). The agent chooses
+    which headings move to which new page. The command then does the mechanical
+    work:
+    - snapshot the parent;
+    - write each child with exactly the sources its text cites;
+    - trim the parent's `sources:` to what it still cites;
+    - add links both ways;
+    - rewrite `[[parent#heading]]` links to moved sections.
 
-### M6. Contract reconciliation rests on two wrong claims about the MCP
+    It uses `wikifm` for all frontmatter reads and writes, and replaces
+    `--cited-sources`, which it computes internally.
+  - **Point to it where agents look:**
+    - the split rule in SCHEMA.md, in both the template and the live wiki's copy
+      (a scaffolded copy doesn't update when the template changes);
+    - lint's "> 200 lines — split candidate" warning text;
+    - `ingest-guide.md` ⑫ (entity promotion is a split).
 
+    The detailed procedure can stay in `citation-spec.md`.
+  - **Drop `split_from` and the R4 escalation.** Rely on the existing R4 warning
+    ("many sources declared, few cited"). It needs no label, so it covers every
+    page, including splits done without the command.
+  - **Cheaper fallback,** if the command isn't built now: keep `--cited-sources`,
+    add the same pointers, and add the parent-trimming step to the procedure.
+
+### F10. Contract reconciliation rests on two wrong claims about the MCP
+
+- **Severity:** Med for upstream users, Low for this wiki (M7 hand-edits it).
 - **Affects:** section 1 MCP gaps ("`vault.create` without `content` falls back to
   the note template"), V1, 5.10 ("the wiki's version wins on new installs"),
   step 8, R11.
@@ -323,46 +366,50 @@ cites resolve exactly today. The problems sit around that core:
   - On a brand-new empty wiki dir, MCP auto-init makes the dir non-empty. That
     makes `session-start.sh:53-59` skip the whole scaffold (no SCHEMA, index or
     log), which is a pre-existing race that step 8 now relies on.
-- **Severity:** Medium for upstream users, Low for this wiki (M7 hand-edits it).
 - **Recommendation: fix.**
   - Keep R11. It is the backstop that catches the race, so it earns its place for
     new installs.
   - Remove both claims.
   - Treat a wiki dir that contains only `meta/` as empty for scaffolding.
 
-### L1. I6 claims page-slug uniqueness, but nothing checks it
+### F11. I6 claims page-slug uniqueness, but nothing checks it
 
+- **Severity:** Low.
 - `lint.py:404` builds `{slug(p): p}` and silently keeps the last page on a
   collision.
 - Adding `briefings/` and directory part pages widens the namespace. There are 0
   collisions today.
 - **Recommendation: fix cheaply** by adding a page-slug collision check to R9.
 
-### L2. Briefings become link targets, but weekly rotation breaks those links
+### F12. Briefings become link targets, but weekly rotation breaks those links
 
+- **Severity:** Low.
 - `llm-wiki-maintain/SKILL.md:68-69` moves briefs older than 7 days with `mv` and
   doesn't rewrite inbound links, unlike §6 Archive.
 - Only `index.md` links a brief today, and index isn't link-checked.
 - **Recommendation: fix** by making the rotation step rewrite inbound links to
   plain text, as §6 does.
 
-### L3. MCP hook details the design doesn't handle
+### F13. MCP hook details the design doesn't handle
 
+- **Severity:** Low.
 - The `edit` tool's `dryRun: true` writes nothing (`mcp-tools.js:162`), but
   post-validate would re-report the unchanged file as if the call had broken it.
 - The `vault` matcher also fires on `list`, `read` and `stat`, one Python start per
   read (about 0.02 s).
 - **Recommendation: fix** by filtering on `action` and `dryRun` in step 3.
 
-### L4. M2 assumes the old conversation dates are still in `log.md`
+### F14. Migration step M2 assumes the old conversation dates are still in `log.md`
 
+- **Severity:** Low.
 - `log.md` has 480 entries against the 500-entry rotation threshold
   (`session-stop.sh:46`). 257 of those entries are lint lines.
 - If rotation runs before the migration, those dates move to `log-2026.md`.
-- **Recommendation: fix** by having M2 read `log*.md`.
+- **Recommendation: fix** by having migration step M2 read `log*.md`.
 
-### L5. Migration table gaps
+### F15. Migration table gaps
 
+- **Severity:** Low.
 - One `sources:` entry declares a non-`.md` file under `raw/attachments/`. It's
   R6-invalid under the canonical rule and not listed in section 7.
 - Two raw dirs (`clippings`, `attachments`) are in no routing table, contrary to
@@ -371,8 +418,9 @@ cites resolve exactly today. The problems sit around that core:
   file in 5.2's list nor a page.
 - **Recommendation: fix** by adding these three cases to section 7's table.
 
-### L6. Step 0 scope check (informational)
+### F16. Step 0 scope check (informational)
 
+- **Severity:** Low.
 - A slug-level scan of every tracked fork file against all wiki page slugs and
   record IDs finds real identifiers only in the three N12 files. Every other hit is
   a generic word.
@@ -422,64 +470,67 @@ cites resolve exactly today. The problems sit around that core:
 | Source-ID grammar + exact `slug()` resolution | 81 invalid `sources:` entries, about 214 unresolvable cites; grammar already fits 100% of files | Low | **Keep** |
 | `citation-spec.md` as single spec | Four conflicting definitions (N3, N4) | Low | **Keep** |
 | Conversation records + `capture.py` | About 217 conversational markers on 72 pages | +1 call per capture | **Keep** |
-| `wikifm.py` single parser | 115 + 92 silently skipped dates (H2) | Medium | **Keep, extend** to session-start's scan; add a text-preserving `set_field` (H4) |
-| R12 profile | Real corruption history | Low | **Fix**: continuation lines; start 🟡 (H3) |
-| R12 midnight-timestamp auto-fix | 13 pages | Low | **Simplify**: write `'YYYY-MM-DD'` (H2) |
+| `wikifm.py` single parser | 115 + 92 silently skipped dates (F2) | Medium | **Keep, extend** to session-start's scan; add a text-preserving `set_field` (F4) |
+| R12 profile | Real corruption history | Low | **Fix**: continuation lines; start 🟡 (F3) |
+| R12 midnight-timestamp auto-fix | 13 pages | Low | **Simplify**: write `'YYYY-MM-DD'` (F2) |
 | R3 exact | Replaces a permissive matcher | Low | **Keep** |
 | R6 | Typo'd-path class | Low | **Keep** |
-| R7 + mechanical auto-fix | 77 fixable markers | Low | **Keep**, but gate the auto-fix from autonomous runs (M1) |
-| I4 + R8 + legend grammar + M6 | 1 drift instance; legends unprescribed and fading | High (136 bullets confirmed by a human) | **Drop** (M3) |
-| R9 record uniqueness | 0 collisions, but resolution depends on it | Very low | **Keep**; add page slugs (L1) |
-| I8 + R10 | About 4 pages; clears on an untrustworthy signal | Low, but misleading | **Drop, or make date-free** (H1) |
-| R11 contract check | Backstop for the MCP auto-init race | Very low | **Keep** (M6) |
-| R13 + `source_type`/`captured` requirement | 11 bad records from 2 weeks; 0 writers of `source_type` | Medium (writer changes) | **Drop** (M2) |
-| Split procedure + `--cited-sources` | 15 splits in a week; 25 candidates now | Low | **Keep** |
-| `split_from` + R4-🔴 | Depends on a manual field | Low | **Drop** (M5) |
+| R7 + mechanical auto-fix | 77 fixable markers | Low | **Keep**, but gate the auto-fix from autonomous runs (F5) |
+| I4 + R8 + legend grammar + M6 | 1 drift instance; legends unprescribed and fading | High (136 bullets confirmed by a human) | **Drop** (F7) |
+| R9 record uniqueness | 0 collisions, but resolution depends on it | Very low | **Keep**; add page slugs (F11) |
+| I8 + R10 | About 4 pages; clears on an untrustworthy signal | Low, but misleading | **Drop, or make date-free** (F1) |
+| R11 contract check | Backstop for the MCP auto-init race | Very low | **Keep** (F10) |
+| R13 + `source_type`/`captured` requirement | 11 bad records from 2 weeks; 0 writers of `source_type` | Medium (writer changes) | **Drop** (F6) |
+| Split procedure + `--cited-sources` | 15 splits in a week; 25 candidates now | Low | **Replace** with a split command, pointed to from SCHEMA.md and the lint warning; `--cited-sources` is the fallback (F9) |
+| `split_from` + R4-🔴 | Depends on a manual field | Low | **Drop** (F9) |
 | `lifecycle: dated-digest` grounding exemption (D6) | Existing field; makes current behavior explicit | Very low | **Keep** |
-| `reconstructed` records (M2) | Legacy conversation dates | Low | **Keep**; read `log*.md` (L4) |
-| Hook MCP matchers + path extraction | MCP edits used in early Aug, avoided since | Low | **Simplify**: keep, match both name forms, filter action/`dryRun` (L3), verify firing; prefer a deny rule (H4) |
+| `reconstructed` records (M2) | Legacy conversation dates | Low | **Keep**; read `log*.md` (F14) |
+| Hook MCP matchers + path extraction | MCP edits used in early Aug, avoided since | Low | **Simplify**: keep, match both name forms, filter action/`dryRun` (F13), verify firing; prefer a deny rule (F4) |
 | Slug-named snapshots (N14) | 1 real collision | Very low | **Keep** |
 | `overview.md` whole-file snapshot, `index.md` never | ISSUE-2 | Very low | **Keep** |
 | Raw write-once warning | 1 edit in 157 | Very low | **Keep** (cheap) |
 | Freshness gate on post-edit text | Inverted today | Low | **Keep** |
 | Synchronous post-validate | 1,138 Write/Edit wiki calls | Low (about 0.1 s) | **Keep** |
-| Session-start I1–I4 counts + no report in `--json` | N1 | Low | **Keep**; surface lint failure (M4) |
+| Session-start I1–I4 counts + no report in `--json` | N1 | Low | **Keep**; surface lint failure (F8) |
 | Lint auto-fix snapshots | W15 has no pre-image | Low | **Keep** |
 | MCP write checklist (5.11 item 9) | Overstated scope | Very low | **Simplify**: `frontmatter_set` and AST ops only |
-| Vault contract template + scaffold copy | N4 | Low | **Keep**; fix the race claim (M6) |
+| Vault contract template + scaffold copy | N4 | Low | **Keep**; fix the race claim (F10) |
 | `wiki-search.sh` fix + smoke test | N13 reproduced | Low | **Keep** |
-| Step 12 patched MCP | Damaging ops avoided since 08-11; CORE_SCHEMA strips quotes | Medium, recurring | **Drop**; deny the edit tool instead (H2, H4) |
-| F2 MCP fork | Same | High, recurring | **Defer** unless MCP edits are wanted back |
-| `migrate_sources.py` | Required for 3.0 | Medium, one-off | **Keep**; add L4/L5 cases |
+| Step 12 patched MCP | Damaging ops avoided since 08-11; CORE_SCHEMA strips quotes | Medium, recurring | **Drop**; deny the edit tool instead (F2, F4) |
+| NW2 MCP fork | Same | High, recurring | **Defer** unless MCP edits are wanted back |
+| `migrate_sources.py` | Required for 3.0 | Medium, one-off | **Keep**; add F14/F15 cases |
 | Worker symlinks (step 9) | RC7 | Low | Not assessed |
 
 ## Recommended design-doc edits
 
 1. **5.12, I8, R10, section 7, M8:** remove `last_verified` as the clearing signal.
-   Make R10 date-free, or drop it (H1).
+   Make R10 date-free, or drop it (F1).
 2. **5.10 / RC3 / step 4:** list `session-start.sh:151-189` among the parsers
    replaced by `wikifm`. Add a text-preserving `set_field` to `wikifm`'s API and
-   require it for scripts (H2, H4).
+   require it for scripts (F2, F4).
 3. **N15 impact, N6, M4, R12 auto-fix, templates:** canonical date form
-   `'YYYY-MM-DD'`. Correct the counts (115 lint, 92 session-start, 5 commits) (H2).
+   `'YYYY-MM-DD'`. Correct the counts (115 lint, 92 session-start, 5 commits) (F2).
 4. **5.10 profile, step 6:** allow continuation lines. R12 starts 🟡. Delete "no
-   existing violations" (H3).
+   existing violations" (F3).
 5. **Section 1 MCP gaps, 5.11 item 9, permission note, D9:** say that
    `string_replace`, `line_replace` and `vault.update` don't re-serialize. Record
    that MCP edits have been avoided since 2026-08-11. Prefer a deny or ask
-   permission rule, matching both tool-name forms, over step 12 and F2. Note
+   permission rule, matching both tool-name forms, over step 12 and NW2. Note
    `defaultMode: auto`, and that the transcript evidence misses about a third of
-   the editing days (H4).
+   the editing days (F4).
 6. **Step 6 / maintain:** put the new auto-fix classes behind a flag autonomous runs
-   don't pass. Update `llm-wiki-maintain/SKILL.md:74-75` (M1).
+   don't pass. Update `llm-wiki-maintain/SKILL.md:74-75` (F5).
 7. **5.1, R13, frontmatter table:** drop R13. If it's kept, name the fetcher and
-   ingest-guide field changes and switch to a baseline list (M2).
+   ingest-guide field changes and switch to a baseline list (F6).
 8. **5.5, I4, R8, M6, D4:** make legends free prose and drop the rule and the
-   migration step (M3).
-9. **5.11 item 7:** surface lint failure at session start (M4).
-10. **5.8, R4, frontmatter table:** drop `split_from` and the R4 escalation (M5).
+   migration step (F7).
+9. **5.11 item 7:** surface lint failure at session start (F8).
+10. **5.8, R4, frontmatter table, step 6:** replace `--cited-sources` with a split
+    command, add the parent-trimming step, point to it from SCHEMA.md (template and
+    live copy), the lint warning and ingest-guide ⑫, and drop `split_from` and the
+    R4 escalation (F9).
 11. **Section 1, V1, 5.10:** fix the `vault.create` and "wiki version wins" claims.
-    Keep R11 as the backstop (M6).
+    Keep R11 as the backstop (F10).
 12. **I6/R9, S2 rotation, 5.11 item 2, M2, section 7:** page-slug collision check;
     rotation rewrites links; filter `action`/`dryRun`; read `log*.md`; add the
-    attachment, raw-dir and root-file cases (L1–L5).
+    attachment, raw-dir and root-file cases (F11–F15).

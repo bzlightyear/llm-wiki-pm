@@ -20,7 +20,7 @@ Reference convention: `§N` always means an operation number in the core
 `SKILL.md` (for example §2 Ingest, §4 Update). "Section N" means a section of
 this document; other files' sections are named with the file. A-numbers (A3,
 A11, …) always mean PLUGIN-REVIEW-2026-07-15 items; this document's own IDs
-use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D, F).
+use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D, NW).
 
 ---
 
@@ -684,7 +684,7 @@ template. The server never overwrites the file and says to edit it. So:
 8. **lint `--auto-fix`** imports the snapshot function and snapshots each page
    before writing it.
 9. **MCP write path (checklist, not enforced).** Until the MCP's full-file
-   round-trip is fixed (#47, #49, follow-on F2, or the step 12 patch), change
+   round-trip is fixed (#47, #49, follow-on NW2, or the step 12 patch), change
    frontmatter with the Edit tool, not MCP `frontmatter_set` or `vault.update`,
    and prefer Edit over MCP `string_replace` for body edits. This is one line
    in SKILL.md's Tool Selection rules. Nothing can enforce it, so items 6 and 7
@@ -703,7 +703,7 @@ on ask. Snapshots make MCP writes recoverable, but every MCP frontmatter or
 `string_replace` edit can still damage content elsewhere in the page (#47,
 #49). `vault` stays on ask regardless, because permissions match on tool name,
 so allowing `vault` would also allow `vault.delete`. Revisit `edit` once
-follow-on F2 or the step 12 patch has fixed the round-trip.
+follow-on NW2 or the step 12 patch has fixed the round-trip.
 
 ### 5.12 Revisit obligation (I8)
 
@@ -803,7 +803,7 @@ sourcing, missing inline provenance, `coverage:`, stale `last_verified`.
 | PATCH-3a block-list parsing | **Replace** with `wikifm` lists-as-lists. Joining into `"[a, b]"` reintroduces comma ambiguity for `extract_tags` and makes the two parsers disagree. |
 | PATCH-3b `slug()` README | **Keep; offer upstream.** It is now also the snapshot naming function. |
 | PATCH-3c overview/index link targets | **Keep; offer upstream.** Extend the same registration to `briefings/`. |
-| PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed. Checked 2026-09-26: #47 is open with no maintainer response, and the repo has had no activity since 2026-06-02. A comment now links it to #49, the date bug from the same code path. Post-validate now reports escaped brackets at write time. The real fix is follow-on F2. |
+| PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed. Checked 2026-09-26: #47 is open with no maintainer response, and the repo has had no activity since 2026-06-02. A comment now links it to #49, the date bug from the same code path. Post-validate now reports escaped brackets at write time. The real fix is follow-on NW2. |
 | PATCH-4 relationship-map wiring | **Keep.** Its end-to-end verification is still pending and unrelated to this design. |
 | ISSUE-1 action-item update mechanism | **Keep open, re-scoped.** Shares RC6. I8's horizon mechanism is the reusable piece; action-item status is out of scope here. |
 | ISSUE-2 indexer overview regeneration | **Keep open, mitigated.** Snapshotting `overview.md` on whole-file replacements (section 5.11, item 3) makes a regeneration recoverable without a daily copy. The destructive behavior itself is untouched. |
@@ -994,7 +994,7 @@ matters to you. Your call: history rewrite is destructive for anyone who forked.
 **D9. `mcp__wiki-search__edit` on the allowlist after step 3?** Recommend
 **no, not yet.** Snapshots make its writes recoverable, but every frontmatter or
 `string_replace` edit can still damage other parts of the page (#47, #49).
-Revisit once follow-on F2 or the step 12 patch fixes the round-trip. Keep `vault`
+Revisit once follow-on NW2 or the step 12 patch fixes the round-trip. Keep `vault`
 on ask in any case (it includes delete).
 
 **D10. Upstream first or fork first?** Recommend offering steps 1–4 upstream
@@ -1006,7 +1006,7 @@ contract the author designed.
 timestamp dates at the source for about a day's work, but the patch has to be
 re-applied and re-tested on any MCP upgrade, and it's fork-only. Recommend
 **yes, if new timestamps keep appearing after step 5's Edit-tool rule**;
-otherwise leave it to follow-on F2. It does not fix the bracket escaping (#47).
+otherwise leave it to follow-on NW2. It does not fix the bracket escaping (#47).
 
 ---
 
@@ -1015,7 +1015,7 @@ otherwise leave it to follow-on F2. It does not fix the bracket escaping (#47).
 Two pieces of work were deliberately left out of this design. They are recorded
 here so they aren't lost.
 
-**F1. Orient content and `overview.md` freshness (separate design).**
+**NW1. Orient content and `overview.md` freshness (separate design).**
 `overview.md` only ever grows (70 KB), its action items and decisions are frozen
 copies from meeting digests, and later updates never flow back into it, so Orient
 loads stale and sometimes wrong information every session. The same design
@@ -1025,7 +1025,7 @@ reads. The proposal is a pointer from SCHEMA to the map, plus Orient reading onl
 a compact org-chart section of it. Starting points: ISSUE-1, ISSUE-2, and I8's
 revisit mechanism.
 
-**F2. Fork `wirux/mcp-markdown-vault`.** The MCP's full-file round-trip causes
+**NW2. Fork `wirux/mcp-markdown-vault`.** The MCP's full-file round-trip causes
 the bracket escaping (#47) and the timestamp dates (#49, N15), and its
 maintainer has not responded since June 2026. The fork would be thin, on top of
 upstream, with one fix per branch and a regression test in the project's vitest

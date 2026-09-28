@@ -2,7 +2,7 @@
 
 Date: 2026-09-28 · Companion to
 [SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md)
-(finding H4) and
+(finding F4) and
 [SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md).
 
 The wiki-search MCP is `@wirux/mcp-markdown-vault` **2.3.0**, launched by
@@ -229,7 +229,7 @@ old claim:
 | Date (GA date corrected by one day) | Yes, once, in `overview.md`'s Active Bets, stated as current. About 20 other mentions are legitimately historical (dated digests, history pages). | Yes, instantly |
 
 The one leftover came from the update not sweeping `overview.md` (design
-follow-on F1), not from search.
+follow-on NW1), not from search.
 
 **Archive clutter.** Across 11 unfiltered semantic searches, **30 of 85 results
 (35%)** were `_archive/` snapshots. One search returned 8 of 8 snapshots of a single
@@ -253,7 +253,7 @@ entity pages and unlogged corrections weren't tested.
 2. **Match both tool-name forms in any MCP hook matcher**, for example
    `mcp__.*wiki-search__(vault|edit)`, because upstream users install the plugin and
    get the prefixed names.
-3. **Drop the design's step 12 (patched MCP) and defer F2 (fork)** unless MCP edits
+3. **Drop the design's step 12 (patched MCP) and defer NW2 (fork)** unless MCP edits
    are wanted back.
 4. **Align the skill with practice.** Grep plus `index.md` first. `semantic_search`
    only for wording-dependent checks (before creating a concept page, and in

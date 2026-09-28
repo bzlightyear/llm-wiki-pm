@@ -678,4 +678,4 @@ not responded to anything since June 2026.
   That's lossless, because every one has a time of exactly midnight.
 - **Optionally stop it at the source (plan step 12):** run a pinned local copy
   of the MCP patched to read dates as text (D11).
-- **Fix it properly later (follow-on F2):** fork the MCP.
+- **Fix it properly later (follow-on NW2):** fork the MCP.
