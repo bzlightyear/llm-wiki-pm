@@ -299,17 +299,27 @@ cites resolve exactly today. The problems sit around that core:
   health unknown" into `additionalContext`. Add a test that runs `wikifm.parse` over
   every page of a scratch wiki copy and requires 0 exceptions.
 
-### F9. Splits need a command, not a manual label; `split_from` + R4-🔴 catches almost nothing
+### F9. Split guidance is out of agents' sight; `split_from` + R4-🔴 catches almost nothing
 
 - **Severity:** Med (pattern 2).
-- **Affects:** 5.8 Split, R4 row, `--cited-sources` (step 6), frontmatter-changes
-  table, entity promotion (W7).
+- **Affects:** 5.8 Split, R4 row, `--cited-sources` (step 6), post-validate
+  (5.11 item 6), frontmatter-changes table, entity promotion (W7).
 - **What goes wrong:**
   - **Splits are frequent, and they spread damage.** There were 15 "history splits"
     in one week, done in two batches by agent-written ad-hoc scripts (B2), and 25
     pages are over 200 lines now. A split copies whatever is wrong on the parent onto
     every child: the design's own history shows one invented citation copied into
     ten files.
+  - **Agents won't find the procedure where it's documented.** The 200-line rule
+    lives in SCHEMA.md (template `templates/SCHEMA.md:124`, and the wiki's own
+    copy) and in `lint-guide.md:25`, not in SKILL.md. The design puts the split
+    procedure in `citation-spec.md`, which agents read only on demand. Lint's
+    "> 200 lines — split candidate" warning appears only in lint's report:
+    `session-start.sh:136-141` passes on just the broken-link and orphan counts, so
+    the warning never reaches an agent's context unless it runs lint or reads the
+    report.
+  - **The procedure misses a step.** It never trims the parent's `sources:` to what
+    the parent still cites after sections move out.
   - **The 🔴 escalation depends on a label set by hand.** It fires only if the
     splitting agent adds `split_from`. An agent that follows the procedure and uses
     `--cited-sources` already gets a correct list, so the escalation adds nothing.
@@ -319,37 +329,34 @@ cites resolve exactly today. The problems sit around that core:
     held to the stricter rule forever, even when a later edit legitimately declares
     a source it's built from. If the parent is renamed or archived, `split_from`
     points at nothing.
-  - **The procedure has six manual steps and misses one.** It never trims the
-    parent's `sources:` to what the parent still cites after sections move out.
-  - **Agents won't find it where it's documented.** The 200-line rule lives in
-    SCHEMA.md (template `templates/SCHEMA.md:124`, and the wiki's own copy), in
-    `lint-guide.md:25` and in lint's "split candidate" warning, not in SKILL.md.
-    The design puts the split procedure in `citation-spec.md`, which agents read
-    only on demand, so an agent doing a bulk cleanup may never open it.
-- **Recommendation: fix, then drop.**
-  - **Add a split command** (for example `scripts/split_page.py`). The agent chooses
-    which headings move to which new page. The command then does the mechanical
-    work:
-    - snapshot the parent;
-    - write each child with exactly the sources its text cites;
-    - trim the parent's `sources:` to what it still cites;
-    - add links both ways;
-    - rewrite `[[parent#heading]]` links to moved sections.
-
-    It uses `wikifm` for all frontmatter reads and writes, and replaces
-    `--cited-sources`, which it computes internally.
-  - **Point to it where agents look:**
-    - the split rule in SCHEMA.md, in both the template and the live wiki's copy
-      (a scaffolded copy doesn't update when the template changes);
+- **Recommendation: fix the guidance, drop the label.**
+  - **Keep `--cited-sources`,** and add a procedure step: run it on the parent too,
+    and trim the parent's `sources:` to match.
+  - **Point to the procedure where agents look.** One line, "follow the split
+    procedure in `citation-spec.md` and set each page's sources with `lint.py
+    --cited-sources`", in:
+    - the split rule in SCHEMA.md, in both the template and the live wiki's copy (a
+      scaffolded copy doesn't update when the template changes);
     - lint's "> 200 lines — split candidate" warning text;
     - `ingest-guide.md` ⑫ (entity promotion is a split).
+  - **Add a write-time reminder.** When a write takes a page over 200 lines,
+    post-validate adds the same line to the agent's context in that turn.
+  - **Drop `split_from` and the R4 escalation.** Rely on the existing checks, which
+    need no label and cover every page, including splits done by script:
+    - R3 flags a child that cites a source it doesn't declare;
+    - R4 flags a child or parent that declares many sources it doesn't cite.
+  - **Escalation path:** if lint keeps flagging split pages after this lands, add a
+    split command (for example `scripts/split_page.py`). The agent would choose
+    which headings move; the command would do the rest: snapshot the parent, write
+    each child with exactly its cited sources, trim the parent, add links both ways,
+    and rewrite `[[parent#heading]]` links, all through `wikifm`.
 
-    The detailed procedure can stay in `citation-spec.md`.
-  - **Drop `split_from` and the R4 escalation.** Rely on the existing R4 warning
-    ("many sources declared, few cited"). It needs no label, so it covers every
-    page, including splits done without the command.
-  - **Cheaper fallback,** if the command isn't built now: keep `--cited-sources`,
-    add the same pointers, and add the parent-trimming step to the procedure.
+    Not recommended up front, because:
+    - it writes many pages at once, so a bug in it would spread just as copied lists
+      do;
+    - it needs tests for directory pages, history pages and anchors;
+    - it waits on steps 4–5;
+    - the checks above already catch most split mistakes.
 
 ### F10. Contract reconciliation rests on two wrong claims about the MCP
 
@@ -481,7 +488,7 @@ cites resolve exactly today. The problems sit around that core:
 | I8 + R10 | About 4 pages; clears on an untrustworthy signal | Low, but misleading | **Drop, or make date-free** (F1) |
 | R11 contract check | Backstop for the MCP auto-init race | Very low | **Keep** (F10) |
 | R13 + `source_type`/`captured` requirement | 11 bad records from 2 weeks; 0 writers of `source_type` | Medium (writer changes) | **Drop** (F6) |
-| Split procedure + `--cited-sources` | 15 splits in a week; 25 candidates now | Low | **Replace** with a split command, pointed to from SCHEMA.md and the lint warning; `--cited-sources` is the fallback (F9) |
+| Split procedure + `--cited-sources` | 15 splits in a week; 25 candidates now | Low | **Keep**; add parent trimming, pointers in SCHEMA.md and the lint warning, and a write-time reminder; build a split command only if lint keeps flagging splits (F9) |
 | `split_from` + R4-🔴 | Depends on a manual field | Low | **Drop** (F9) |
 | `lifecycle: dated-digest` grounding exemption (D6) | Existing field; makes current behavior explicit | Very low | **Keep** |
 | `reconstructed` records (M2) | Legacy conversation dates | Low | **Keep**; read `log*.md` (F14) |
@@ -525,10 +532,10 @@ cites resolve exactly today. The problems sit around that core:
 8. **5.5, I4, R8, M6, D4:** make legends free prose and drop the rule and the
    migration step (F7).
 9. **5.11 item 7:** surface lint failure at session start (F8).
-10. **5.8, R4, frontmatter table, step 6:** replace `--cited-sources` with a split
-    command, add the parent-trimming step, point to it from SCHEMA.md (template and
-    live copy), the lint warning and ingest-guide ⑫, and drop `split_from` and the
-    R4 escalation (F9).
+10. **5.8, 5.11 item 6, R4, frontmatter table:** add the parent-trimming step.
+    Point to the procedure from SCHEMA.md (template and live copy), the lint
+    warning and ingest-guide ⑫. Add a post-validate reminder when a page crosses 200
+    lines. Drop `split_from` and the R4 escalation (F9).
 11. **Section 1, V1, 5.10:** fix the `vault.create` and "wiki version wins" claims.
     Keep R11 as the backstop (F10).
 12. **I6/R9, S2 rotation, 5.11 item 2, M2, section 7:** page-slug collision check;
