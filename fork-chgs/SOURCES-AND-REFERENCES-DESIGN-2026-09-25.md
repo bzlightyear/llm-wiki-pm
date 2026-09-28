@@ -990,16 +990,16 @@ matters to you. Your call: history rewrite is destructive for anyone who forked.
 Revisit once follow-on F2 or the step 12 patch fixes the round-trip. Keep `vault`
 on ask in any case (it includes delete).
 
+**D10. Upstream first or fork first?** Recommend offering steps 1–4 upstream
+right away (bug fixes plus a refactor, low controversy), and opening an *issue*
+for step 5's citation spec before a PR, since it changes the micro-capture
+contract the author designed.
+
 **D11. Run a locally patched copy of the MCP now (plan step 12)?** It stops new
 timestamp dates at the source for about a day's work, but the patch has to be
 re-applied and re-tested on any MCP upgrade, and it's fork-only. Recommend
 **yes, if new timestamps keep appearing after step 5's Edit-tool rule**;
 otherwise leave it to follow-on F2. It does not fix the bracket escaping (#47).
-
-**D10. Upstream first or fork first?** Recommend offering steps 1–4 upstream
-right away (bug fixes plus a refactor, low controversy), and opening an *issue*
-for step 5's citation spec before a PR, since it changes the micro-capture
-contract the author designed.
 
 ---
 
