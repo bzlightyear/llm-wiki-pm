@@ -1,8 +1,11 @@
 # Sources and references design: appendices
 
 Companion to [SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md).
-Moved out of the main document unchanged on 2026-09-28. Section numbers,
-root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the main document.
+Moved out of the main document on 2026-09-28, and revised the same day to match
+the design's revision for the review findings (F1–F16 in
+[SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md)).
+Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the
+main document.
 
 ---
 
@@ -41,8 +44,10 @@ come from accepting free text as a source. Fixing each one separately leaves
 the door open for the next variant.
 
 **What the design does:** every source gets a catalog number, which is simply
-its filename. The same number is used in all three places, and a lookup either
-finds exactly one file or reports an error (section 5.4). Because the number
+its filename. The same number is used in the list at the top and in the tags
+beside claims, and a lookup either finds exactly one file or reports an error
+(section 5.4). The Sources section at the bottom stays free-form description
+and isn't checked, because it's rarely written and has drifted only once. Because the number
 can't contain commas or spaces, no file format can mangle it.
 
 ### RC2. The honest path for chat facts cost more than the shortcut
@@ -90,15 +95,17 @@ a single step, and citing that file is the only accepted form. The shortcut
 stays short, one step longer than today, and it no longer produces citations
 that lead nowhere.
 
-### RC3. No agreed format, three different readers
+### RC3. No agreed format, at least four different readers
 
 RC3 is about *how the information at the top of each page gets read*.
 
 **How it works today:** that information (the frontmatter) is written in YAML,
 a format that allows many ways to write the same thing. A list, for example,
 can go on one line inside brackets or on separate lines with dashes. The tools
-don't use a real YAML reader. Instead there are three homemade ones: two inside
-lint and a copy inside the before-change hook.
+don't use a real YAML reader. Instead there are at least four homemade ones: two
+inside lint, a copy inside the before-change hook, and one in the session-start
+health check. That last one can't read dates written in single quotes, which is
+why the health line reported 49 stale pages when 66 were stale.
 
 **The problem:**
 
@@ -121,8 +128,10 @@ guessing differently at the unclear letters, and none of them ever saying
 pass every check while the data inside it is being lost.
 
 **What the design does:** it writes down exactly which forms are allowed
-(section 5.10), and every tool uses one shared reader. Anything outside the
-allowed forms is reported instead of guessed at.
+(section 5.10), and every tool, including the session-start check, uses one
+shared reader. Anything outside the allowed forms is reported instead of guessed
+at. The same module also gives scripts a safe way to *change* one field without
+rewriting the rest of the page.
 
 ### RC4. The safety checks guard only some of the doors
 
@@ -165,18 +174,23 @@ earlier came through the unwatched ones.
 
 **What the design does:**
 
-- **More doors watched:** the hooks are extended to recognize the MCP's write
-  tools (section 5.11), and `briefings/` joins the watched folders.
+- **One door locked:** the MCP's page-editing tool, the one that damaged pages
+  in August, is blocked with a permission setting. Agents have avoided it since
+  then, and Claude Code's normal Edit tool does the same jobs safely.
+- **More doors watched:** the hooks are extended to recognize the MCP's other
+  write tools (section 5.11), and `briefings/` joins the watched folders.
 - **A check that looks at the file itself:** a new after-change check reads the
   file from disk after it changes, rather than trusting what the tool said it
   would do.
 - **A regular sweep for the rest:** for the doors that can never be watched
   (shell, scripts, Obsidian, git), lint runs at every session start and reports
-  rule violations. Nothing can change the wiki without being noticed by the
-  next session at the latest.
+  rule violations. If lint itself fails, the health line says so instead of
+  reporting a clean wiki. Nothing can change the wiki without being noticed by
+  the next session at the latest.
 
-It detects problems; it doesn't prevent them. The hooks still never block a
-change, per the author's rule.
+Apart from the locked door, it detects problems rather than preventing them. The
+hooks still never block a change, per the author's rule; the permission setting
+is not a hook.
 
 ### RC5. No rules for pages made from other pages
 
@@ -209,8 +223,11 @@ of it looks wrong, because every copied path is real.
 
 **What the design does:** a written procedure for splits and the similar
 operations (section 5.8). A new page lists exactly the sources its own text
-cites (a lint helper computes the list), it records which page it came from,
-and it gets a stricter check against copied source lists.
+cites (a lint helper computes the list), and the parent's list is trimmed to
+what it still cites. Pointers to the procedure sit where agents actually look:
+the split rule in SCHEMA.md, lint's "split candidate" warning, and a reminder
+when a page grows past 200 lines. The existing check for pages that list many
+sources they never cite catches any split that skips the procedure.
 
 ### RC6. Nothing ever comes back to check
 
@@ -238,9 +255,11 @@ information available at that moment. Without a way back, the wiki's accuracy
 can only decline.
 
 **What the design does:** a revisit rule (R10, section 5.12). A page that rests
-only on things said in conversation is flagged after 30 days unless someone has
-re-checked it against a real source. The same idea could later apply to the
-overview page's action items, which is left to the follow-on design.
+only on things said in conversation stays flagged until someone saves a real
+source for it and adds it to the page. A date alone doesn't clear the flag,
+because the "last verified" date on pages changes with ordinary edits and so
+can't show that anyone checked anything. The same idea could later apply to the
+overview page's action items, which is left to the follow-on design (NW1).
 
 ### RC7. Copies of the same instructions drift apart
 
@@ -338,13 +357,18 @@ know about. They only look at `entities/`, `concepts/`, `comparisons/` and
   a brief are never reported.
 - **Links to briefs can't be checked.** Lint doesn't know briefs exist, so it
   would report a link to one from a content page as broken even when it's
-  correct. The production wiki's only link to a brief sits in `index.md`, which
+  correct. The production wiki's only links to briefs sit in `index.md`, which
   lint doesn't check for broken links, so the problem hasn't surfaced yet.
-- **The archive move is unwatched too.** Rotating briefs into
-  `_archive/briefings/` is a shell command, another side door from RC4.
+- **The archive move breaks links, unwatched.** Rotating briefs into
+  `_archive/briefings/` is a shell command, another side door from RC4. It has
+  already broken one of those `index.md` links, and it would break a meeting
+  digest that lists a brief among its sources.
 
-**The fix (plan steps 3 and 6):** `briefings/` joins the folders the hooks watch
-and lint scans, and brief names become valid link targets.
+**The fix (plan steps 2, 3, 6 and 10):** `briefings/` joins the folders the
+hooks watch and lint scans, and brief names become valid link targets. Briefs
+stay in `briefings/` permanently: the 7-day rotation is removed from the
+maintenance skill, since nothing reads old briefs from the archive, and the two
+already-rotated briefs are moved back (review F12).
 
 ### N3. The docs teach citations lint can't follow
 
@@ -455,8 +479,13 @@ MCP damages *unquoted* dates in a different way; that's N15.)
   noticing, so a rule that says "this value must be quoted" isn't a safe
   foundation.
 
-**The fix (plan step 4):** the single shared reader treats every value as text
-and checks dates by their pattern, so it doesn't matter whether a date is quoted.
+**The fix (plan steps 4 and 5):** the single shared reader treats every value as
+text and checks dates by their pattern, so it doesn't matter to the wiki's own
+tools whether a date is quoted. For everything else, dates are written in one
+standard form, with single quotes (`'2026-09-14'`). That's the form both the
+wiki-search MCP and Python's YAML library already write for a text date, so it
+comes through either one unchanged, and no reader mistakes it for a date value
+(review F2).
 
 ### N7. Citations written in ways no tool can follow
 
@@ -486,9 +515,11 @@ of those still work, but they're fragile.
   false alarms, which also means it can't point at exactly what's wrong.
 
 **The fix (plan steps 6 and 10):** the new format rule (R7) names each of these
-defects specifically. Lint repairs the mechanical ones automatically (line
-breaks, doubled prefixes, "vs."), and the migration hands the rest (13 citations)
-to a person to fix.
+defects specifically. Lint can repair the mechanical ones (line breaks, doubled
+prefixes, "vs."), but only when asked to with a separate option, so the
+unattended daily run never rewrites citations; the migration uses it after a
+reviewed dry run (review F5). The migration hands the rest (13 citations) to a
+person to fix.
 
 ### N8. A sub-skill still claims a gate is enforced
 
@@ -562,10 +593,13 @@ block at the top: no capture date, source type or original location. Separately,
   or they're waiting to be used. Either way, nothing in the wiki draws on them.
 - **Small in scale.** Most records are complete and nearly all are used.
 
-**The fix (plan step 6, partly):** a new rule (R13) requires the key details on
-records saved *after* it ships. Existing records are left alone because saved
-records are never edited. The design doesn't address the two unused files; they
-can be cited or left as they are.
+**The fix:** none beyond a recommended template for new records. A rule
+requiring the details (R13) was dropped: none of the tools that save records
+writes the field it would check, the records use eight different date fields,
+and all 11 bare records came from two weeks in August (review F6). The helper
+that saves conversation facts writes its record's type itself, which is the
+one field a rule reads. Existing records are left alone because saved records are
+never edited. The two unused files can be cited or left as they are.
 
 ### N12. Private wiki names appear in the public fork
 
@@ -585,9 +619,10 @@ citations as examples.
 - **It goes against the plugin's own practice.** The upstream author scrubbed
   real names from distributed files in v2.20.0 for this reason.
 
-**The fix (plan step 0):** replace the names with placeholders. Whether to also
-rewrite git history is open decision D8, because a history rewrite causes
-problems for anyone who has already copied the fork.
+**The fix (plan step 0):** replace the names with placeholders, and rewrite git
+history so the old versions no longer contain them (decided in D8). It's cheap
+now, because nobody has copied the fork yet. The commit IDs this design cites
+change as a result, and are updated from the rewrite tool's old-to-new map.
 
 ### N13. The wiki-search launcher logs a false error
 
@@ -642,40 +677,51 @@ points at exactly one page.
 `2026-09-03T00:00:00.000Z`: 13 creation dates, 3 last-verified dates and 1
 last-updated date.
 
-**The cause is confirmed.** When the wiki-search MCP changes a page's
-frontmatter, it reads the whole block and writes it back using a library
-(js-yaml) whose default setting treats an unquoted date as a date and writes it
-back as a timestamp. That was reproduced with the MCP's own copy of the library.
-The timestamps arrived in four separate commits, so it keeps happening. It's the
-same "rebuild the whole file" behavior that escapes brackets (PATCH-3d, upstream
-issue #47). It has been reported to the MCP's maintainer as issue #49, who has
-not responded to anything since June 2026.
+**The cause.** When the wiki-search MCP changes a page's frontmatter, it reads
+the whole block and writes it back using a library (js-yaml) whose default
+setting treats an unquoted date as a date and writes it back as a timestamp.
+That was reproduced with the MCP's own copy of the library. New timestamps
+arrived in five separate commits between early August and early September. The
+wiki's own log records agents using the MCP's frontmatter tool in early August;
+for the later commits the writer isn't confirmed, because about a third of the
+days the wiki was edited have no saved session record. It's the same "rebuild
+the whole file" behavior that escapes brackets (PATCH-3d, upstream issue #47).
+It has been reported to the MCP's maintainer as issue #49, who has not responded
+to anything since June 2026.
+
+The same rewrite puts single quotes around dates that were already quoted
+(`'2026-09-03'`), and Python's YAML library does the same. That's harmless in
+itself, but lint's staleness check and the session-start scan don't expect the
+quotes either.
 
 **The impact:**
 
 - **Staleness checks silently skip them.** Lint and the session-start scan use a
-  Python date reader that, on the Python version on this machine, rejects the
-  trailing `Z`. The error is swallowed, so the check is simply skipped with no
-  message.
-- **Pages that can never go stale.** The page with a timestamp `updated` date will
-  never appear in the stale-pages list, and the three with timestamp
-  `last_verified` dates will never be flagged for re-verification, however old
-  they get.
+  Python date reader that rejects the trailing `Z` of a timestamp and the quote
+  marks of a single-quoted date. The error is swallowed, so the check is simply
+  skipped with no message.
+- **Far more pages than the timestamps suggest.** Lint's 90-day check can't read
+  the update date on 115 pages, and the session-start scan skips 92 of 143
+  knowledge pages. On 2026-09-28 the health line said 49 pages were stale when 66
+  were (review F2).
 - **The creation dates are harmless for now.** Nothing checks `created` except
   that it exists, so those 13 values cause no visible problem today.
 - **It supports not trusting `last_verified`.** A date that no check can read gives
   a false sense that the page has been looked after.
 
-**The fix:** the minimum workarounds now, a real fix later.
+**The fix:**
 
-- **Avoid it (plan step 5):** change frontmatter with the Edit tool, not the
-  MCP (section 5.11, item 9).
-- **Catch and heal it (plan steps 4, 6 and 7):** the shared reader checks every
-  date against the `YYYY-MM-DD` pattern and reports anything else (R12). The
-  post-write check reports it in the same turn, and lint `--auto-fix` turns a
-  midnight timestamp back into a plain date.
-- **Clean up (plan step 10):** the migration rewrites the 17 existing values.
+- **Stop it at the source (plan step 3):** the MCP's page-editing tool is blocked
+  with a permission setting, so the rewrite can't happen on this install
+  (review F4).
+- **Write dates in a form that survives (plan steps 4 and 5):** dates are written
+  single-quoted, `'2026-09-03'`, which neither the MCP nor Python's library
+  changes.
+- **Read every form (plan step 4):** the one shared reader, now also used by the
+  session-start scan, accepts a date quoted or not, and reports anything else
+  (R12). The post-write check reports it in the same turn.
+- **Clean up (plan step 10):** the migration rewrites the 17 timestamp values in
+  the single-quoted form, using the content-repair option of lint's auto-fix.
   That's lossless, because every one has a time of exactly midnight.
-- **Optionally stop it at the source (plan step 12):** run a pinned local copy
-  of the MCP patched to read dates as text (D11).
-- **Fix it properly later (follow-on NW2):** fork the MCP.
+- **Not needed now:** the patched local MCP copy (step 12) is dropped, and the MCP
+  fork (NW2) is deferred.

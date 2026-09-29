@@ -12,6 +12,12 @@ archive snapshots, wiki repo at `7ea0375`); Claude Code transcripts under
 scratch copy. All wiki facts below are counts. No page names, people, companies
 or source slugs appear in this report.
 
+**Status:** all findings accepted as revised, and applied to the design and its
+appendices on 2026-09-28. Where a finding offered options, the design uses:
+date-free R10 (F1); the permission rule, with step 12 dropped (F4); a separate
+`--auto-fix=content` flag (F5); dropping R13 (F6); moving the two unrouted
+folders' files into routed folders (F15).
+
 Companion document: [WIKI-SEARCH-MCP-TOOLS-2026-09-28.md](WIKI-SEARCH-MCP-TOOLS-2026-09-28.md)
 lists every wiki-search MCP tool and operation with its risk, the full usage
 counts under both tool-name forms, the transcript-coverage gap, and the
