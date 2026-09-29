@@ -1,12 +1,23 @@
-# llm-wiki-pm — Local Changes & Open Issues
+# llm-wiki-pm Fork Changelog
+
+created: 2026-08-11
+
+The fork's local changes to the upstream plugin (PATCH-1 to PATCH-4), how to
+re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
+
+revised on: 2026-08-30
+Moved into the fork from the PM wiki, where it had been kept as a wiki page.
+Reorganized with PATCH-N/ISSUE-N IDs, merged five overlapping open issues into
+ISSUE-1, fixed a stale patch count and a dangling cross-reference, and added a
+status line to each open issue.
+
+revised on: 2026-08-29
+Added PATCH-4 (relationship-map wiring), captured from the diff before it was
+committed.
 
 _Relocated 2026-08-30 from `pm-wiki/concepts/llm-wiki-pm-plugin-patches.md` (a PM
-knowledge wiki that runs on this plugin) — tooling/meta content, not PM domain
-knowledge, so it belongs here instead. Originally created 2026-08-11, last updated
-2026-08-29. Renamed and reorganized 2026-08-30 (same session): corrected a
-stale patch count and a dangling cross-reference (see PATCH-4 note below),
-adopted `PATCH-N`/`ISSUE-N` IDs, merged five overlapping Open Issues entries
-into one (now ISSUE-1), and added a status line to each open issue._
+knowledge wiki that runs on this plugin): tooling/meta content, not PM domain
+knowledge, so it belongs here instead._
 
 ## About this document
 

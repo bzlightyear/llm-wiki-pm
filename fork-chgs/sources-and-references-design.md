@@ -1,20 +1,38 @@
-# Sources and references: invariant-based design
+# Sources and References Design
 
-Date: 2026-09-25 · Revised: 2026-09-28 · Status: **proposed, not implemented** ·
-Scope: every rule that
-governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
+created: 2026-09-25
+
+Invariant-based redesign of how the wiki writes and checks `raw/` source records,
+frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
+lint rules, hooks, migration and implementation plan that enforce it.
+
+revised on: 2026-09-28
+Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
+`split_from` and the patched-MCP step, made R10 date-free, set `'YYYY-MM-DD'` as
+the date form, and added a deny rule for the MCP edit tool and a text-preserving
+frontmatter writer for scripts. It also moved the appendices to their own file,
+relabeled follow-on work NW1–NW4 (adding NW3 and NW4), and changed step 0 to
+rewrite git history.
+
+revised on: 2026-09-26
+Added the lint rule catalog (5.15), impact lines for each new finding, and the
+MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
+IDs and narrowed root-file snapshots.
+
+Status: **proposed, not implemented**
+
+Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
 written, parsed and checked.
 
-Follows `LINT-FRONTMATTER-CHECKS-2026-09-23.md`. That document added checks. This
+Follows [Lint Frontmatter Checks Design](lint-frontmatter-checks-design.md). That document added checks. This
 one steps back and asks which small set of properties would make a broken
 reference impossible to create, or at least impossible to keep, and where each
 property has to live.
 
-**Revised 2026-09-28** to take in the accepted findings of
-[SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md)
-(F1–F16). Changes are marked with the finding that caused them, for example
-"(review F7)". Counts from the review's 2026-09-28 scratch copy are used where
+Changes that came from the
+[Sources and References Review](sources-and-references-review.md) (F1–F16) are
+marked with the finding that caused them, for example "(review F7)". Counts from the review's 2026-09-28 scratch copy are used where
 they differ from this document's 2026-09-25 measurements.
 
 Line references are against the fork at `c105625` (upstream `2.21.0` plus local
@@ -249,7 +267,7 @@ today's hooks fire. **Refs** = what it writes into reference sites.
 ## 3. Root causes
 
 Plain-language explanations of each root cause are in Appendix A
-([appendices file](SOURCES-AND-REFERENCES-DESIGN-2026-09-25-APPENDICES.md)).
+([Sources and References Appendices](sources-and-references-appendices.md)).
 
 | RC | Root cause | Findings it explains |
 |---|---|---|
@@ -262,7 +280,7 @@ Plain-language explanations of each root cause are in Appendix A
 | RC7 | **Duplicated surfaces drift.** Two worker copies, templates showing one shape, a default MCP contract, stale README/CONTRIBUTING, sub-skills that predate AGENTS.md's grammar. | 9, 15, 18, 20; N5, N8, N9 |
 
 New findings (N) not in the brief. Appendix B
-([appendices file](SOURCES-AND-REFERENCES-DESIGN-2026-09-25-APPENDICES.md)) explains each one in plain terms:
+([Sources and References Appendices](sources-and-references-appendices.md)) explains each one in plain terms:
 
 - **N1** `session-start.sh:136` runs lint in `--json` mode, and `lint.py:753` writes
   the report before the `--json` early return. Every session start writes a page
@@ -309,7 +327,7 @@ New findings (N) not in the brief. Appendix B
   **Impact:** 11 saved sources carry no description of where or when they came from, and two were saved but never used, so their provenance is weaker or their purpose unclear.
 - **N12** Three public fork files contain real wiki page slugs, a real marker
   string, or real names (`tests/test_lint.py:115,129`,
-  `LINT-FRONTMATTER-CHECKS-2026-09-23.md` 6 lines, `llm-wiki-pm-changelog.md`
+  [Lint Frontmatter Checks Design](lint-frontmatter-checks-design.md) 6 lines, [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md)
   7 lines). See open decision D8.
   **Impact:** Private wiki names are published in the public fork on GitHub, in two docs and a test file.
 - **N13** `hooks/wiki-search.sh:12`: the stderr bug from the brief is confirmed by
@@ -349,17 +367,17 @@ verbal relay, the user) must end up cited by an ID that resolves, without making
 micro-capture a ceremony, and without an invariant that the MCP's serializer
 breaks.
 
-| | A. Path-only + daily file (undecided candidate) | B. Mandated block-style lists | C. `raw/inbox/` queue + lint age warning (PLUGIN-REVIEW OD4) | **D. Source IDs + write-once capture records (proposed)** |
-|---|---|---|---|---|
-| Idea | Every `sources:` entry is an existing path; conversations are appended to `raw/internal/conversation-YYYY-MM-DD.md` | Frontmatter lists are always block style, so an item can't be split by commas | Unprocessed captures land in `raw/inbox/`; lint warns when one ages without being filed | A's path rule plus a defined ID grammar and exact stem resolution shared by all three sites. One record per capture, written once, by a helper |
-| Resolves I2 | Yes | **No.** A block item can still be `user, conversation, DATE`, so it only fixes shredding. | Partly: inbox items resolve, but moving them out when processed breaks every citation to them | Yes |
-| Resolves I3 (inline ↔ frontmatter) | Only if paired with a resolution rule; A doesn't define one | No | No | Yes, exact match |
-| Survives MCP re-serialization | Yes (paths need no quoting) | Yes, and it matches MCP output style | Yes | Yes. Style becomes irrelevant, not mandated. |
-| Keeps `raw/` immutable | **No.** Appending to today's file mutates a Layer-1 record several times a day, and two sessions can race the append. | n/a | Only if items never move, which defeats "queue" | Yes. A record is complete when written. |
-| Micro-capture cost | +1 Edit (append) per fact, and the agent must read the file first to append safely | 0 | +1 Write, plus a later triage | +1 Write, or one `capture.py` call, per fact or per topic |
-| Directory layout change (semver major per CONTRIBUTING) | No | No | **Yes** (`raw/inbox/`) | No (`raw/internal/` exists) |
-| Upstream conflict surface | Small | Small (templates) | Medium (SCHEMA, lint, scaffold) | Small to medium: one new reference file, lint, hooks, a few SKILL.md lines |
-| Verdict | Right direction; the append mechanism is wrong | Do it as a template default only. Unnecessary as a rule once IDs can't contain commas. | Solves a different problem (deferred filing). Decline for now; OD4 stays open (section 6). | **Adopt** |
+|                                                         | A. Path-only + daily file (undecided candidate)                                                                       | B. Mandated block-style lists                                                             | C. `raw/inbox/` queue + lint age warning (PLUGIN-REVIEW OD4)                                  | **D. Source IDs + write-once capture records (proposed)**                                                                                      |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idea                                                    | Every `sources:` entry is an existing path; conversations are appended to `raw/internal/conversation-YYYY-MM-DD.md`   | Frontmatter lists are always block style, so an item can't be split by commas             | Unprocessed captures land in `raw/inbox/`; lint warns when one ages without being filed       | A's path rule plus a defined ID grammar and exact stem resolution shared by all three sites. One record per capture, written once, by a helper |
+| Resolves I2                                             | Yes                                                                                                                   | **No.** A block item can still be `user, conversation, DATE`, so it only fixes shredding. | Partly: inbox items resolve, but moving them out when processed breaks every citation to them | Yes                                                                                                                                            |
+| Resolves I3 (inline ↔ frontmatter)                      | Only if paired with a resolution rule; A doesn't define one                                                           | No                                                                                        | No                                                                                            | Yes, exact match                                                                                                                               |
+| Survives MCP re-serialization                           | Yes (paths need no quoting)                                                                                           | Yes, and it matches MCP output style                                                      | Yes                                                                                           | Yes. Style becomes irrelevant, not mandated.                                                                                                   |
+| Keeps `raw/` immutable                                  | **No.** Appending to today's file mutates a Layer-1 record several times a day, and two sessions can race the append. | n/a                                                                                       | Only if items never move, which defeats "queue"                                               | Yes. A record is complete when written.                                                                                                        |
+| Micro-capture cost                                      | +1 Edit (append) per fact, and the agent must read the file first to append safely                                    | 0                                                                                         | +1 Write, plus a later triage                                                                 | +1 Write, or one `capture.py` call, per fact or per topic                                                                                      |
+| Directory layout change (semver major per CONTRIBUTING) | No                                                                                                                    | No                                                                                        | **Yes** (`raw/inbox/`)                                                                        | No (`raw/internal/` exists)                                                                                                                    |
+| Upstream conflict surface                               | Small                                                                                                                 | Small (templates)                                                                         | Medium (SCHEMA, lint, scaffold)                                                               | Small to medium: one new reference file, lint, hooks, a few SKILL.md lines                                                                     |
+| Verdict                                                 | Right direction; the append mechanism is wrong                                                                        | Do it as a template default only. Unnecessary as a rule once IDs can't contain commas.    | Solves a different problem (deferred filing). Decline for now; OD4 stays open (section 6).    | **Adopt**                                                                                                                                      |
 
 Why D instead of A: A gets the invariant right (every entry resolves to a file)
 but leaves two gaps. It never says how an inline marker maps to a frontmatter
@@ -941,7 +959,7 @@ warning also gains the split-procedure pointer (section 5.8).
 | `fe14c2f` quote-aware split | **Replace** when `wikifm` lands; keep until then (it is correct in the interim). Its shredding tests become R6 migration tests. | Unnecessary once no valid entry contains a comma. |
 | `c105625` template refs | **Keep.** | Plumbing; unrelated to the rules. |
 
-### `llm-wiki-pm-changelog.md`
+### [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md)
 
 | Item | Disposition |
 |---|---|
@@ -1075,8 +1093,8 @@ fork-only. Semver is per CONTRIBUTING's table.
 the unpushed local commits, so there is a single force-push.
 
 1. **Scrub the current files.** Replace the real identifiers in
-   `tests/test_lint.py`, `fork-chgs/LINT-FRONTMATTER-CHECKS-2026-09-23.md` and
-   `fork-chgs/llm-wiki-pm-changelog.md` with placeholders, using one
+   `tests/test_lint.py`, `fork-chgs/lint-frontmatter-checks-design.md` and
+   `fork-chgs/llm-wiki-pm-fork-changelog.md` with placeholders, using one
    replacement list, and commit.
 2. **Rewrite history.** Run `git filter-repo --replace-text <list>` with the same
    list, so the identifiers disappear from every past version. The rewrite changes
@@ -1245,7 +1263,7 @@ entries recording actual wiki work, and pushes the log toward `session-stop.sh`'
 step M2 to read rotated `log-*.md` files (review finding F14). Options: append
 at most one lint entry per day, updating it in place, or stop appending and rely
 on the per-day report in `queries/`. Found in the design review
-(SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md, F14).
+([Sources and References Review](sources-and-references-review.md), F14).
 
 **NW4. The action-items file is outside the plugin's rules.**
 - **What it is:** a root-level markdown file of open action items, ranked by
@@ -1258,7 +1276,7 @@ on the per-day report in `queries/`. Found in the design review
     is updated.
   - Wiki pages mention it in prose, but none link to it.
 - **Related work:** it has the same staleness problem as ISSUE-1 (action-item
-  status never updated after capture; `llm-wiki-pm-changelog.md` notes action
+  status never updated after capture; [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) notes action
   items have no real page type) and as NW1 (frozen action items in `overview.md`).
 - **Options:**
   1. **Make it a first-class page,** for example `queries/open-action-items.md`,
@@ -1292,11 +1310,11 @@ token counts (reported as bytes).
 
 **Revision of 2026-09-28.** This document was revised to take in the accepted
 findings (F1–F16) of
-[SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md).
+[Sources and References Review](sources-and-references-review.md).
 The review checked every rule against a fresh scratch copy of the wiki, the hook
 and MCP code, and the saved session transcripts. Its per-operation analysis of
 the MCP is in
-[WIKI-SEARCH-MCP-TOOLS-2026-09-28.md](WIKI-SEARCH-MCP-TOOLS-2026-09-28.md).
+[Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md).
 Additional unverified points from the review: who wrote the timestamp dates
 committed after 2026-08-11 (the saved transcripts miss about a third of the
 wiki-editing days); the MCP-versus-SessionStart startup order; how auto mode
@@ -1307,7 +1325,7 @@ treats unlisted MCP write tools.
 ## Appendices
 
 The plain-language appendices are in a separate file,
-[SOURCES-AND-REFERENCES-DESIGN-2026-09-25-APPENDICES.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25-APPENDICES.md):
+[Sources and References Appendices](sources-and-references-appendices.md):
 
 - **Appendix A.** Root causes RC1–RC7 in plain terms.
 - **Appendix B.** New findings N1–N15 in plain terms.

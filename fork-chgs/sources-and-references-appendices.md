@@ -1,9 +1,12 @@
-# Sources and references design: appendices
+# Sources and References Appendices
 
-Companion to [SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md).
-Moved out of the main document on 2026-09-28, and revised the same day to match
-the design's revision for the review findings (F1–F16 in
-[SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md)).
+created: 2026-09-28
+
+Plain-language explanations of the design's seven root causes (RC1–RC7) and
+fifteen new findings (N1–N15): what each is, what it costs, and how the plan fixes
+it.
+
+Companion to [Sources and References Design](sources-and-references-design.md).
 Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the
 main document.
 

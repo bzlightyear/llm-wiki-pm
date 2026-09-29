@@ -3,7 +3,7 @@ Tests for the frontmatter-validity and provenance-cross-reference checks in
 skills/llm-wiki-pm/scripts/lint.py (R1/R2/R5 structural, R3/R4 provenance).
 
 Fixtures are drawn from the real defects catalogued in
-fork-chgs/LINT-FRONTMATTER-CHECKS-2026-09-23.md.
+fork-chgs/lint-frontmatter-checks-design.md.
 
 Run: python3 -m pytest tests/test_lint.py -v
 """

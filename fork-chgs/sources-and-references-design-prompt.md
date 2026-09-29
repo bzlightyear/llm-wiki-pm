@@ -1,7 +1,12 @@
-# Prompt
+# Sources and References Design Prompt
+
+created: 2026-09-26
+
+The prompt that produced the sources and references design, kept as written. The
+design's section 0 corrects some of its claims.
 
 > Kept as written for provenance. Section 0 of
-> [SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md)
+> [Sources and References Design](sources-and-references-design.md)
 > corrects several claims below (version dates in findings 14 and 17, the
 > 18-page count in finding 10, and the current counts for findings 2 and 4);
 > where they differ, the design doc supersedes this prompt.
@@ -13,7 +18,7 @@ Locations:
 - Fork (the code to change): ~/Projects/llm-wiki-pm — skills/ (core llm-wiki-pm plus sub-skills brief, crm, maintain, persona, prd, research, set-wiki-path), hooks/ (session-start, pre-write, post-write, session-stop, the wiki-search.sh MCP launcher, hooks.json), .claude/agents/ (five worker subagents), skills/llm-wiki-pm/scripts/lint.py, tests/ (test_hooks.py, test_lint.py).
 - Wiki (the content these rules govern, ~263 pages): ~/Projects/pm-wiki — raw/, entities/, concepts/, comparisons/, queries/, _archive/, log.md, index.md, SCHEMA.md, meta/ (the wiki-search MCP server's vault contract), .claude/agents/ (a second copy of the worker subagents).
 - Author intent and history, in the fork root: README.md, CONTRIBUTING.md, AGENTS.md, PLUGIN-REVIEW-2026-07-15.md, CHANGELOG.md, and three feedback docs dated 2026-06-22.
-- fork-chgs/ in the fork: LINT-FRONTMATTER-CHECKS-2026-09-23.md (the proposal that started this work) and llm-wiki-pm-changelog.md (local patches and open issues).
+- fork-chgs/ in the fork: lint-frontmatter-checks-design.md (the proposal that started this work) and llm-wiki-pm-fork-changelog.md (local patches and open issues).
 
 Setup: this no longer uses the marketplace plugin. Skills are symlinked from the fork into ~/.claude/skills/, the four hooks are registered at user level in ~/.claude/settings.json with absolute fork paths, and the wiki-search MCP server is registered in ~/.claude.json. The fork's files are what runs, in every project. The wiki path resolves via .wiki-path in the working directory (no parent-directory walk), then WIKI_PATH set in the launchd environment. I also want to keep merging upstream releases from anh-chu/llm-wiki-pm through the fork's `upstream` git remote.
 
@@ -29,7 +34,7 @@ What began as adding lint checks kept exposing deeper problems. Findings from pr
 8. A page-splitting pass copied the parent's full sources list onto each child.
 9. Templates only ever show file paths in sources:.
 10. The wiki-search MCP write path round-trips frontmatter through an AST and re-emits it, changing serialization and quoting as a side effect of unrelated edits. Observed in pm-wiki commit 5cc416c: an edit to one body line converted every inline flow list on the page to block style and stripped quotes from last_verified, applying YAML-minimal quoting. Values were preserved. Two consequences to assess: any invariant phrased as "must be quoted" is unstable under a path that strips quotes, and block style structurally prevents comma-shredding since one item per line cannot split. Also evaluate whether this round-trip, rather than the page-splitting script, produced the 18-page flow/block hybrid corruption described in LINT-FRONTMATTER-CHECKS.
-11. fork-chgs/llm-wiki-pm-changelog.md documents earlier applied patches (PATCH-1 to PATCH-4) and open issues (ISSUE-1 to ISSUE-3). Read it and give a disposition for each. Two are directly in scope:
+11. fork-chgs/llm-wiki-pm-fork-changelog.md documents earlier applied patches (PATCH-1 to PATCH-4) and open issues (ISSUE-1 to ISSUE-3). Read it and give a disposition for each. Two are directly in scope:
     - ISSUE-3 (opened 2026-08-30, still unfixed) is a superset of finding 3: a `conversation, <date>` source implies raw/internal/conversation-<date>.md per ingest-guide, and those files do not exist. Its "not yet decided" section proposes a lint rule plus a frontmatter-vs-body-Sources diff — weigh that against your own design rather than duplicating it.
     - PATCH-3a added block-style parsing to parse_frontmatter() but normalizes block lists into a comma-joined flow string, re-introducing the comma ambiguity that fe14c2f removed from extract_sources and making the two parsers disagree a second way. Assess whether it needs rewriting.
 12. Sources are declared in THREE places, not two: frontmatter sources:, inline [source: ...] markers, and a body "## Sources" legend present on 49 pages. All three can drift — ISSUE-3 part B documents an entry that reached frontmatter and inline markers but never the legend, and survived six later edits. Treat the legend as a first-class declaration site in the invariants.
@@ -90,11 +95,11 @@ Three specific items to fold in:
 </constraints>
 
 <output>
-Write the design to fork-chgs/SOURCES-AND-REFERENCES-DESIGN-<today's date>.md in the fork, in the style of the existing LINT-FRONTMATTER-CHECKS doc. Include:
+Write the design to fork-chgs/SOURCES-AND-REFERENCES-DESIGN-<today's date>.md in the fork, in the style of the existing lint-frontmatter-checks-design.md doc. Include:
 1. The invariants, each with its spec location, the write paths that can violate it, its enforcement point (write-time, lint, or none), and the resulting guarantee.
 2. Root causes, mapped to the findings above plus any new ones you find.
 3. The proposed rules and canonical formats, with placeholder examples of valid and invalid entries.
-4. A disposition for each already-committed fork change (faaf2d8, 32e42a3, fe14c2f, c105625), each patch and issue in llm-wiki-pm-changelog.md (PATCH-1 to PATCH-4, ISSUE-1 to ISSUE-3), and any still-open PLUGIN-REVIEW items your design touches: keep, revise, replace, or close.
+4. A disposition for each already-committed fork change (faaf2d8, 32e42a3, fe14c2f, c105625), each patch and issue in llm-wiki-pm-fork-changelog.md (PATCH-1 to PATCH-4, ISSUE-1 to ISSUE-3), and any still-open PLUGIN-REVIEW items your design touches: keep, revise, replace, or close.
 5. Legacy content migration: what currently violates the new rules, with counts, and how to convert it, including content that can't be recovered.
 6. An ordered implementation plan with dependencies, including the semver classification, the net SKILL.md size change, and which changes are candidates to offer upstream.
 7. Open decisions that need me, with your recommendation for each.

@@ -1,9 +1,15 @@
-# wiki-search MCP: tools, usage and risk
+# Wiki-Search MCP Tools Analysis
 
-Date: 2026-09-28 · Companion to
-[SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md](SOURCES-AND-REFERENCES-DESIGN-REVIEW-2026-09-28.md)
+created: 2026-09-28
+
+Every tool and operation of the wiki-search MCP, with its usage in this wiki and
+its risk, plus a measurement of whether searching with grep instead of semantic
+search has cost anything.
+
+Companion to
+[Sources and References Review](sources-and-references-review.md)
 (finding F4) and
-[SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md](SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md).
+[Sources and References Design](sources-and-references-design.md).
 
 The wiki-search MCP is `@wirux/mcp-markdown-vault` **2.3.0**, launched by
 `hooks/wiki-search.sh` from the npx cache. That version was installed on

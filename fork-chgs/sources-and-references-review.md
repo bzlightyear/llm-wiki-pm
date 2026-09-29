@@ -1,7 +1,15 @@
-# Review: SOURCES-AND-REFERENCES-DESIGN-2026-09-25
+# Sources and References Review
 
-Date: 2026-09-28 · Reviewer: fresh session, read-only · Assumes D1–D11 accepted as
-recommended, including the step 0 scrub (D8).
+created: 2026-09-28
+
+Review of the [Sources and References Design](sources-and-references-design.md)
+against the wiki's data, the hook and MCP code, and session history. It gives 16
+findings with severity and recommendations, a cost/benefit verdict on every new
+mechanism, and the design edits it led to.
+
+Reviewer: fresh session, read-only
+
+Assumes: D1–D11 accepted as recommended, including the step 0 scrub (D8).
 
 Scope: the design doc; the fork at `5b21629` (same code as the design's `c105625`
 for everything reviewed); hooks registered in `~/.claude/settings.json`; the MCP
@@ -18,7 +26,7 @@ date-free R10 (F1); the permission rule, with step 12 dropped (F4); a separate
 `--auto-fix=content` flag (F5); dropping R13 (F6); moving the two unrouted
 folders' files into routed folders (F15).
 
-Companion document: [WIKI-SEARCH-MCP-TOOLS-2026-09-28.md](WIKI-SEARCH-MCP-TOOLS-2026-09-28.md)
+Companion document: [Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md)
 lists every wiki-search MCP tool and operation with its risk, the full usage
 counts under both tool-name forms, the transcript-coverage gap, and the
 semantic-search measurement. Finding F4 summarizes it.
@@ -221,7 +229,7 @@ cites resolve exactly today. The problems sit around that core:
   - **Fix the doc:** narrow 5.11 item 9 and D9 to `frontmatter_set` and the AST
     operations.
   - **Details:** the per-operation risk table and full usage counts are in
-    [WIKI-SEARCH-MCP-TOOLS-2026-09-28.md](WIKI-SEARCH-MCP-TOOLS-2026-09-28.md).
+    [Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md).
 - **Note the evidence gap:** the design's claims about write frequency, and this
     review's, rest on transcripts that miss about a third of the wiki-editing
     days.

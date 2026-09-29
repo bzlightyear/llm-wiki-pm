@@ -257,7 +257,7 @@ def extract_sources(text):
 
 
 # ── Frontmatter validity + provenance cross-reference ──
-# Rationale and evidence: fork-chgs/LINT-FRONTMATTER-CHECKS-2026-09-23.md.
+# Rationale and evidence: fork-chgs/lint-frontmatter-checks-design.md.
 # parse_frontmatter() partitions on the first ':' rather than parsing YAML, so
 # it accepts input that silently discards keys — a wiki-wide yaml.safe_load
 # found 23 unreadable pages while this script reported 0 errors. R1/R2 catch

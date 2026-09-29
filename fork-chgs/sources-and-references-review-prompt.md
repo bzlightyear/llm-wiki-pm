@@ -1,6 +1,11 @@
-# Prompt
+# Sources and References Review Prompt
 
-> Review prompt for SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md, written
+created: 2026-09-27
+
+The prompt for the independent review of the sources and references design,
+including the four error patterns the review was asked to hunt for.
+
+> Review prompt for sources-and-references-design.md, written
 > 2026-09-27 after the design session. It asks a fresh session to find gaps,
 > weaknesses and side effects in the design, using the error patterns found
 > during that session as a checklist.
@@ -9,11 +14,11 @@ You are reviewing a design document I will act on, and I need you to find what i
 
 <goal>
 The design exists to answer this request: "a comprehensive design for the rules that govern how wiki files, frontmatter sources, and inline citations get written — one that makes broken references impossible to create, instead of another round of patches layered on earlier patches."
-The full original prompt is ~/Projects/llm-wiki-pm/fork-chgs/llm-pm-wiki-analysis.md. Read its <author_constraints> and <task> sections: they are the standard the design must meet. The constraints are mechanize or relabel, the SKILL.md token budget, non-blocking hooks, the keep-list, CONTRIBUTING's do-not-change items, semver, and upstream mergeability. Its numbered findings are background only. Where they conflict with the design's section 0, section 0 is correct.
+The full original prompt is ~/Projects/llm-wiki-pm/fork-chgs/sources-and-references-design-prompt.md. Read its <author_constraints> and <task> sections: they are the standard the design must meet. The constraints are mechanize or relabel, the SKILL.md token budget, non-blocking hooks, the keep-list, CONTRIBUTING's do-not-change items, semver, and upstream mergeability. Its numbered findings are background only. Where they conflict with the design's section 0, section 0 is correct.
 </goal>
 
 <context>
-- Design under review: ~/Projects/llm-wiki-pm/fork-chgs/SOURCES-AND-REFERENCES-DESIGN-2026-09-25.md. It is an invariant-based redesign of how a PM wiki writes and checks raw/ source records, frontmatter `sources:`, inline `[source: …]` citations, `## Sources` legends and wikilinks. Section 1 has the invariants, section 5 the rules, section 5.15 the lint rule catalog, section 8 the implementation plan, section 9 the open decisions, and section 10 the follow-on work.
+- Design under review: ~/Projects/llm-wiki-pm/fork-chgs/sources-and-references-design.md. It is an invariant-based redesign of how a PM wiki writes and checks raw/ source records, frontmatter `sources:`, inline `[source: …]` citations, `## Sources` legends and wikilinks. Section 1 has the invariants, section 5 the rules, section 5.15 the lint rule catalog, section 8 the implementation plan, section 9 the open decisions, and section 10 the follow-on work.
 - The code it changes: the fork at ~/Projects/llm-wiki-pm, specifically skills/*/SKILL.md, skills/llm-wiki-pm/references/, templates, hooks/ (pre-write, post-write, session-start, session-stop, wiki-search.sh, hooks.json), .claude/agents/, skills/llm-wiki-pm/scripts/lint.py, and tests/. The hooks that actually run are registered in ~/.claude/settings.json.
 - The content it governs: the private wiki at ~/Projects/pm-wiki (~245 pages).
 - The wiki-search MCP is @wirux/mcp-markdown-vault v2.3.0. Its code is in the npx cache under ~/.npm/_npx/*/node_modules/@wirux/mcp-markdown-vault/dist.

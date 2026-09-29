@@ -1,4 +1,10 @@
-# Fixing WIKI_PATH via launchd
+# Wiki Path Launchd Guide
+
+created: 2026-09-24
+
+How to fix `WIKI_PATH` by setting it in the launchd environment, so the plugin's
+hooks find the wiki even when Claude Code is launched from the Dock, Finder or
+another non-shell launcher.
 
 ## Problem
 

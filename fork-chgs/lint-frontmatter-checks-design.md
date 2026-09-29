@@ -1,6 +1,13 @@
-# lint.py — proposed frontmatter validity and provenance checks
+# Lint Frontmatter Checks Design
 
-Date: 2026-09-23 · Status: **proposed, not implemented** · Target file: `skills/llm-wiki-pm/scripts/lint.py`
+created: 2026-09-23
+
+Proposed lint checks for frontmatter validity and provenance (later R1–R5),
+written after lint reported no errors on pages no YAML parser could read.
+
+Status: **proposed, not implemented**
+
+Target file: `skills/llm-wiki-pm/scripts/lint.py`
 
 Written after a working session on a 263-page wiki in which `lint.py` reported
 `0 errors` while 23 pages had frontmatter that no YAML parser could read, and
