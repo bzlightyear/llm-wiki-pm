@@ -10,6 +10,8 @@ revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
 the full git history. Product and page-topic names stay, so only the test file
 and the lint-checks design are scrubbed, and N12 and D8 were updated to match.
+Completed step 0, decided to implement in the fork before offering anything
+upstream (D10), and set the status to in progress.
 
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
@@ -24,7 +26,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **proposed, not implemented**
+Status: **in progress**: step 0 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -1159,7 +1161,7 @@ new tests in new files.
 ## 9. Decisions
 
 All decided 2026-09-28. Each shows the question, the decision, and the reason.
-D4, D8, D9 and D11 differ from this document's original recommendations; the
+D4, D8, D9, D10 and D11 differ from this document's original recommendations; the
 design review caused D4, D9 and D11 (review F7, F4, F2).
 
 **D1. Adopt source IDs + write-once capture records (option D) over the daily
@@ -1219,10 +1221,14 @@ operations. Leave `vault` off the allowlist (it includes delete), and add an
 explicit `ask` entry if MCP writes should always prompt, since `defaultMode:
 "auto"` doesn't guarantee one.
 
-**D10. Upstream first or fork first?** **Decided:** offer steps 1–4 upstream
-right away (bug fixes plus a refactor, low controversy), and open an *issue*
-for step 5's citation spec before a PR, since it changes the micro-capture
-contract the author designed.
+**D10. Upstream first or fork first?** **Decided 2026-09-29: fork first.**
+Implement the whole plan in the fork, then offer it upstream as a separate task
+once every step has landed. The "Up/Fork" column in section 8 marks which steps
+are candidates for that later offer. When it happens, offer steps 1–4 as pull
+requests (bug fixes plus a refactor, low controversy), and open an *issue* for
+step 5's citation spec before a PR, since it changes the micro-capture contract
+the author designed. This replaces the original recommendation to offer steps
+1–4 upstream right away.
 
 **D11. Run a locally patched copy of the MCP (plan step 12)?** **Decided: no;
 step 12 is dropped** (changed by review F2, F4). The permission rule in D9
