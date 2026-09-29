@@ -899,7 +899,7 @@ fork-only. Semver is per CONTRIBUTING's table.
 
 | Step | Change | Depends on | Semver | Up/Fork |
 |---|---|---|---|---|
-| 0 | Scrub real names from `tests/test_lint.py` and the two fork-chgs docs (N12, D8) | — | — | Fork (public repo hygiene) |
+| 0 | Scrub real names from the current files and from git history, then update cited commit IDs (N12, D8; detail below the table) | — | — | Fork (public repo hygiene) |
 | 1 | `wiki-search.sh` `-f` fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver | — | patch | **Up** |
 | 3 | Hooks: MCP matchers; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call | — | patch (bug fixes) + minor (MCP coverage) | **Up** |
@@ -912,6 +912,30 @@ fork-only. Semver is per CONTRIBUTING's table.
 | 10 | Wiki migration M1–M8 (dry-run, review, apply, commit in the wiki repo) | 5, 6 | — | Fork (wiki content) |
 | 11 | Promote R3/R6 to 🔴 | 10 | **major (3.0.0)**: it narrows the valid value space of `sources:`, a frontmatter-schema change that makes existing wikis report errors | **Up**, with the migration script |
 | 12 | *Optional (D11).* Pinned local copy of the MCP (v2.3.0) with a version-checked patch that passes `{schema: yaml.CORE_SCHEMA}` to the frontmatter `load`/`dump` calls; `wiki-search.sh` runs it instead of the npx cache; a test in `tests/test_wiki_search.py` asserts `created: 2026-09-03` survives a `frontmatter_set` round-trip | 1 | — | Fork |
+
+**Step 0 in detail.** Do it before any implementation commit and before pushing
+the unpushed local commits, so there is a single force-push.
+
+1. **Scrub the current files.** Replace the real identifiers in
+   `tests/test_lint.py`, `fork-chgs/LINT-FRONTMATTER-CHECKS-2026-09-23.md` and
+   `fork-chgs/llm-wiki-pm-changelog.md` with placeholders, using one
+   replacement list, and commit.
+2. **Rewrite history.** Run `git filter-repo --replace-text <list>` with the same
+   list, so the identifiers disappear from every past version. The rewrite changes
+   every commit from `d566e55` (2026-09-24, the first to add one) onward.
+   filter-repo updates commit IDs mentioned in commit messages itself, and writes
+   an old-to-new map to `.git/filter-repo/commit-map`.
+3. **Verify.** Search the whole rewritten history for each identifier
+   (`git log -p --all -S<string>` must find nothing), and run the test suite.
+4. **Update cited commit IDs.** IDs written inside files aren't rewritten. Use the
+   commit map to replace every rewritten fork ID cited in `fork-chgs/`: in this
+   document these are `c105625`, `faaf2d8`, `32e42a3` and `fe14c2f`, and the
+   review cites `5b21629`. Upstream IDs (`dfa3b93`, `56413ab`, `67c4adb`) and wiki
+   repo IDs (`c910309`, `c4de70c`, `5cc416c` and others) don't change. Commit the
+   update.
+5. **Publish.** Force-push `main`. Re-clone any other local copies, because
+   old clones still hold the identifiers. GitHub keeps orphaned commits reachable
+   by ID for a while; ask GitHub support to purge them if that matters.
 
 ### Frontmatter changes and semver
 
@@ -987,9 +1011,15 @@ error. The alternative (🔴 now) turns the session-start health line red
 on day one for a known, scheduled backlog.
 
 **D8. Public-repo hygiene (N12).** Two existing fork docs and one test file carry
-real wiki identifiers. Recommend scrubbing them to placeholders in step 0 and
-accepting that the strings remain in git history, or rewriting history if that
-matters to you. Your call: history rewrite is destructive for anyone who forked.
+real wiki identifiers, and all three are already on GitHub. **Decided 2026-09-28:
+scrub the current files and rewrite git history** (step 0), instead of the
+earlier recommendation to leave the identifiers in history. The rewrite is cheap
+now: the fork has 0 forks, so it breaks no one else's copy, and the unpushed
+local commits can go out in the same force-push. Every day and every fork
+after this raises the cost. Costs accepted: rewritten commit IDs from `d566e55`
+onward, with the IDs cited in `fork-chgs/` updated from the commit map (step 0,
+item 4); a force-push; re-cloning other local copies; and orphaned commits staying
+reachable by ID on GitHub until they are purged.
 
 **D9. `mcp__wiki-search__edit` on the allowlist after step 3?** Recommend
 **no, not yet.** Snapshots make its writes recoverable, but every frontmatter or
