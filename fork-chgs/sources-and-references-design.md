@@ -11,7 +11,9 @@ Narrowed step 0's scrub to people and customer company names, after a scan of
 the full git history. Product and page-topic names stay, so only the test file
 and the lint-checks design are scrubbed, and N12 and D8 were updated to match.
 Completed step 0, decided to implement in the fork before offering anything
-upstream (D10), and set the status to in progress.
+upstream (D10), and set the status to in progress. Completed step 1 with the
+other hooks' `.wiki-path` read in place of the `-f` test in section 5.13, which
+would have stopped the launcher when the file exists but can't be read.
 
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
@@ -26,7 +28,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: step 0 done (see section 8)
+Status: **in progress**: steps 0 and 1 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -886,14 +888,12 @@ here.
 ### 5.13 `wiki-search.sh` fix and smoke test
 
 ```sh
-FILE_WIKI=""
-if [ -f "$(pwd)/.wiki-path" ]; then
-  FILE_WIKI=$(tr -d '[:space:]' < "$(pwd)/.wiki-path")
-fi
+FILE_WIKI=$(cat "$(pwd)/.wiki-path" 2>/dev/null | tr -d '[:space:]' || true)
 ```
 
-This mirrors `session-start.sh`'s `-f` test. The bug is that a failed `<`
-redirection is reported by the shell before `2>/dev/null` applies. Reproduced:
+This is how the other four hooks read the file: silent when it is missing, and
+falling back to the next option when it can't be read. The bug is that a failed
+`<` redirection is reported by the shell before `2>/dev/null` applies. Reproduced:
 running the launcher in an empty directory prints `…/.wiki-path: No such file or
 directory`.
 
@@ -1084,7 +1084,7 @@ fork-only. Semver is per CONTRIBUTING's table.
 | Step | Change | Depends on | Semver | Up/Fork |
 |---|---|---|---|---|
 | 0 | Scrub real names from the current files and from git history, then update cited commit IDs (N12, D8; detail below the table) | — | — | Fork (public repo hygiene) |
-| 1 | `wiki-search.sh` `-f` fix + `tests/test_wiki_search.py` | — | patch | **Up** |
+| 1 | `wiki-search.sh` `.wiki-path` read fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver. `llm-wiki-maintain`: remove step ⑤ "Brief rotation" and the `_archive/briefings/` convention line (review F12), and reword step ⑥'s "non-destructive" note to name what plain `--auto-fix` does (review F5) | — | patch | **Up** |
 | 3 | Hooks: MCP matchers for both tool-name forms, with the `action`/`dryRun` filters; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call. Permission rule: deny both name forms of the MCP `edit` tool in `~/.claude/settings.json` (fork install), and document it in the README's install notes (review F4, F13) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
 | 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write, backlinks **and session-start's stale scan** switch to it (review F2); delete the old parsers (replaces PATCH-3a, 543766c); PyYAML-oracle tests plus a whole-wiki no-exception test (review F8) | — | patch | **Up** |

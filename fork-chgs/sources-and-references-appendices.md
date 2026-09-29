@@ -8,7 +8,8 @@ it.
 
 revised on: 2026-09-29
 Narrowed N12 to the names of people and customer companies, in one doc and the
-test file, to match the design's narrowed step 0 scrub.
+test file, to match the design's narrowed step 0 scrub. Corrected N13's fix to
+match the design's section 5.13.
 
 Companion to [Sources and References Design](sources-and-references-design.md).
 Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the
@@ -653,8 +654,8 @@ directly.
   v2.20.0 fix for PLUGIN-REVIEW A11, whose requested smoke test was never
   written.
 
-**The fix (plan step 1):** check whether the file exists before reading it, as
-the session-start hook already does, and add the smoke test A11 asked for
+**The fix (plan step 1):** read the file the way the other four hooks do, which
+stays silent when it's missing, and add the smoke test A11 asked for
 (section 5.13).
 
 ### N14. All README pages share one backup name
