@@ -7,6 +7,8 @@ Each test creates a temp wiki fixture, feeds the correct stdin JSON payload
 Run: python3 -m pytest tests/test_hooks.py -v
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
