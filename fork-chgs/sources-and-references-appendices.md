@@ -6,6 +6,10 @@ Plain-language explanations of the design's seven root causes (RC1–RC7) and
 fifteen new findings (N1–N15): what each is, what it costs, and how the plan fixes
 it.
 
+revised on: 2026-09-29
+Narrowed N12 to the names of people and customer companies, in one doc and the
+test file, to match the design's narrowed step 0 scrub.
+
 Companion to [Sources and References Design](sources-and-references-design.md).
 Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the
 main document.
@@ -606,16 +610,18 @@ never edited. The two unused files can be cited or left as they are.
 
 ### N12. Private wiki names appear in the public fork
 
-**What N12 is:** the fork is public on GitHub, but three files in it contain
-names from the private wiki: a test file uses a real page name and a real
-citation string, and two earlier fork-chgs documents quote real page names and
-citations as examples.
+**What N12 is:** the fork is public on GitHub, but two files in it contain the
+names of real people and customer companies from the private wiki: a test file
+uses two real source names that include customer names, and the earlier
+lint-checks design quotes them, along with two colleagues' page names, as
+examples. Product names and page-topic names also appear, but those aren't
+treated as private.
 
 **The impact:**
 
 - **Private information is publicly readable.** Anyone browsing the fork can
-  see names of customers, colleagues or internal projects that were meant to
-  stay in the private wiki.
+  see names of customers and colleagues that were meant to stay in the private
+  wiki.
 - **It's already in git history.** Scrubbing the files stops it being visible in
   current versions, but the old versions stay reachable unless the history is
   rewritten.

@@ -5,6 +5,10 @@ created: 2026-09-23
 Proposed lint checks for frontmatter validity and provenance (later R1–R5),
 written after lint reported no errors on pages no YAML parser could read.
 
+revised on: 2026-09-29
+Replaced the names of real people and customer companies in the examples with
+placeholders (`person-a`, `customer-a`, …), as part of the design's step 0.
+
 Status: **proposed, not implemented**
 
 Target file: `skills/llm-wiki-pm/scripts/lint.py`

@@ -6,6 +6,11 @@ Invariant-based redesign of how the wiki writes and checks `raw/` source records
 frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
 lint rules, hooks, migration and implementation plan that enforce it.
 
+revised on: 2026-09-29
+Narrowed step 0's scrub to people and customer company names, after a scan of
+the full git history. Product and page-topic names stay, so only the test file
+and the lint-checks design are scrubbed, and N12 and D8 were updated to match.
+
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
 `split_from` and the patched-MCP step, made R10 date-free, set `'YYYY-MM-DD'` as
@@ -325,11 +330,12 @@ New findings (N) not in the brief. Appendix B
 - **N11** 11 of 153 raw `.md` records have no frontmatter; 2 raw files are
   referenced by no page.
   **Impact:** 11 saved sources carry no description of where or when they came from, and two were saved but never used, so their provenance is weaker or their purpose unclear.
-- **N12** Three public fork files contain real wiki page slugs, a real marker
-  string, or real names (`tests/test_lint.py:115,129`,
-  [Lint Frontmatter Checks Design](lint-frontmatter-checks-design.md) 6 lines, [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md)
-  7 lines). See open decision D8.
-  **Impact:** Private wiki names are published in the public fork on GitHub, in two docs and a test file.
+- **N12** Two public fork files contain the names of real people or customer
+  companies from the private wiki: `tests/test_lint.py` (2 lines) and the
+  [Lint Frontmatter Checks Design](lint-frontmatter-checks-design.md) (4 lines).
+  Product names and page-topic names (for example CFP) are not treated as private
+  and stay. See decision D8.
+  **Impact:** Names of people and customers from the private wiki are published in the public fork on GitHub, in one doc and a test file.
 - **N13** `hooks/wiki-search.sh:12`: the stderr bug from the brief is confirmed by
   running the launcher in an empty directory. It was introduced by the v2.20.0 fix
   for A11, and A11's smoke test was never written.
@@ -1092,10 +1098,12 @@ fork-only. Semver is per CONTRIBUTING's table.
 **Step 0 in detail.** Do it before any implementation commit and before pushing
 the unpushed local commits, so there is a single force-push.
 
-1. **Scrub the current files.** Replace the real identifiers in
-   `tests/test_lint.py`, `fork-chgs/lint-frontmatter-checks-design.md` and
-   `fork-chgs/llm-wiki-pm-fork-changelog.md` with placeholders, using one
-   replacement list, and commit.
+1. **Scrub the current files.** Replace the names of people and customer
+   companies in `tests/test_lint.py` and
+   `fork-chgs/lint-frontmatter-checks-design.md` with placeholders (`person-a`,
+   `customer-a`, …), using one replacement list, and commit. The list is kept
+   outside the repo, since it contains the real names. Product and page-topic
+   names stay.
 2. **Rewrite history.** Run `git filter-repo --replace-text <list>` with the same
    list, so the identifiers disappear from every past version. The rewrite changes
    every commit from `d566e55` (2026-09-24, the first to add one) onward.
@@ -1191,8 +1199,9 @@ resolves is already an R3 error. Starting any of them at 🔴 would turn the
 session-start health line red on day one for a known, scheduled backlog. R12 has
 13 violating pages until M4 (review F3).
 
-**D8. Public-repo hygiene (N12).** Two existing fork docs and one test file carry
-real wiki identifiers, and all three are already on GitHub. **Decided 2026-09-28:
+**D8. Public-repo hygiene (N12).** One fork doc and one test file carry the names
+of real people and customer companies from the wiki, and both are already on
+GitHub. Product and page-topic names are not treated as private. **Decided 2026-09-28:
 scrub the current files and rewrite git history** (step 0), instead of the
 earlier recommendation to leave the identifiers in history. The rewrite is cheap
 now: the fork has 0 forks, so it breaks no one else's copy, and the unpushed
