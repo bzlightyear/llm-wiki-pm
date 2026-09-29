@@ -4,8 +4,10 @@ created: 2026-09-29
 
 Reusable prompt for implementing one step of the implementation plan in the
 [Sources and References Design](sources-and-references-design.md) (section 8).
-Start a new session with it for each step, or each small group of steps, and
-change only the step number in the first line.
+Start a new session with it for each step, or each small group of steps. Run it
+with the project command `/implement-step <N>`
+(`.claude/commands/implement-step.md`), or paste the text below the `---` with
+the step number filled in.
 
 ---
 
