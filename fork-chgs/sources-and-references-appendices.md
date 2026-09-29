@@ -90,7 +90,7 @@ label, so it appears in several different forms, which is part of the 12
 shapes. Written without quotes, some of those forms get split in two by the
 frontmatter format. When a fact arrived in chat during an Update, one session
 invented a raw-looking filename for it, which is the phantom citation. A later
-fork fix (`32e42a3`) made "user, conversation, DATE" an officially allowed form
+fork fix (`ae33f9d`) made "user, conversation, DATE" an officially allowed form
 for Updates, which added yet another shape instead of closing the gap.
 
 **Why it's a root cause, not just a bug:** telling the agent to "be careful"

@@ -11,7 +11,7 @@ Reviewer: fresh session, read-only
 
 Assumes: D1–D11 accepted as recommended, including the step 0 scrub (D8).
 
-Scope: the design doc; the fork at `5b21629` (same code as the design's `c105625`
+Scope: the design doc; the fork at `3cb4322` (same code as the design's `11fa847`
 for everything reviewed); hooks registered in `~/.claude/settings.json`; the MCP
 (`@wirux/mcp-markdown-vault` 2.3.0, npx cache); a scratch copy of the private wiki
 taken 2026-09-28 (246 live pages, 43 lint reports, 153 `raw/` records, 242

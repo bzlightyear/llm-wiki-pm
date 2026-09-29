@@ -40,7 +40,7 @@ Changes that came from the
 marked with the finding that caused them, for example "(review F7)". Counts from the review's 2026-09-28 scratch copy are used where
 they differ from this document's 2026-09-25 measurements.
 
-Line references are against the fork at `c105625` (upstream `2.21.0` plus local
+Line references are against the fork at `11fa847` (upstream `2.21.0` plus local
 commits). Wiki measurements come from a scratch copy of the private production
 wiki taken 2026-09-25 (245 live pages, 242 archive snapshots, 156 `raw/` files).
 Every wiki example below is a placeholder. Defect classes are described with
@@ -109,7 +109,7 @@ use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D, NW).
 | 2: comma-shredding on 11 pages | 5 were quoted in `5cc416c`. **5 remain**: 4 are still unquoted flow lists, and 1 was converted to block style by the `c4de70c` repair with the shred frozen in as two block items (a bare `conversation` item and a bare date item). |
 | 4: typo'd raw paths | All 695 declared `raw/` paths resolve today (repaired in `5cc416c`). The *class* is still undetected by lint. |
 | 7: `pre-write.sh` "on Edit reads pre-edit content from disk" | Confirmed (`pre-write.sh:65-71`). Worse than stated: the freshness gate therefore judges the page *before* the edit, so an Edit that removes the last source passes silently and an Edit that adds the first one still triggers the warning. |
-| 11: "fe14c2f removed the comma ambiguity from extract_sources" | True only for quoted flow entries. `extract_tags()` still splits PATCH-3a's comma-joined string (`lint.py:133-139`), so a block-style tag with a comma would still shred. No tag contains one today. |
+| 11: "543766c removed the comma ambiguity from extract_sources" | True only for quoted flow entries. `extract_tags()` still splits PATCH-3a's comma-joined string (`lint.py:133-139`), so a block-style tag with a comma would still shred. No tag contains one today. |
 | 19: TestLint | Confirmed: `tests/test_hooks.py:864` has 5 tests and `tests/test_lint.py` has 13. PyYAML 6.0.3 **is** installed (system Python 3.9.6). pytest is not. |
 | SKILL.md "~4.3k tokens" (v2.20.0) | The file is 24,625 bytes today (23,938 at `2.21.0`). At a typical ~4 chars/token that is ~6k, so the 4.3k figure used a different estimator. This doc reports deltas in bytes. |
 
@@ -277,7 +277,7 @@ Plain-language explanations of each root cause are in Appendix A
 | RC | Root cause | Findings it explains |
 |---|---|---|
 | **RC1** | **No source identity.** There is no definition of a source ID or a resolution function. Each of three declaration sites accepts free text, and "is this a source?" is answered by a prefix test (`not startswith(entities/…)`). **This is the biggest root cause.** | 1, 2, 3, 4, 6, 12, 14, 16; R3's permissive matcher; N3, N4, N7 |
-| RC2 | **The honest path for conversational facts is more expensive than the dishonest one.** Capture-to-raw (v2.0.0) is a full ingest; the v2.20.0 fast path skips it by design (A13) and prescribes a citation shape that resolves to nothing. `32e42a3` then made a *third* shape official for Update. | 1, 3, 17, ISSUE-3 A |
+| RC2 | **The honest path for conversational facts is more expensive than the dishonest one.** Capture-to-raw (v2.0.0) is a full ingest; the v2.20.0 fast path skips it by design (A13) and prescribes a citation shape that resolves to nothing. `ae33f9d` then made a *third* shape official for Update. | 1, 3, 17, ISSUE-3 A |
 | RC3 | **No frontmatter profile, at least four parsers.** No document says what subset of YAML a page may use, so each parser guesses: `parse_frontmatter`, `extract_sources`, the copy in `pre-write.sh`, and session-start's stale scan (`session-start.sh:151-189`, review F2). PATCH-3a added another behavior by joining lists into strings. | 5, 10, 11 |
 | RC4 | **Enforcement is attached to tool names, not to files.** The hooks match Write/Edit/MultiEdit, so MCP, Bash, scripts, lint `--auto-fix` and session-start are unseen writers, and `briefings/` sits outside the gate entirely. | 7, 10, 18; N1, N2, N14 |
 | RC5 | **Derived-page operations have no reference procedure.** Split, entity promotion, supersede and crystallize say nothing about which sources and links the new page may carry. | 3 (propagation into 10 files), 8 |
@@ -593,7 +593,7 @@ applies to micro-capture, Update, Learn and CRM alike.
 - Tool-retrieved facts (a chat thread read via MCP) are *not* conversation
   records. They follow the chat/email capture routes (`ingest-guide ①`), as today.
 - The SKILL.md §2 fast path changes from `source: conversation | <date>` to
-  "capture a record (`capture.py`), cite its ID". The §4 ③ text from `32e42a3`
+  "capture a record (`capture.py`), cite its ID". The §4 ③ text from `ae33f9d`
   shrinks to two lines pointing at this section. "Never coin an ID for a record
   that doesn't exist" survives verbatim as the one-line reason.
 
@@ -927,7 +927,7 @@ with a message when no node is found. No network and no real MCP needed.
 ### 5.15 Lint rule catalog
 
 Every R-numbered rule this document mentions, in one place. R1–R5 exist today
-(commit `faaf2d8`); R6–R13 are proposed, and R8 and R13 were dropped by the
+(commit `91878dc`); R6–R13 are proposed, and R8 and R13 were dropped by the
 review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 11. 🔴 error, 🟡 warning, 🔵 info. Content auto-fixes run only under
 `--auto-fix=content` (section 5.11, item 8).
@@ -960,10 +960,10 @@ warning also gains the split-procedure pointer (section 5.8).
 
 | Commit | Disposition | Reason |
 |---|---|---|
-| `faaf2d8` R1–R5 | **Revise.** R1/R2/R5 kept as messages of the profile parser (step 4). R3 **replaced** by exact ID resolution (🟡 in 2.22, 🔴 in 3.0). R4 kept as a ratio on every page (the `split_from` escalation was dropped, review F9). Tests kept and extended. | R3's permissive matcher and conversational exemption exist only because IDs were undefined. |
-| `32e42a3` §4 conversational citation | **Revise.** Keep "never coin an ID for an uncaptured artifact". Replace the `[source: user, conversation, DATE]` alternative with "capture a record". Move the detail to citation-spec. SKILL.md ③ drops from 402 to ~150 bytes of added text. | It legitimized one of the 12 shapes. |
-| `fe14c2f` quote-aware split | **Replace** when `wikifm` lands; keep until then (it is correct in the interim). Its shredding tests become R6 migration tests. | Unnecessary once no valid entry contains a comma. |
-| `c105625` template refs | **Keep.** | Plumbing; unrelated to the rules. |
+| `91878dc` R1–R5 | **Revise.** R1/R2/R5 kept as messages of the profile parser (step 4). R3 **replaced** by exact ID resolution (🟡 in 2.22, 🔴 in 3.0). R4 kept as a ratio on every page (the `split_from` escalation was dropped, review F9). Tests kept and extended. | R3's permissive matcher and conversational exemption exist only because IDs were undefined. |
+| `ae33f9d` §4 conversational citation | **Revise.** Keep "never coin an ID for an uncaptured artifact". Replace the `[source: user, conversation, DATE]` alternative with "capture a record". Move the detail to citation-spec. SKILL.md ③ drops from 402 to ~150 bytes of added text. | It legitimized one of the 12 shapes. |
+| `543766c` quote-aware split | **Replace** when `wikifm` lands; keep until then (it is correct in the interim). Its shredding tests become R6 migration tests. | Unnecessary once no valid entry contains a comma. |
+| `11fa847` template refs | **Keep.** | Plumbing; unrelated to the rules. |
 
 ### [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md)
 
@@ -1085,8 +1085,8 @@ fork-only. Semver is per CONTRIBUTING's table.
 | 1 | `wiki-search.sh` `-f` fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver. `llm-wiki-maintain`: remove step ⑤ "Brief rotation" and the `_archive/briefings/` convention line (review F12), and reword step ⑥'s "non-destructive" note to name what plain `--auto-fix` does (review F5) | — | patch | **Up** |
 | 3 | Hooks: MCP matchers for both tool-name forms, with the `action`/`dryRun` filters; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call. Permission rule: deny both name forms of the MCP `edit` tool in `~/.claude/settings.json` (fork install), and document it in the README's install notes (review F4, F13) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
-| 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write, backlinks **and session-start's stale scan** switch to it (review F2); delete the old parsers (replaces PATCH-3a, fe14c2f); PyYAML-oracle tests plus a whole-wiki no-exception test (review F8) | — | patch | **Up** |
-| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2); `capture.py`; SKILL.md §2/§4 edits and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `32e42a3` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
+| 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write, backlinks **and session-start's stale scan** switch to it (review F2); delete the old parsers (replaces PATCH-3a, 543766c); PyYAML-oracle tests plus a whole-wiki no-exception test (review F8) | — | patch | **Up** |
+| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2); `capture.py`; SKILL.md §2/§4 edits and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
 | 6 | Lint: R6, R3 exact, R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3); `--cited-sources`; the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content` (review F5); auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I3 counts and reports a lint failure instead of zero counts (review F8) | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check; split-procedure reminder when a page crosses 200 lines, review F9) | 3, 4, 6 | minor | **Up** |
 | 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` as empty (review F10) | 5 | minor | **Up** |
@@ -1106,15 +1106,15 @@ the unpushed local commits, so there is a single force-push.
    names stay.
 2. **Rewrite history.** Run `git filter-repo --replace-text <list>` with the same
    list, so the identifiers disappear from every past version. The rewrite changes
-   every commit from `d566e55` (2026-09-24, the first to add one) onward.
+   every commit from `4e61e6c` (2026-09-24, the first to add one) onward.
    filter-repo updates commit IDs mentioned in commit messages itself, and writes
    an old-to-new map to `.git/filter-repo/commit-map`.
 3. **Verify.** Search the whole rewritten history for each identifier
    (`git log -p --all -S<string>` must find nothing), and run the test suite.
 4. **Update cited commit IDs.** IDs written inside files aren't rewritten. Use the
    commit map to replace every rewritten fork ID cited in `fork-chgs/`: in this
-   document these are `c105625`, `faaf2d8`, `32e42a3` and `fe14c2f`, and the
-   review cites `5b21629`. Upstream IDs (`dfa3b93`, `56413ab`, `67c4adb`) and wiki
+   document these are `11fa847`, `91878dc`, `ae33f9d` and `543766c`, and the
+   review cites `3cb4322`. Upstream IDs (`dfa3b93`, `56413ab`, `67c4adb`) and wiki
    repo IDs (`c910309`, `c4de70c`, `5cc416c` and others) don't change. Commit the
    update.
 5. **Publish.** Force-push `main`. Re-clone any other local copies, because
@@ -1206,7 +1206,7 @@ scrub the current files and rewrite git history** (step 0), instead of the
 earlier recommendation to leave the identifiers in history. The rewrite is cheap
 now: the fork has 0 forks, so it breaks no one else's copy, and the unpushed
 local commits can go out in the same force-push. Every day and every fork
-after this raises the cost. Costs accepted: rewritten commit IDs from `d566e55`
+after this raises the cost. Costs accepted: rewritten commit IDs from `4e61e6c`
 onward, with the IDs cited in `fork-chgs/` updated from the commit map (step 0,
 item 4); a force-push; re-cloning other local copies; and orphaned commits staying
 reachable by ID on GitHub until they are purged.
@@ -1302,7 +1302,7 @@ on the per-day report in `queries/`. Found in the design review
 
 ## Provenance of this document
 
-Written from direct reading of every file named in section 2 in the fork at `c105625`:
+Written from direct reading of every file named in section 2 in the fork at `11fa847`:
 all eight SKILL.md files, the eleven core references, templates (core, prd, crm),
 the five hooks and `hooks.json`, the five worker agents, `lint.py`, both test
 modules, README, CONTRIBUTING, AGENTS.md, CHANGELOG, PLUGIN-REVIEW, and the
