@@ -30,7 +30,7 @@ pages. Every query cites specific wiki entries. The wiki compounds.
 - **Ingest / query / update / lint / archive** flows with discipline guardrails
 - **Supersession** with auto-redirect of inbound links
 - **Crystallize** pattern: transcripts become structured decision digests
-- **Privacy-first**: pre-ingest filter + `private:` frontmatter flag
+- **Privacy-first**: pre-ingest filter + private-by-default pages (only `shareable: true` pages are exported)
 - **Bundled wiki-search**: semantic + TF-IDF search over your whole wiki (auto-indexes on startup)
 - **Obsidian-compatible**: works as a vault out of the box
 - **Worker agents**: five subagents (indexer, fetcher, link-validator, lint, people-updater)
@@ -93,6 +93,28 @@ If you used Option B without installing the plugin, set `WIKI_PATH` before start
 echo 'export WIKI_PATH=$HOME/pm-wiki' >> ~/.bashrc && source ~/.bashrc
 ```
 
+### Recommended: permission rules for wiki-search
+
+The wiki-search MCP's `edit` tool rewrites the whole page on most operations,
+which escapes `[[wikilinks]]` as `\[\[` (wirux/mcp-markdown-vault#47) and turns
+dates into timestamps (#49). The built-in Edit tool does everything it does, so
+deny it. Its `vault` tool can also delete pages, so have it ask first. A plugin
+can't install permission rules, so add them to `~/.claude/settings.json`
+yourself. Each tool is listed under both of its names: the first when the
+server is configured directly, the second when it comes with the plugin.
+
+```json
+{
+  "permissions": {
+    "deny": ["mcp__wiki-search__edit", "mcp__plugin_llm-wiki-pm_wiki-search__edit"],
+    "ask": ["mcp__wiki-search__vault", "mcp__plugin_llm-wiki-pm_wiki-search__vault"]
+  }
+}
+```
+
+The `ask` rule also prompts on `vault` reads, which agents rarely make, since
+reads go through the `view` tool.
+
 Full setup, including mobile Obsidian sync, in
 [GETTING_STARTED.md](GETTING_STARTED.md).
 
@@ -104,7 +126,7 @@ Full setup, including mobile Obsidian sync, in
 | **Storage** | Plain markdown | Plain markdown | Plain markdown | Supabase + S3 | Cloud |
 | **Search** | Bundled semantic + TF-IDF (wiki-search) + backlinks | grep + index | grep + index | PGroonga | Proprietary |
 | **Update discipline** | Diffs + supersession fields + auto-link rewrite | Diffs + source cite | Human-in-loop audit | None explicit | N/A |
-| **Privacy** | Pre-ingest filter + `private:` flag | None | None | User-scoped | SaaS ToS |
+| **Privacy** | Pre-ingest filter + private by default (`shareable:` allowlist) | None | None | User-scoped | SaaS ToS |
 | **Transcript support** | `crystallize` flow (decisions + actions) | Generic ingest | Generic ingest | Generic ingest | Source-only |
 | **Install target** | Claude Code | Claude Code | OpenClaw / Codex | Self-host web | SaaS |
 | **Ops burden** | None (local files) | None | Obsidian plugin + Node server | Supabase + S3 + OCR | Zero |
@@ -160,7 +182,7 @@ llm-wiki-pm/
     │   ├── SKILL.md
     │   ├── hooks/   (session-start.sh, post-write.sh, session-stop.sh)
     │   ├── references/
-    │   ├── scripts/ (lint.py, backlinks.py)
+    │   ├── scripts/ (lint.py, backlinks.py, wikifm.py, capture.py)
     │   └── templates/ (SCHEMA.md, index.md, overview.md, log.md, persona.md,
     │                    MY-INTEGRATIONS.md)
     ├── llm-wiki-brief/              # Optional: daily/weekly briefs, tag digests
@@ -275,13 +297,21 @@ state.
 Hook scripts and plugin manifest validation:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install pytest -q
+python3 -m venv .venv && .venv/bin/pip install pytest pyyaml -q
 .venv/bin/python -m pytest tests/ -v
 ```
 
-43 tests covering scaffold, wikilink validation, log rotation, stdin parsing,
-and plugin manifest compliance. All tests create isolated temp wikis and feed
-the real Claude Code hook JSON schema to the scripts.
+Tests cover scaffold, wikilink validation, log rotation, stdin parsing,
+plugin manifest compliance, lint, the write hooks, the frontmatter parser
+(`wikifm.py`) and the conversation-capture script (`capture.py`). Hook tests
+create isolated temp wikis and feed the real Claude Code hook JSON schema to
+the scripts. The parser tests check it against PyYAML,
+and skip that check when PyYAML isn't installed. To also parse every page of a
+real wiki, set `WIKIFM_WIKI` (the tests only read it):
+
+```bash
+WIKIFM_WIKI=~/pm-wiki .venv/bin/python -m pytest tests/test_wikifm.py
+```
 
 MIT.
 
@@ -326,7 +356,7 @@ How this skill maps to Karpathy's original gist and Rohit's v2 extensions:
 Implemented:
 
 - Explicit supersession with `supersedes:` / `superseded_by:` fields + auto-redirect
-- Privacy filter (pre-ingest checklist + `private:` frontmatter flag)
+- Privacy filter (pre-ingest checklist + private-by-default export allowlist, `shareable: true`)
 - Self-healing lint (`--auto-fix` for safe repairs)
 - Crystallization (transcript → decision digest)
 - Schema as the real product

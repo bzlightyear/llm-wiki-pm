@@ -1,7 +1,7 @@
 ---
 title: Overview
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: summary
 tags: [strategy]
 sources: []

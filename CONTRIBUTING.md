@@ -43,7 +43,7 @@ When bumping version:
 Before opening a PR:
 
 - [ ] Orient protocol still works on a fresh wiki (scaffold → read SCHEMA + index + log + overview)
-- [ ] Ingest flow produces pages with valid frontmatter (title, type, tags, sources, updated, coverage)
+- [ ] Ingest flow produces pages with valid frontmatter (required: title, created, updated, type, tags, sources; `coverage` recommended on factual types)
 - [ ] `scripts/lint.py` runs without error on a test wiki
 - [ ] `scripts/backlinks.py` returns correct results for a known slug
 - [ ] New operation logged to `log.md` correctly
@@ -55,7 +55,7 @@ Before opening a PR:
 - The three-layer wiki architecture (`raw/` / wiki pages / `SCHEMA.md`)
 - The orient gate (steps ①-④ required before writes)
 - The `[[wikilink]]` format — this is what makes the wiki Obsidian-compatible
-- The `private: true` frontmatter convention — users rely on this for exports
+- The private-by-default export model (only `shareable: true` pages are exported) — users rely on this for exports
 
 ## First-Time Setup for Development
 

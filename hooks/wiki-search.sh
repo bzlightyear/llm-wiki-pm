@@ -9,7 +9,8 @@ set -eu
 
 # Resolve vault path with the same precedence as the other hooks:
 # .wiki-path (project) > CLAUDE_PLUGIN_OPTION_wiki_path (global) > WIKI_PATH > cwd
-FILE_WIKI=$(tr -d '[:space:]' < "$(pwd)/.wiki-path" 2>/dev/null || true)
+# Read with cat, not `<`: the shell reports a failed `<` before 2>/dev/null applies.
+FILE_WIKI=$(cat "$(pwd)/.wiki-path" 2>/dev/null | tr -d '[:space:]' || true)
 export VAULT_PATH="${FILE_WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}"
 
 # Resolve a usable `node`. A spawned MCP stdio process may inherit a bare PATH

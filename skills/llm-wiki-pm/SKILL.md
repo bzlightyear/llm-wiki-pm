@@ -146,6 +146,8 @@ Inventory every connected MCP tool at session start and use them eagerly.
   keyword**. Widen only if the narrow pass is empty. Dump-then-slice is a defect.
 - **Date operators are soft on semantic backends.** Many treat `after:`/`before:`
   as advisory — verify each result's actual timestamp before trusting it as in-window.
+- **Edit frontmatter with the Edit tool** (in a script, `wikifm.set_field`/`set_list`),
+  never a YAML load-and-dump or the MCP `edit` tool (`references/citation-spec.md`).
 
 ## Architecture: Three Layers
 
@@ -209,10 +211,12 @@ auto-created, restart the session. After init, confirm domain scope and customiz
 ### 2. Ingest a source
 
 **Micro-capture fast path** — for a SINGLE conversational fact ("remember that…",
-a decision dropped in chat; `source: conversation | <date>`): skip the
-ingest-guide read, crystallize, entity-promotion scan, and per-op freshness sweep.
-Do exactly one mandatory step — a **dedup search** of the key noun (append to the
-existing page, else create a small stub with frontmatter + ≥2 links) — then log it.
+a decision dropped in chat): skip the ingest-guide read, crystallize,
+entity-promotion scan, and per-op freshness sweep.
+Do exactly two mandatory steps — a **dedup search** of the key noun (append to the
+existing page, else create a small stub with frontmatter + ≥2 links) and a
+**capture**: save the statement with `scripts/capture.py`, declare the path it
+prints and cite the ID (`references/citation-spec.md`) — then log it.
 Still requires Orient once this session. Anything that is a file/URL/transcript/
 warehouse/email/chat export, or a batch, uses the full flow below.
 
@@ -259,8 +263,9 @@ In brief:
 
 Separate discipline from ingest — triggered when new info conflicts with or refines
 existing content. **Pre-update snapshot is automatic:** the `pre-write.sh` hook
-copies the current page to `_archive/<slug>-<date>.md` before an overwrite
-(idempotent, once/day), so "undo that last change" stays trivial.
+copies the current page to `_archive/<slug>-<date>.md` before a Write, Edit or MCP
+`vault` write (idempotent, once/day; by hand before a script edit), so "undo that
+last change" stays trivial.
 
 ① **Identify all affected pages** — three-way search: `backlinks.py` (structural),
    `view(action=semantic_search)` (paraphrases), `grep -r` (exact tokens). Don't
@@ -268,11 +273,8 @@ copies the current page to `_archive/<slug>-<date>.md` before an overwrite
 ② **Show diff BEFORE writing**: old text, new text, reason. Confirm for any claim
    touching 5+ pages or changing stated strategy.
 ③ **Cite source**: every update names the raw source justifying it, in the body and log.
-   If that source is new external information not already in `raw/`, either capture it
-   there first (§2 ①) or cite it as `[source: user, conversation, YYYY-MM-DD]`. Never
-   coin a `raw/`-shaped slug for an artifact that was never captured — unlike Ingest,
-   this flow has no raw-capture step, so a fabricated slug yields a citation that
-   looks resolvable and no reader can ever follow.
+   A fact not yet in `raw/` gets a record first: §2 ①, or `capture.py` for a statement
+   (`references/citation-spec.md`). Never coin an ID for a record that doesn't exist.
 ④ **Stale-claim sweep**: after the update, re-search and fix all instances in the same pass.
 ⑤ **Bump `updated:`** on every page touched.
 ⑥ **Log**: `## [YYYY-MM-DD] update | <claim/page> | source: raw/...`, listing every file.
@@ -376,6 +378,7 @@ work. Headless sync: `references/obsidian-sync.md`.
 
 ## References
 - `references/ingest-guide.md` — full §2 ingest procedure (read before ingesting)
+- `references/citation-spec.md` — records, `sources:`, citation grammar, page splits, frontmatter
 - `references/source-discipline.md` — full four-guard detail (read before sweeps/synthesis)
 - `references/learn-guide.md` — full §13 post-task capture
 - `references/schema-guide.md` — customizing SCHEMA.md + directory layout
@@ -388,5 +391,6 @@ work. Headless sync: `references/obsidian-sync.md`.
 - `references/obsidian-sync.md` — headless sync
 
 ## Scripts
-- `python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" <path>` — tiered health report (`--auto-fix` repairs safe issues)
+- `python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" <path>` — tiered health report (`--auto-fix` repairs safe issues; `--cited-sources <page>` prints the paths a page cites)
+- `python3 "${CLAUDE_SKILL_DIR}/scripts/capture.py" <path> --topic <slug> < statement` — saves a conversational fact as a record; prints its path and ID
 - `python3 "${CLAUDE_SKILL_DIR}/scripts/backlinks.py" <path> <slug>` — pages linking to a slug (`--context`, `--json`)

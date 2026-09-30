@@ -20,12 +20,11 @@ WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
 
 ## Source Type Routing
 
-| Source | Directory | Slug pattern |
-|--------|-----------|--------------|
-| URL / article | `raw/articles/` | `<publisher>-<topic>-<YYYY>.md` |
-| PDF / whitepaper | `raw/papers/` | `<author>-<title>-<YYYY>.md` |
-| Meeting transcript / paste | `raw/transcripts/` | `<topic>-<YYYY-MM-DD>.md` |
-| Slack thread / email chain | `raw/internal/` | `<channel>-<YYYY-MM-DD>.md` |
+Choose the `raw/` subdirectory and frontmatter as in step ① "Capture raw" of the
+core skill's ingest guide (`skills/llm-wiki-pm/references/ingest-guide.md`).
+Name the file `<descriptor>-<YYYY-MM-DD>.md`, or `<descriptor>-<YYYY>.md` for an
+undated publication, in lowercase letters, digits, `.`, `_` and `-`. The name
+is the source's permanent ID.
 
 ## Privacy Filter (mandatory before save)
 
@@ -34,17 +33,14 @@ Strip from raw content before writing:
 - Customer email addresses (replace with `[email redacted]`)
 - Phone numbers
 
-Flag for `private: true` on resulting wiki pages if source contains:
-- Customer names tied to deal sizes or churn risk
-- Internal strategy documents
-- 1:1 conversation content
+Add no privacy flag: wiki pages are private by default, and only pages marked
+`shareable: true` are exported (see the core skill's privacy guide).
 
 Add frontmatter to raw file:
 ```yaml
 ---
-fetched: YYYY-MM-DD
+fetched: 'YYYY-MM-DD'
 source_url: <url if applicable>
-private: false   # set true if flagged above
 ---
 ```
 
@@ -56,7 +52,7 @@ Before writing, grep `$WIKI/raw/` for the source URL or thread ID. If already pr
 ## Output Rule
 
 Write to `$WIKI/raw/<subdir>/<slug>.md`. Return ONLY:
-`"OK: saved to raw/<subdir>/<slug>.md (<N> chars, private: <true/false>)"`
+`"OK: saved to raw/<subdir>/<slug>.md (<N> chars)"`
 
 ## Rules
 

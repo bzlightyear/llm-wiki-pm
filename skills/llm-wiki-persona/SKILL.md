@@ -85,7 +85,7 @@ File: `concepts/relationship-map.md`. Create when 3+ person entities exist.
 title: Relationship Map
 type: concept
 tags: [person, internal]
-updated: YYYY-MM-DD
+updated: 'YYYY-MM-DD'
 ---
 
 # Relationship Map

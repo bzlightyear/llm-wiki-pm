@@ -4,24 +4,27 @@
 Usage:
     lint.py <wiki_path>              # report only
     lint.py <wiki_path> --auto-fix   # report + repair safe issues
+    lint.py <wiki_path> --auto-fix=content   # + repair citations and dates
+    lint.py <wiki_path> --json       # counts and lists as JSON; writes nothing
+    lint.py <wiki_path> --cited-sources <page>   # paths for a page's sources:
 """
 
 import re
+import shutil
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
+import wikifm  # noqa: E402  (the frontmatter parser, beside this script)
+
 REQUIRED_FRONTMATTER = {"title", "created", "updated", "type", "tags", "sources"}
-WIKI_DIRS = ["entities", "concepts", "comparisons", "queries"]
+WIKI_DIRS = list(wikifm.PAGE_DIRS)
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
-TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
+FRONTMATTER_RE = wikifm.FRONTMATTER_RE
 TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
 INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
-SOURCE_MARKER_RE = re.compile(r"\[source:\s*([^\]]*)\]", re.IGNORECASE)
-FRONTMATTER_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.*)$")
-BLOCK_ITEM_RE = re.compile(r"^[ \t]+-\s*(.*)$")
 
 # Interim workaround for the recurring wiki-search MCP bug that re-escapes
 # `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
@@ -91,10 +94,9 @@ def find_escaped_brackets(rel_path, text, auto_fix):
     )
 
 # Grounding / freshness (anti-self-reinforcement). A wiki that only cites its own
-# pages drifts from reality. Sources pointing back into these dirs are secondhand;
-# a knowledge page needs at least one PRIMARY source (raw/, external/, web,
-# conversation, slack, gmail, granola, etc.).
-WIKI_PAGE_PREFIXES = ("entities/", "concepts/", "comparisons/", "queries/")
+# pages drifts from reality. A sources: entry naming a page is secondhand; a
+# knowledge page needs at least one PRIMARY source, the path of a raw/ record
+# (web page, transcript, thread, email, conversation, ...).
 # Factual pages must be grounded in a primary source (🔴 if self-referential).
 # Synthesis pages legitimately summarize other wiki pages (🟡 only).
 FACTUAL_TYPES = {"entity", "concept", "comparison", "persona"}
@@ -102,41 +104,21 @@ FACTUAL_TYPES = {"entity", "concept", "comparison", "persona"}
 GROUNDING_EXEMPT_STEMS = {"index", "log", "_status", "SCHEMA", "MY-INTEGRATIONS", "overview"}
 LAST_VERIFIED_STALE_DAYS = 120
 
-
-def parse_frontmatter(text):
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return None
-    fm = {}
-    lines = m.group(1).splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if ":" in line:
-            k, _, v = line.partition(":")
-            key, val = k.strip(), v.strip()
-            if not val:
-                # possible block-style YAML list: key: \n  - item \n  - item
-                items = []
-                j = i + 1
-                while j < len(lines) and re.match(r"^[ \t]+-\s*(.*)$", lines[j]):
-                    items.append(re.match(r"^[ \t]+-\s*(.*)$", lines[j]).group(1).strip())
-                    j += 1
-                if items:
-                    val = "[" + ", ".join(items) + "]"
-                    i = j - 1
-            fm[key] = val
-        i += 1
-    return fm
+SPLIT_POINTER = (
+    "follow the split procedure in references/citation-spec.md and set each "
+    "page's sources with lint.py --cited-sources"
+)
+# The wiki-search MCP's date damage (N15): a date written back as a timestamp.
+# At exactly midnight the time part carries nothing, so dropping it is lossless.
+MIDNIGHT_RE = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2})T00:00:00(?:\.0+)?(?:Z|\+00:00)?")
+# The status field in the wiki-search MCP's default meta/contract.md.
+CONTRACT_STATUS_RE = re.compile(r"^\s*-\s*`status`\s*:\s*enum\b", re.MULTILINE)
 
 
-def extract_tags(fm):
-    if not fm or "tags" not in fm:
-        return []
-    m = TAG_LINE_RE.search(f"tags: {fm['tags']}")
-    if not m:
-        return []
-    return [t.strip().strip("'\"") for t in m.group(1).split(",") if t.strip()]
+def _days_since(d):
+    """Whole days from midnight UTC on date `d` to now."""
+    midnight = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - midnight).days
 
 
 def load_taxonomy(schema_path):
@@ -145,15 +127,54 @@ def load_taxonomy(schema_path):
     return set(TAXONOMY_TAG_RE.findall(schema_path.read_text()))
 
 
-def slug(path):
-    if path.name == "README.md":
-        return path.parent.name
-    return path.stem
+slug = wikifm.slug  # the one ID function, kept here for pre-write.sh and capture.py
+
+
+def snapshot(page, wiki):
+    """Copy `page` to _archive/<slug>-<YYYY-MM-DD>.md before it changes.
+    At most one snapshot per page per day: an existing snapshot is kept.
+    Shared by pre-write.sh, lint --auto-fix and the migration, so backups are
+    named one way everywhere. Returns the snapshot path."""
+    page, wiki = Path(page), Path(wiki)
+    arc = wiki / "_archive" / f"{slug(page)}-{date.today().isoformat()}.md"
+    if not arc.exists():
+        arc.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(page, arc)
+    return arc
+
+
+def wiki_pages(wiki):
+    """Lint's page set: every .md file under WIKI_DIRS except lint reports
+    and the artifacts under a directory page's assets/ subfolder."""
+    pages = []
+    for d in WIKI_DIRS:
+        for p in (wiki / d).rglob("*.md"):
+            # skip lint reports — self-generated, would cause false positives
+            if p.name.startswith("lint-"):
+                continue
+            if "assets" in p.relative_to(wiki / d).parts[1:-1]:
+                continue
+            pages.append(p)
+    return pages
+
+
+def source_index(wiki, pages):
+    """{ID: [paths]} for every raw/ record (a .md file outside raw/assets/)
+    and every page, the paths relative to the wiki. An ID with two paths is
+    an R9 collision."""
+    files = defaultdict(list)
+    raw = wiki / "raw"
+    for p in raw.rglob("*.md"):
+        if raw / "assets" not in p.parents:
+            files[slug(p)].append(p)
+    for p in pages:
+        files[slug(p)].append(p)
+    return {i: sorted(p.relative_to(wiki).as_posix() for p in ps) for i, ps in files.items()}
 
 
 def is_shareable(fm):
     # Private-by-default: a page is in the export set only if it opts in.
-    return bool(fm) and fm.get("shareable", "").strip().strip("'\"").lower() in ("true", "yes")
+    return wikifm.str_field(fm, "shareable").lower() in ("true", "yes")
 
 
 _LINK_BULLET = re.compile(r"^\s*-\s*\[\[([^\]]+)\]\]")
@@ -202,174 +223,125 @@ def merge_sort_index(idx_text, additions):
 
 
 def get_superseded_by(fm):
-    if not fm:
-        return None
-    v = fm.get("superseded_by", "").strip()
+    v = wikifm.str_field(fm, "superseded_by")
     if v in ("", "null", "none", "~"):
         return None
-    return v.strip("'\"")
-
-
-def _split_flow_list(rest):
-    """Split a YAML flow list's contents on top-level commas only, respecting
-    quoted entries. A naive split on ',' shreds any quoted source containing
-    commas — notably the `"user, conversation, DATE"` convention — into phantom
-    entries, inflating source counts and giving R3/R4 fragments to match on."""
-    items, buf, quote = [], "", None
-    for ch in rest:
-        if quote:
-            if ch == quote:
-                quote = None
-            else:
-                buf += ch
-        elif ch in "\"'":
-            quote = ch
-        elif ch == ",":
-            items.append(buf)
-            buf = ""
-        else:
-            buf += ch
-    items.append(buf)
-    return [i.strip() for i in items if i.strip()]
-
-
-def extract_sources(text):
-    """Return source entries from frontmatter, handling both inline
-    `sources: [a, b]` and the multiline `sources:\\n  - a\\n  - b` YAML forms."""
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return []
-    lines = m.group(1).splitlines()
-    out = []
-    for i, line in enumerate(lines):
-        if re.match(r"^sources:", line):
-            _, _, rest = line.partition(":")
-            rest = rest.strip()
-            if rest.startswith("["):
-                out += _split_flow_list(rest.strip("[]"))
-            for nxt in lines[i + 1:]:
-                if re.match(r"^\s*-\s+", nxt):
-                    out.append(re.sub(r"^\s*-\s+", "", nxt).strip().strip("'\""))
-                elif re.match(r"^\S", nxt):
-                    break
-            break
-    return [s for s in out if s]
+    return v
 
 
 # ── Frontmatter validity + provenance cross-reference ──
 # Rationale and evidence: fork-chgs/lint-frontmatter-checks-design.md.
-# parse_frontmatter() partitions on the first ':' rather than parsing YAML, so
-# it accepts input that silently discards keys — a wiki-wide yaml.safe_load
-# found 23 unreadable pages while this script reported 0 errors. R1/R2 catch
-# the two structural corruption patterns; R5 catches duplicate keys, which
-# yaml.safe_load itself does NOT raise on (last-wins), so it must stay a
-# line-level check rather than folding into any parse attempt.
+# wikifm.parse() reads frontmatter by its profile and reports what falls
+# outside it, where the old line-partitioning parser silently discarded keys
+# (a wiki-wide yaml.safe_load once found 23 unreadable pages while lint
+# reported 0 errors). R1/R2 are the two structural corruption patterns found
+# in the wiki; R5 is duplicate keys, which yaml.safe_load itself does NOT
+# raise on (last-wins).
 
 
 def check_frontmatter_structure(rel_path, fm_block_text):
-    """R1/R2/R5 structural frontmatter errors. Takes the raw text between the
-    --- fences; returns a list of 🔴 error strings."""
-    errors = []
-    seen_keys = Counter()
-    last_key_closed_flow = False
-    orphan_count = 0
-
-    for line in fm_block_text.splitlines():
-        key_m = FRONTMATTER_KEY_RE.match(line)
-        if key_m:
-            key, val = key_m.group(1), key_m.group(2).strip()
-            seen_keys[key] += 1
-            # R1 — a key's value may not begin with a list-item dash
-            if re.match(r"^-\s", val):
-                errors.append(
-                    f"malformed frontmatter — block list item on key line "
-                    f"'{key}:' (R1): {rel_path}"
-                )
-            # a closed flow list leaves nothing for an indented item to join
-            last_key_closed_flow = val.startswith("[") and val.endswith("]")
-        elif BLOCK_ITEM_RE.match(line) and last_key_closed_flow:
-            # R2 — everything from here to the next key line is unreachable
-            orphan_count += 1
-
+    """R1/R2/R5 structural frontmatter errors, as wikifm reports them. Takes
+    the raw text between the --- fences; returns a list of 🔴 error strings.
+    check_frontmatter_profile reports the rest of the profile (R12)."""
+    _, fm_errors = wikifm.parse_block(fm_block_text)
+    # R1 — a key's value may not begin with a list-item dash
+    errors = [
+        f"malformed frontmatter — block list item on key line '{e.key}:' (R1): {rel_path}"
+        for e in fm_errors if e.rule == "R1"
+    ]
+    # R2 — a closed flow list leaves nothing for an indented item to join
+    orphan_count = sum(1 for e in fm_errors if e.rule == "R2")
     if orphan_count:
         errors.append(
             f"malformed frontmatter — {orphan_count} orphan block list item(s) "
             f"under a closed flow list, unreachable by any parser (R2): {rel_path}"
         )
-    for key, n in seen_keys.items():
-        if n > 1:
-            errors.append(
-                f"duplicate frontmatter key '{key}' (x{n}, last wins — earlier "
-                f"value silently discarded) (R5): {rel_path}"
-            )
+    for key, n in Counter(e.key for e in fm_errors if e.rule == "R5").items():
+        errors.append(
+            f"duplicate frontmatter key '{key}' (x{n + 1}, last wins — earlier "
+            f"value silently discarded) (R5): {rel_path}"
+        )
     return errors
 
 
-def _inline_citations(body):
-    """Raw citation strings from every `[source: ...]` marker, split on ';' so
-    multi-source markers yield one entry per source."""
-    citations = []
-    for m in SOURCE_MARKER_RE.finditer(body):
-        for part in m.group(1).split(";"):
-            part = part.strip()
-            # a marker containing a wikilink ("...; see [[page]]") is truncated
-            # at the link's own bracket — prose, not a source identifier
-            if part and "[[" not in part:
-                citations.append(part)
-    return citations
+def check_frontmatter_profile(rel_path, fm, fm_errors):
+    """R12: the rest of the frontmatter profile (references/citation-spec.md),
+    as wikifm reports it: value shapes, keys, dates. Returns a 🟡 warning or
+    None. Missing frontmatter and missing required keys are R12 too, and stay
+    🔴 in main()."""
+    r12 = [e for e in fm_errors if e.rule == "R12"]
+    if not r12:
+        return None
+    msg = f"frontmatter outside the profile (R12): {rel_path} — " + "; ".join(
+        f"line {e.line}: {e.message}" for e in r12
+    )
+    if any(MIDNIGHT_RE.fullmatch(wikifm.str_field(fm, k)) for k in wikifm.DATE_KEYS):
+        msg += " (--auto-fix=content rewrites midnight timestamps as 'YYYY-MM-DD')"
+    return msg
 
 
-def _is_conversation_citation(citation):
-    """`user, conversation (X), DATE` style markers carry their own commas and
-    parentheses; resolving them against a sources: entry is not reliable, so
-    they are never counted as dangling."""
-    return bool(re.match(r"^(user|conversation)\b", citation, re.IGNORECASE))
+# ── Sources and citations ──
+# references/citation-spec.md: every sources: entry is the path of an existing
+# record or page (R6), every citation's ID is the slug of an entry on the same
+# page (R3), and citations follow the marker grammar (R7).
 
 
-def _citation_matches_source(citation, source):
-    """Deliberately permissive: the marker grammar is loose (bare slug, slug +
-    section name, qualified raw/ path), and a false 'dangling' report is worse
-    than a miss."""
-    c, s = citation.lower(), source.lower()
-    if c in s or s in c:
-        return True
-    candidate = c.split(",")[0].strip()
-    return bool(candidate) and candidate in s
+def check_sources(rel_path, sources, wiki, files):
+    """R6: sources: entries that aren't the path of an existing record or
+    page. Returns (🟡 warning or None, the Resolution of each entry). A path
+    to a missing file names the file with the same ID, if there is one."""
+    resolved = [wikifm.resolve(s, wiki) for s in sources]
+    bad = []
+    for s, r in zip(sources, resolved):
+        if r.problem is None:
+            continue
+        why = r.problem
+        matches = files.get(slug(s), []) if why == "no such file" else []
+        if len(matches) == 1:
+            why += f": declare {matches[0]}"
+        bad.append(f"'{s}' ({why})")
+    if not bad:
+        return None, resolved
+    return (
+        f"{len(bad)} sources: item(s) not the path of an existing record or page "
+        f"(R6): {rel_path} — " + ", ".join(bad)
+    ), resolved
 
 
-def check_provenance_cross_reference(rel_path, text, sources):
-    """R3 (inline marker resolving to no frontmatter source) and R4 (bulk
-    uncited sources). Returns {"info": [...], "warnings": [...]}.
+def check_provenance_cross_reference(rel_path, text, sources, files=None):
+    """R3 (a citation whose ID is the slug of no sources: entry on the page)
+    and R4 (bulk uncited sources). Returns {"info": [...], "warnings": [...]}.
 
-    R3 reports 🔵 info, never 🔴: the marker grammar is loose enough that a
-    strict tier would produce false positives and be tuned out. Frontmatter
-    sources: legitimately lists more than the body cites (ingest-guide ⑤), so
-    R4 is a ratio check, not set equality."""
+    Resolution is exact and page-local (references/citation-spec.md): no
+    substring matching and no exemption for conversations. With `files`, the
+    {ID: [paths]} index, the R3 message names the path to declare for an ID
+    that names one file. Frontmatter sources: legitimately lists more than
+    the body cites (ingest-guide ⑤), so R4 is a ratio check, not set
+    equality."""
     notes = {"info": [], "warnings": []}
     fm_m = FRONTMATTER_RE.match(text)
     body = text[fm_m.end():] if fm_m else text
-    citations = _inline_citations(body)
-    if not citations:
+    cited_ids = [c.id for c in wikifm.citations(body) if c.id]
+    if not cited_ids:
         return notes
 
-    unresolved = sum(
-        1
-        for c in citations
-        if not _is_conversation_citation(c)
-        and not any(_citation_matches_source(c, s) for s in sources)
-    )
+    declared = {slug(s) for s in sources}
+    unresolved = [cid for cid in cited_ids if cid not in declared]
     if unresolved:
-        notes["info"].append(
-            f"{unresolved} inline [source:] marker(s) resolve to no frontmatter "
-            f"sources: entry (R3): {rel_path}"
+        ids = []
+        for cid in dict.fromkeys(unresolved):  # each ID once, first-cited order
+            matches = (files or {}).get(cid, [])
+            ids.append(f"'{cid}'" + (f" (declare {matches[0]})" if len(matches) == 1 else ""))
+        notes["warnings"].append(
+            f"{len(unresolved)} citation(s) of IDs not declared in sources: "
+            f"(R3): {rel_path} — " + ", ".join(ids)
         )
 
     # Only meaningful once a list is long enough for a ratio to mean something;
     # a page citing 3 of 22 sources is the copy-paste signature this catches.
     if len(sources) >= 5:
-        cited = sum(
-            1 for s in sources if any(_citation_matches_source(c, s) for c in citations)
-        )
+        cited_set = set(cited_ids)
+        cited = sum(1 for s in sources if slug(s) in cited_set)
         if cited / len(sources) < 0.5:
             notes["warnings"].append(
                 f"only {cited}/{len(sources)} frontmatter sources cited inline "
@@ -378,12 +350,215 @@ def check_provenance_cross_reference(rel_path, text, sources):
     return notes
 
 
+def _markers(cites):
+    """The citations grouped by marker: {(start, end): [Citation, ...]}."""
+    markers = defaultdict(list)
+    for c in cites:
+        markers[(c.start, c.end)].append(c)
+    return markers
+
+
+def _repairable(marker, files):
+    """True when --auto-fix=content may rewrite a marker: every defect in it
+    is mechanical and every ID it cites names exactly one record or page."""
+    return all(
+        set(c.problems) <= set(wikifm.MECHANICAL) and len(files.get(c.id, ())) == 1
+        for c in marker
+    )
+
+
+def check_citation_grammar(rel_path, cites, files):
+    """R7: [source: ...] markers outside the grammar. Returns a 🟡 warning or
+    None, counting markers by defect, and those --auto-fix=content repairs."""
+    counts = Counter()
+    bad = repairable = 0
+    for marker in _markers(cites).values():
+        problems = {p for c in marker for p in c.problems}
+        if not problems:
+            continue
+        bad += 1
+        counts.update(problems)
+        if _repairable(marker, files):
+            repairable += 1
+    if not bad:
+        return None
+    msg = (
+        f"{bad} [source:] marker(s) outside the citation grammar (R7): {rel_path} — "
+        + ", ".join(f"{counts[p]} {p}" for p in wikifm.PROBLEMS if counts[p])
+    )
+    if repairable:
+        msg += f" ({repairable} repairable with --auto-fix=content)"
+    return msg
+
+
+def is_secondhand(record, cache):
+    """R10: True when a raw/ record is a conversation record (source_type:
+    conversation) or a reconstructed one (reconstructed: true). Records aren't
+    pages: lint reads only these two keys and checks nothing else in them."""
+    if record not in cache:
+        try:
+            fm, _ = wikifm.parse(record.read_text())
+        except (OSError, UnicodeDecodeError):
+            fm = None
+        cache[record] = (
+            wikifm.str_field(fm, "source_type") == "conversation"
+            or wikifm.str_field(fm, "reconstructed").lower() == "true"
+        )
+    return cache[record]
+
+
+def check_ids(files):
+    """R9: an ID that names two files. Records and pages share one namespace,
+    since a citation can name either. Returns 🔴 errors."""
+    errors = []
+    for i, paths in sorted(files.items()):
+        if len(paths) < 2:
+            continue
+        records = sum(1 for p in paths if p.startswith("raw/"))
+        if records == len(paths):
+            what = f"record ID '{i}' is not unique"
+        elif not records:
+            what = f"page slug '{i}' is not unique"
+        else:
+            what = f"record ID '{i}' is also a page slug"
+        errors.append(f"{what} (R9): " + ", ".join(paths))
+    return errors
+
+
+def check_contract(wiki):
+    """R11: meta/contract.md, which the wiki-search MCP tells agents to read
+    for frontmatter and naming, is still the MCP's default, which describes
+    another schema (a status field, no sources:). Returns a 🟡 warning or
+    None."""
+    path = wiki / "meta" / "contract.md"
+    if not path.is_file():
+        return None
+    text = path.read_text()
+    fm, _ = wikifm.parse(text)
+    if (
+        wikifm.str_field(fm, "generated_by") == "mcp-markdown-vault"
+        and CONTRACT_STATUS_RE.search(text)
+    ):
+        return (
+            "meta/contract.md is still the wiki-search MCP's default contract, "
+            "which describes a different schema (R11) — edit it to follow "
+            "SCHEMA.md and references/citation-spec.md"
+        )
+    return None
+
+
+# ── --auto-fix=content: repairs that change page text ──
+# Run only on request, never unattended (references/lint-guide.md).
+
+
+def fix_citations(text, files):
+    """Rewrite each marker _repairable() allows as one line in the grammar,
+    `[source: <id>, <location>; ...]`. Returns (text, markers rewritten)."""
+    fm_m = FRONTMATTER_RE.match(text)
+    head = fm_m.end() if fm_m else 0
+    body, n = text[head:], 0
+    markers = _markers(wikifm.citations(body))
+    for (start, end), marker in sorted(markers.items(), reverse=True):
+        if not any(c.problems for c in marker) or not _repairable(marker, files):
+            continue
+        cites = "; ".join(c.id + (f", {c.location}" if c.location else "") for c in marker)
+        body = body[:start] + f"[source: {cites}]" + body[end:]
+        n += 1
+    return text[:head] + body, n
+
+
+def fix_dates(text):
+    """Rewrite created, updated and last_verified values that are timestamps
+    at exactly midnight as 'YYYY-MM-DD'. Returns (text, dates rewritten)."""
+    fm, _ = wikifm.parse(text)
+    n = 0
+    for key in wikifm.DATE_KEYS:
+        m = MIDNIGHT_RE.fullmatch(wikifm.str_field(fm, key))
+        if not m:
+            continue
+        try:
+            text = wikifm.set_field(text, key, m.group(1))
+        except ValueError:
+            continue  # a duplicate key, or not a real date: left to a person
+        n += 1
+    return text, n
+
+
+# ── --cited-sources: the split procedure's helper ──
+# references/citation-spec.md, "Page lifecycle": a split child's sources: is
+# set to the paths of exactly the IDs its body cites.
+
+
+def cited_sources(wiki, page):
+    """Resolve the IDs `page` cites against every raw/ record and wiki page,
+    not against the page's own sources:, since a new split child declares
+    nothing yet. Returns (paths, unresolved, ambiguous): the path of each
+    cited ID in the order first cited, the IDs that match no file, and {ID:
+    paths} for IDs that match more than one; paths are relative to the
+    wiki."""
+    files = source_index(wiki, wiki_pages(wiki))
+    text = page.read_text()
+    fm_m = FRONTMATTER_RE.match(text)
+    body = text[fm_m.end():] if fm_m else text
+    paths, unresolved, ambiguous = [], [], {}
+    for c in wikifm.citations(body):
+        if not c.id:
+            continue  # a marker that isn't closed
+        matches = files.get(c.id, [])
+        if len(matches) > 1:
+            ambiguous[c.id] = matches
+        elif matches and matches[0] not in paths:
+            paths.append(matches[0])
+        elif not matches and c.id not in unresolved:
+            unresolved.append(c.id)
+    return paths, unresolved, ambiguous
+
+
+def print_cited_sources(wiki, page_arg):
+    """Print `sources:` for the page, then any IDs that don't resolve to
+    exactly one file. Writes nothing. Returns the exit status: 0 when every
+    ID resolves, 1 when some don't, 2 when the page doesn't exist."""
+    page = Path(page_arg).expanduser()
+    if not page.is_absolute() and (wiki / page).is_file():
+        page = wiki / page
+    if not page.is_file():
+        print(f"error: {page_arg} is not a file", file=sys.stderr)
+        return 2
+    paths, unresolved, ambiguous = cited_sources(wiki, page)
+    if paths:
+        print("sources:")
+        print("\n".join(f"  - {p}" for p in paths))
+    else:
+        print("sources: []")
+    if unresolved:
+        print("unresolved:")
+        print("\n".join(f"  - {cid}" for cid in unresolved))
+    if ambiguous:
+        print("ambiguous:")
+        for cid, matches in ambiguous.items():
+            print(f"  - {cid}: " + ", ".join(matches))
+    return 1 if unresolved or ambiguous else 0
+
+
 def main():
     args = sys.argv[1:]
+    usage = (
+        "usage: lint.py <wiki_path> [--auto-fix | --auto-fix=content] [--json] [--quiet]"
+        " | <wiki_path> --cited-sources <page>"
+    )
     if not args:
-        print("usage: lint.py <wiki_path> [--auto-fix]", file=sys.stderr)
+        print(usage, file=sys.stderr)
         sys.exit(1)
-    auto_fix = "--auto-fix" in args
+    cited_page = None
+    if "--cited-sources" in args:
+        i = args.index("--cited-sources")
+        if i + 1 == len(args):
+            print(usage, file=sys.stderr)
+            sys.exit(1)
+        cited_page = args.pop(i + 1)
+    # --auto-fix=content also runs the plain fixes
+    content_fix = "--auto-fix=content" in args
+    auto_fix = "--auto-fix" in args or content_fix
     output_json = "--json" in args
     quiet = "--quiet" in args
     args = [a for a in args if not a.startswith("--")]
@@ -392,14 +567,11 @@ def main():
         print(f"error: {wiki} does not exist", file=sys.stderr)
         sys.exit(2)
 
+    if cited_page is not None:
+        sys.exit(print_cited_sources(wiki, cited_page))
+
     today = date.today().isoformat()
-    pages = []
-    for d in WIKI_DIRS:
-        for p in (wiki / d).rglob("*.md"):
-            # skip lint reports — self-generated, would cause false positives
-            if p.name.startswith("lint-"):
-                continue
-            pages.append(p)
+    pages = wiki_pages(wiki)
 
     slugs = {slug(p): p for p in pages}
     # root-level architecture singletons (overview.md, index.md) are valid
@@ -411,6 +583,7 @@ def main():
         if root_p.exists():
             slugs.setdefault(slug(root_p), root_p)
     taxonomy = load_taxonomy(wiki / "SCHEMA.md")
+    files = source_index(wiki, pages)  # {ID: [paths]} over records and pages
 
     errors, warnings, info = [], [], []
     orphans_list = []
@@ -422,7 +595,20 @@ def main():
     superseded_pages = set()
     supersede_map = {}  # old-slug -> new-slug
     intentional_stubs = set()  # lifecycle: stub-intentional — exempt from orphan nag
+    dated_digests = set()  # lifecycle: dated-digest — also kept out of index.md
     shareable_pages = []  # export allowlist (private-by-default model)
+    # for --json: the pages breaking each invariant of references/citation-spec.md
+    # (I1 frontmatter, I2 sources, I3 citations), and the lists session-start
+    # and worker-link-validator report
+    invariant_pages = {"I1": set(), "I2": set(), "I3": set()}
+    missing_fields = []  # [{"page": ..., "missing": [...]}]
+    secondhand = []  # R10
+    record_cache = {}  # record path -> is_secondhand()
+
+    errors.extend(check_ids(files))
+    contract_note = check_contract(wiki)
+    if contract_note:
+        warnings.append(contract_note)
 
     # escaped-bracket corruption also hits root-level singletons (log.md,
     # overview.md, index.md, MY-INTEGRATIONS.md), which sit outside WIKI_DIRS
@@ -441,28 +627,45 @@ def main():
                 root_p.write_text(fixed_root_text)
 
     for p in pages:
-        text = p.read_text()
-        text, escape_note = find_escaped_brackets(p.relative_to(wiki), text, auto_fix)
+        rel = p.relative_to(wiki).as_posix()
+        original = p.read_text()
+        text, escape_note = find_escaped_brackets(rel, original, auto_fix)
         if escape_note:
             (fixes_applied if auto_fix else errors).append(escape_note)
-            if auto_fix:
-                p.write_text(text)
-        fm = parse_frontmatter(text)
+        if content_fix:
+            text, n = fix_citations(text, files)
+            if n:
+                fixes_applied.append(
+                    f"rewrote {n} [source:] marker(s) in the citation grammar (R7) in {rel}"
+                )
+            text, n = fix_dates(text)
+            if n:
+                fixes_applied.append(
+                    f"rewrote {n} timestamp date(s) as 'YYYY-MM-DD' (R12) in {rel}"
+                )
+        if auto_fix and text != original:
+            snapshot(p, wiki)
+            p.write_text(text)
+        fm, fm_errors = wikifm.parse(text)
 
         if fm is None:
-            errors.append(f"missing frontmatter: {p.relative_to(wiki)}")
+            errors.append(f"missing frontmatter (R12): {rel}")
+            invariant_pages["I1"].add(rel)
+            missing_fields.append({"page": rel, "missing": sorted(REQUIRED_FRONTMATTER)})
             continue
         fm_block_m = FRONTMATTER_RE.match(text)
         if fm_block_m:
-            errors.extend(
-                check_frontmatter_structure(p.relative_to(wiki), fm_block_m.group(1))
-            )
+            errors.extend(check_frontmatter_structure(rel, fm_block_m.group(1)))
+        profile_note = check_frontmatter_profile(rel, fm, fm_errors)
+        if profile_note:
+            warnings.append(profile_note)
 
         missing = REQUIRED_FRONTMATTER - set(fm.keys())
         if missing:
-            errors.append(
-                f"frontmatter missing {sorted(missing)}: {p.relative_to(wiki)}"
-            )
+            errors.append(f"frontmatter missing {sorted(missing)} (R12): {rel}")
+            missing_fields.append({"page": rel, "missing": sorted(missing)})
+        if missing or fm_errors:
+            invariant_pages["I1"].add(rel)
 
         # supersession tracking
         sb = get_superseded_by(fm)
@@ -480,10 +683,13 @@ def main():
         #                      account/escalation stubs)
         #   dated-digest     — one-shot dated pages (daily briefs, synthesis
         #                      digests) that never earn inbound links by design
-        if (fm.get("lifecycle") or "").strip().strip("'\"") in (
-            "stub-intentional", "dated-digest"
-        ):
+        if wikifm.str_field(fm, "lifecycle") in ("stub-intentional", "dated-digest"):
             intentional_stubs.add(slug(p))
+        # a dated digest summarizes the wiki as of its date: no grounding, no
+        # staleness, and no index.md entry
+        digest = wikifm.str_field(fm, "lifecycle") == "dated-digest"
+        if digest:
+            dated_digests.add(slug(p))
 
         # export allowlist audit (private-by-default): surface what would leave
         # the wiki on an export, so the shareable set stays reviewable.
@@ -491,7 +697,7 @@ def main():
             shareable_pages.append(str(p.relative_to(wiki)))
 
         # tags
-        tags = extract_tags(fm)
+        tags = wikifm.list_field(fm, "tags")
         for t in tags:
             tag_usage[t] += 1
             if taxonomy and t not in taxonomy:
@@ -502,12 +708,19 @@ def main():
         # ── grounding / freshness (anti-self-reinforcement) ──
         stem = p.stem
         if not stem.startswith("lint-") and stem not in GROUNDING_EXEMPT_STEMS:
-            ptype = (fm.get("type") or "").strip().strip("'\"")
-            srcs = extract_sources(text)
-            primary_srcs = [s for s in srcs if not s.startswith(WIKI_PAGE_PREFIXES)]
-            wiki_srcs = [s for s in srcs if s.startswith(WIKI_PAGE_PREFIXES)]
+            ptype = wikifm.str_field(fm, "type")
+            srcs = wikifm.sources(fm)
+            # R6: every entry is the path of an existing record or page
+            sources_note, resolved = check_sources(rel, srcs, wiki, files)
+            if sources_note:
+                warnings.append(sources_note)
+                invariant_pages["I2"].add(rel)
+            # an entry naming a record is primary, one naming a page is
+            # secondary, whether or not the file exists (R6 reports that)
+            primary_srcs = [s for s, r in zip(srcs, resolved) if r.kind == "record"]
+            wiki_srcs = [s for s, r in zip(srcs, resolved) if r.kind == "page"]
             # self-referential: every source points back into the wiki, none primary
-            if srcs and not primary_srcs and wiki_srcs:
+            if srcs and not primary_srcs and wiki_srcs and not digest:
                 msg = (
                     f"self-referential sources (no primary source, only wiki pages): "
                     f"{p.relative_to(wiki)} — verify against live tools, add a raw/ source"
@@ -518,13 +731,27 @@ def main():
                 decision_bearing = any(t in ("decision", "strategy") for t in tags)
                 is_error = ptype in FACTUAL_TYPES or decision_bearing
                 (errors if is_error else warnings).append(msg)
-            # provenance cross-reference (R3 dangling marker, R4 bulk uncited)
-            prov = check_provenance_cross_reference(p.relative_to(wiki), text, srcs)
+            # R10: revisit a page whose primary sources are all secondhand
+            records = [r.path for r in resolved if r.kind == "record" and not r.problem]
+            if records and all(is_secondhand(r, record_cache) for r in records):
+                secondhand.append(rel)
+                info.append(
+                    f"secondhand, unverified (R10): {rel} — its only primary sources "
+                    f"are conversation or reconstructed records"
+                )
+            # provenance cross-reference (R3 undeclared citation, R4 bulk uncited)
+            prov = check_provenance_cross_reference(rel, text, srcs, files)
             info.extend(prov["info"])
             warnings.extend(prov["warnings"])
-            # factual page with body but no inline provenance markers
+            if any("(R3)" in w for w in prov["warnings"]):
+                invariant_pages["I3"].add(rel)
             fm_m = FRONTMATTER_RE.match(text)
             body = text[fm_m.end():] if fm_m else text
+            # R7: markers outside the citation grammar
+            grammar_note = check_citation_grammar(rel, wikifm.citations(body), files)
+            if grammar_note:
+                warnings.append(grammar_note)
+            # factual page with body but no inline provenance markers
             if (
                 ptype in FACTUAL_TYPES
                 and body.count("\n") > 15
@@ -534,23 +761,18 @@ def main():
                     f"no inline [source:] provenance markers: {p.relative_to(wiki)}"
                 )
             # provenance gone stale — re-check against live sources
-            lv = (fm.get("last_verified") or "").strip().strip("'\"")
-            if lv:
-                try:
-                    lv_dt = datetime.fromisoformat(lv).replace(tzinfo=timezone.utc)
-                    lv_age = (datetime.now(timezone.utc) - lv_dt).days
-                    if lv_age > LAST_VERIFIED_STALE_DAYS:
-                        warnings.append(
-                            f"provenance unverified for {lv_age}d (last_verified {lv}): "
-                            f"{p.relative_to(wiki)} — re-check live sources"
-                        )
-                except Exception:
-                    pass
+            lv = wikifm.date_field(fm, "last_verified")
+            lv_age = _days_since(lv) if lv else 0
+            if lv_age > LAST_VERIFIED_STALE_DAYS and not digest:
+                warnings.append(
+                    f"provenance unverified for {lv_age}d (last_verified {lv}): "
+                    f"{p.relative_to(wiki)} — re-check live sources"
+                )
             # coverage marker (deterministic replacement for the prose "set
             # coverage:/gaps: on every entity/concept page" rule). Warn only —
             # pre-existing wikis predate the field.
             if ptype in FACTUAL_TYPES:
-                coverage = (fm.get("coverage") or "").strip().strip("'\"")
+                coverage = wikifm.str_field(fm, "coverage")
                 if not coverage:
                     warnings.append(
                         f"no coverage: marker (stub/partial/comprehensive): "
@@ -569,7 +791,8 @@ def main():
         lines = text.count("\n")
         if lines > 200:
             warnings.append(
-                f"page > 200 lines ({lines}): {p.relative_to(wiki)} — split candidate"
+                f"page > 200 lines ({lines}): {p.relative_to(wiki)} — split candidate: "
+                f"{SPLIT_POINTER}"
             )
 
         # contradictions flagged
@@ -579,18 +802,12 @@ def main():
             warnings.append(f"unresolved contradictions flag: {p.relative_to(wiki)}")
 
         # stale
-        try:
-            updated_str = fm.get("updated", "").strip()
-            updated_dt = datetime.fromisoformat(updated_str).replace(
-                tzinfo=timezone.utc
+        updated = wikifm.date_field(fm, "updated")
+        age_days = _days_since(updated) if updated else 0
+        if age_days > 90 and not digest:
+            warnings.append(
+                f"stale ({age_days}d since update): {p.relative_to(wiki)}"
             )
-            age_days = (datetime.now(timezone.utc) - updated_dt).days
-            if age_days > 90:
-                warnings.append(
-                    f"stale ({age_days}d since update): {p.relative_to(wiki)}"
-                )
-        except Exception:
-            pass
 
     # broken links → auto-fix if possible
     for p, target in broken:
@@ -603,6 +820,7 @@ def main():
                 t,
             )
             if t2 != t:
+                snapshot(p, wiki)
                 p.write_text(t2)
                 fixes_applied.append(
                     f"rewrote broken [[{target}]] → [[{new_target}]] in {p.relative_to(wiki)}"
@@ -624,6 +842,7 @@ def main():
                     new_text,
                 )
             if new_text != text:
+                snapshot(p, wiki)
                 p.write_text(new_text)
                 fixes_applied.append(
                     f"redirected superseded links in {p.relative_to(wiki)}"
@@ -660,7 +879,7 @@ def main():
         idx_text = idx_path.read_text()
         for p in pages:
             s = slug(p)
-            if s in superseded_pages:
+            if s in superseded_pages or s in dated_digests:
                 continue
             if f"[[{s}]]" not in idx_text and s not in idx_text:
                 missing_in_index.append(p)
@@ -676,8 +895,8 @@ def main():
         }
         additions = defaultdict(set)
         for p in missing_in_index:
-            fm = parse_frontmatter(p.read_text()) or {}
-            t = fm.get("type", "entity").strip().strip("'\"")
+            fm, _ = wikifm.parse(p.read_text())
+            t = wikifm.str_field(fm, "type") or "entity"
             additions[section_map.get(t, "## Entities")].add(slug(p))
 
         # detect/repair section drift: bullets out of alpha order or missing
@@ -708,6 +927,29 @@ def main():
     if rare:
         info.append(f"singleton tags (consolidate?): {', '.join(sorted(rare))}")
 
+    # Output structured JSON when requested (used by hooks and workers for
+    # health checks). --json writes nothing: no report and no log.md entry.
+    if output_json:
+        import json
+
+        broken_list = [e for e in errors if e.startswith("broken [[")]
+        print(
+            json.dumps(
+                {
+                    "broken_links": broken_list,
+                    "orphans": orphans_list,
+                    "index_gaps": [p.relative_to(wiki).as_posix() for p in missing_in_index],
+                    "missing_fields": missing_fields,
+                    "secondhand": secondhand,
+                    "invariants": {k: len(v) for k, v in invariant_pages.items()},
+                    "errors": len(errors),
+                    "warnings": len(warnings),
+                    "info": len(info),
+                }
+            )
+        )
+        return
+
     # report
     report_dir = wiki / "queries"
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -727,7 +969,8 @@ def main():
         "",
         f"Pages scanned: {len(pages)} | Errors: {len(errors)} | "
         f"Warnings: {len(warnings)} | Info: {len(info)}",
-        f"Auto-fix: {'ON' if auto_fix else 'off'} | Fixes applied: {len(fixes_applied)}",
+        f"Auto-fix: {'ON (content)' if content_fix else 'ON' if auto_fix else 'off'} | "
+        f"Fixes applied: {len(fixes_applied)}",
         "",
         f"## 🔴 Errors ({len(errors)})",
         "",
@@ -752,23 +995,6 @@ def main():
 
     report_path.write_text("\n".join(out) + "\n")
 
-    # Output structured JSON when requested (used by hooks for health checks).
-    # Using --json implies no prose on stdout.
-    if output_json:
-        import json
-
-        broken_list = [e for e in errors if e.startswith("broken [[")]
-        print(
-            json.dumps(
-                {
-                    "broken_links": broken_list,
-                    "orphans": orphans_list,
-                    "errors": len(errors),
-                    "warnings": len(warnings),
-                }
-            )
-        )
-        return
     if log_path.exists():
         with log_path.open("a") as f:
             f.write(

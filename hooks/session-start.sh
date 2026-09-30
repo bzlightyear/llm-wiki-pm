@@ -128,17 +128,29 @@ THRESHOLD_DECAY=$(( NOW_TS - 60 * 86400 ))
 
 BROKEN_LINKS=0
 ORPHANS=0
+BAD_FRONTMATTER=0  # pages breaking I1: frontmatter profile, required keys
+BAD_SOURCES=0      # I2: sources: entries that aren't existing files (R6)
+BAD_CITATIONS=0    # I3: citations of IDs the page doesn't declare (R3)
+SECONDHAND_PAGES=()  # R10: primary sources all conversation or reconstructed records
+LINT_OK=false
 STALE_PAGES=()
 DECAY_PAGES=()
 
-# ④ Run lint if available
-if [[ -f "$SCRIPTS_DIR/lint.py" ]]; then
-  if LINT_OUT=$(python3 "$SCRIPTS_DIR/lint.py" "$WIKI" --quiet --json 2>/dev/null); then
-    BROKEN_LINKS=$(echo "$LINT_OUT" | python3 -c \
-      "import sys,json; d=json.load(sys.stdin); print(len(d.get('broken_links',[])))" 2>/dev/null || echo 0)
-    ORPHANS=$(echo "$LINT_OUT" | python3 -c \
-      "import sys,json; d=json.load(sys.stdin); print(len(d.get('orphans',[])))" 2>/dev/null || echo 0)
-  fi
+# ④ Run lint (--json writes nothing to the wiki). A crash, a missing lint.py
+# or output that isn't lint's JSON is reported as "health unknown", never as
+# a clean wiki.
+if LINT_OUT=$(python3 "$SCRIPTS_DIR/lint.py" "$WIKI" --quiet --json 2>/dev/null) \
+  && LINT_VALUES=$(python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+i = d["invariants"]
+print(len(d["broken_links"]), len(d["orphans"]), i["I1"], i["I2"], i["I3"])
+for page in d["secondhand"]:
+    print(page)
+' <<< "$LINT_OUT" 2>/dev/null); then
+  LINT_OK=true
+  read -r BROKEN_LINKS ORPHANS BAD_FRONTMATTER BAD_SOURCES BAD_CITATIONS <<< "$LINT_VALUES"
+  mapfile -t SECONDHAND_PAGES < <(tail -n +2 <<< "$LINT_VALUES")
 fi
 
 # ⑤ Scan for stale and decayed pages.
@@ -147,16 +159,16 @@ fi
 # pages that dominated session-start latency (8s+). One python process does the
 # same work in-process (~0.2s). Semantics unchanged: stale = updated >30d ago;
 # decay = explicit confidence_decay_days elapsed, else competitive-tagged >60d.
+# Frontmatter is read with wikifm, the parser lint uses, so a quoted date
+# counts like any other.
 # (STALE_PAGES / DECAY_PAGES already initialized in ③.)
-mapfile -t _SCAN_OUT < <(python3 - "$WIKI" "$NOW_TS" "$THRESHOLD_STALE" "$THRESHOLD_DECAY" <<'PYEOF' 2>/dev/null || true
-import os, re, sys
+mapfile -t _SCAN_OUT < <(python3 - "$WIKI" "$NOW_TS" "$THRESHOLD_STALE" "$THRESHOLD_DECAY" "$SCRIPTS_DIR" <<'PYEOF' 2>/dev/null || true
+import os, sys
 from datetime import datetime
 wiki, now_ts, th_stale, th_decay = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
-def epoch(v):
-    try:
-        return int(datetime.fromisoformat(v).timestamp())
-    except Exception:
-        return 0
+sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
+sys.path.insert(0, sys.argv[5])
+import wikifm
 for d in ("entities", "concepts", "comparisons"):
     dp = os.path.join(wiki, d)
     if not os.path.isdir(dp):
@@ -169,23 +181,19 @@ for d in ("entities", "concepts", "comparisons"):
             text = open(os.path.join(dp, fn), encoding="utf-8", errors="replace").read()
         except Exception:
             continue
-        m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
-        fm = m.group(1) if m else ""
-        um = re.search(r"^updated:\s*(.+)$", fm, re.M)
-        if not um:
+        fm, _ = wikifm.parse(text)
+        updated = wikifm.date_field(fm, "updated")
+        if updated is None:
             continue
-        uval = um.group(1).strip().strip('"').strip()
-        uts = epoch(uval)
-        if uts == 0:
-            continue
+        uts = int(datetime(updated.year, updated.month, updated.day).timestamp())
         if uts < th_stale:
-            print(f"STALE\t{d}/{slug} ({uval})")
-        dm = re.search(r"^confidence_decay_days:\s*(\d+)", fm, re.M)
-        if dm:
-            if uts < now_ts - int(dm.group(1)) * 86400:
-                print(f"DECAY\t{d}/{slug} ({uval})")
-        elif re.search(r"^tags:.*competitive", fm, re.M) and uts < th_decay:
-            print(f"DECAY\t{d}/{slug} ({uval})")
+            print(f"STALE\t{d}/{slug} ({updated})")
+        decay_days = wikifm.str_field(fm, "confidence_decay_days")
+        if decay_days.isdecimal():
+            if uts < now_ts - int(decay_days) * 86400:
+                print(f"DECAY\t{d}/{slug} ({updated})")
+        elif any("competitive" in t for t in wikifm.list_field(fm, "tags")) and uts < th_decay:
+            print(f"DECAY\t{d}/{slug} ({updated})")
 PYEOF
 )
 for _line in "${_SCAN_OUT[@]}"; do
@@ -197,7 +205,14 @@ done
 
 STALE_COUNT="${#STALE_PAGES[@]}"
 DECAY_COUNT="${#DECAY_PAGES[@]}"
+SECONDHAND_COUNT="${#SECONDHAND_PAGES[@]}"
 TOTAL=$(( BROKEN_LINKS + ORPHANS + STALE_COUNT + DECAY_COUNT ))
+REFERENCE_ISSUES=$(( BAD_FRONTMATTER + BAD_SOURCES + BAD_CITATIONS ))
+
+# A count from lint, or "unknown" when lint failed.
+lint_count() {
+  if [[ "$LINT_OK" == true ]]; then echo "$1"; else echo "unknown"; fi
+}
 
 # ⑥ Write _status.md
 STATUS_FILE="$WIKI/_status.md"
@@ -214,10 +229,18 @@ STATUS_FILE="$WIKI/_status.md"
   echo ""
   echo "| Metric | Count |"
   echo "|--------|-------|"
-  echo "| Broken links | $BROKEN_LINKS |"
-  echo "| Orphan pages | $ORPHANS |"
+  echo "| Broken links | $(lint_count "$BROKEN_LINKS") |"
+  echo "| Orphan pages | $(lint_count "$ORPHANS") |"
   echo "| Stale pages (>30 days) | $STALE_COUNT |"
   echo "| Confidence decay (past decay window) | $DECAY_COUNT |"
+  echo "| Pages with invalid frontmatter (I1) | $(lint_count "$BAD_FRONTMATTER") |"
+  echo "| Pages with unresolved sources (I2) | $(lint_count "$BAD_SOURCES") |"
+  echo "| Pages with unresolved citations (I3) | $(lint_count "$BAD_CITATIONS") |"
+  echo "| Secondhand, unverified (R10) | $(lint_count "$SECONDHAND_COUNT") |"
+  if [[ "$LINT_OK" != true ]]; then
+    echo ""
+    echo "**lint failed: health unknown.** Run \`lint.py\` to see the error."
+  fi
 
   if [[ "$DECAY_COUNT" -gt 0 ]]; then
     echo ""
@@ -241,15 +264,44 @@ STATUS_FILE="$WIKI/_status.md"
     done
   fi
 
+  if [[ "$SECONDHAND_COUNT" -gt 0 ]]; then
+    echo ""
+    echo "## Secondhand, unverified"
+    echo ""
+    echo "Every primary source of these pages is a conversation record or a"
+    echo "reconstructed one. A page leaves the list once a record of a real"
+    echo "source is declared on it."
+    echo ""
+    i=0
+    for p in "${SECONDHAND_PAGES[@]}"; do
+      [[ "$i" -ge 20 ]] && { echo "- (+$(( SECONDHAND_COUNT - 20 )) more)"; break; }
+      echo "- $p"; i=$(( i + 1 ))
+    done
+  fi
+
   echo ""
   echo "---"
   echo "*Generated by session-start.sh. Do not edit manually.*"
 } > "$STATUS_FILE"
 
 # ⑦ Output additionalContext JSON so Claude sees the summary immediately
-CONTEXT="Wiki at $WIKI. Health check: $TOTAL issues."
-if [[ "$TOTAL" -gt 0 ]]; then
-  CONTEXT="$CONTEXT Broken links: $BROKEN_LINKS. Orphans: $ORPHANS."
+if [[ "$LINT_OK" == true ]]; then
+  CONTEXT="Wiki at $WIKI. Health check: $TOTAL issues."
+  if [[ "$TOTAL" -gt 0 ]]; then
+    CONTEXT="$CONTEXT Broken links: $BROKEN_LINKS. Orphans: $ORPHANS."
+    CONTEXT="$CONTEXT Stale: $STALE_COUNT. Confidence decay: $DECAY_COUNT."
+  fi
+  # Kept out of the total: before a wiki's sources migration these counts are
+  # a known backlog, not new damage.
+  if [[ "$REFERENCE_ISSUES" -gt 0 ]]; then
+    CONTEXT="$CONTEXT Pages with invalid frontmatter: $BAD_FRONTMATTER,"
+    CONTEXT="$CONTEXT unresolved sources: $BAD_SOURCES, unresolved citations: $BAD_CITATIONS."
+  fi
+  if [[ $(( TOTAL + REFERENCE_ISSUES )) -gt 0 ]]; then
+    CONTEXT="$CONTEXT See _status.md for details."
+  fi
+else
+  CONTEXT="Wiki at $WIKI. Health check: lint failed, health unknown."
   CONTEXT="$CONTEXT Stale: $STALE_COUNT. Confidence decay: $DECAY_COUNT."
   CONTEXT="$CONTEXT See _status.md for details."
 fi

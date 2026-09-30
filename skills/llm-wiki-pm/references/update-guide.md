@@ -52,7 +52,7 @@ Present to user:
 OLD:
   Pricing reported at $X per seat (source: 2025-08 analyst report).
 NEW:
-  Pricing reported at $Y per seat (source: raw/articles/competitor-x-price-2026-03.md, 2026-03-15).
+  Pricing reported at $Y per seat [source: competitor-x-price-2026-03, Pricing].
 
 ## Page: comparisons/test-automation-mq.md
 OLD:
@@ -73,8 +73,7 @@ Every update lands with a citation inline or in a dated note block:
 ```markdown
 ## Pricing
 
-As of 2026-03, ~1.4x our product's enterprise SKU
-(per [[raw/articles/competitor-x-price-2026-03]]).
+As of 2026-03, ~1.4x our product's enterprise SKU [source: competitor-x-price-2026-03].
 
 Previously (2025-08): 2x our product.
 ```
@@ -82,18 +81,13 @@ Previously (2025-08): 2x our product.
 Don't overwrite old claims, preserve the history with dates when relevant
 to understanding trends.
 
-**Cite what actually exists.** Update has no raw-capture step, unlike Ingest — so
-when the information justifying an update arrived as chat, email or a verbal
-relay and was never saved to `raw/`, there are exactly two honest endings:
-
-```markdown
-capture it, then cite the file   [source: raw/internal/<slug>-YYYY-MM-DD.md]
-or cite how it actually arrived  [source: user, conversation, YYYY-MM-DD]
-```
-
-Never invent a third: a `raw/`-shaped slug for a file that was never captured.
-It reads as resolvable, survives page splits, and propagates into derived pages
-and archive snapshots, leaving a claim whose provenance no reader can follow.
+**Cite what actually exists.** When the information justifying an update arrived
+as chat, email or a verbal relay and was never saved to `raw/`, capture it first
+(a statement with `scripts/capture.py`, anything else by its ingest route), then
+declare the path and cite the ID (`citation-spec.md` → Conversational facts).
+Never coin an ID for a record that doesn't exist: it reads as resolvable,
+survives page splits, and propagates into derived pages and archive snapshots,
+leaving a claim whose provenance no reader can follow.
 
 ### 4. Stale-claim sweep
 
@@ -124,6 +118,8 @@ superseded_by: new-slug
 ```
 
 Then:
+- Set the new page's `sources:` to what it cites, with `lint.py --cited-sources`,
+  never a copy of the old page's list (`citation-spec.md` → Page lifecycle)
 - Archive old page to `_archive/`
 - Run `lint.py --auto-fix` to rewrite inbound `[[old-slug]]` links
 - Log: `## [YYYY-MM-DD] supersede | old-slug → new-slug`

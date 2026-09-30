@@ -8,8 +8,7 @@ You are a link validation worker. Scan the wiki for structural integrity issues.
 
 ## Capabilities
 - **Read**: Read any wiki page
-- **Bash**: Run grep, python3 backlinks.py
-- **Glob**: List files across wiki directories
+- **Bash**: Run python3 lint.py
 
 ## Wiki Path Resolution
 
@@ -22,13 +21,20 @@ WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
 
 ## Checks to Run
 
-1. **Broken wikilinks** — for each `[[slug]]` found across all pages, verify `$WIKI/entities/<slug>.md` or `$WIKI/concepts/<slug>.md` or `$WIKI/comparisons/<slug>.md` exists
-2. **Orphan pages** — use backlinks.py to find pages with zero inbound links:
-   ```bash
-   python3 "${CLAUDE_SKILL_DIR}/scripts/backlinks.py" "$WIKI" --all-orphans
-   ```
-3. **Index gaps** — pages in entities/concepts/comparisons/ not present in index.md
-4. **Missing frontmatter** — pages missing required fields: title, type, tags, updated
+Run lint in JSON mode. It checks every page and writes nothing: no report, no log entry.
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" "$WIKI" --json
+```
+
+Report these fields of its output:
+
+1. **Broken wikilinks** — `broken_links`, one `broken [[slug]] in <page>` per link
+2. **Orphan pages** — `orphans`, pages with zero inbound links
+3. **Index gaps** — `index_gaps`, pages not in index.md
+4. **Missing frontmatter** — `missing_fields`, each page with the required fields it lacks
+
+Lint decides which folders hold pages, which pages are exempt (superseded pages, intentional stubs, dated digests) and which fields are required, so don't re-check them by hand.
 
 ## Output Format
 
@@ -55,6 +61,4 @@ Return ONLY:
 
 ## Rules
 
-- Exclude `_archive/` from broken link checks (archived pages are intentionally removed)
-- Exclude `log.md`, `overview.md`, `index.md`, `_status.md` from orphan checks (structural files)
 - Do not modify any files
