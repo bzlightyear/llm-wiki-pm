@@ -20,6 +20,10 @@ and missing frontmatter and missing required keys stay 🔴. Completed step 2,
 adding `GETTING_STARTED.md`, whose export audit still filtered on `private: true`.
 Completed step 3 with the PostToolUse matcher moved to step 7 and dated digests
 exempt from the freshness gate, and recorded the live check's result.
+Completed step 4, which found that the 15 pages with wrapped `gaps:` items use
+`>-` markers rather than plain wrapped lines. The profile now accepts both and
+allows comments and one-line lists as persona values, `citations()` and
+`resolve()` move to step 6, and section 8 records the date fix's effect.
 
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
@@ -34,7 +38,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–3 done (see section 8)
+Status: **in progress**: steps 0–4 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -719,11 +723,19 @@ link site.
 
 - `key: value` lines; keys `[a-z_][a-z0-9_]*`, unique (R5).
 - Value: a plain or quoted scalar; a flow list `[a, "b"]` on one line; a block
-  list of `  - item` lines directly under an empty `key:`, where an indented line
-  that doesn't start with `-` continues the previous item (folded with one
-  space, as YAML does; 15 pages wrap `gaps:` items this way, review F3); or, for
-  the persona keys only (`language_patterns`, `tone_by_channel`,
-  `vocabulary_markers`), one level of `  subkey: scalar`.
+  list of `  - item` lines directly under an empty `key:`, where more-indented
+  lines continue the previous item, either as plain text folded with one space
+  or after a `>-` marker, whose lines are kept as written and folded the same
+  way, as YAML does (review F3; step 4 found that the 15 pages hold 40 `gaps:`
+  items written with `>-`, the MCP's style for long text, and none use plain
+  wrapping); or, for the persona keys only (`language_patterns`,
+  `tone_by_channel`, `vocabulary_markers`), one level of `  subkey: value`,
+  where a value is a scalar or a one-line flow list (the persona template has
+  `signoff_patterns: []`).
+- Comments and blank lines are allowed and ignored, as YAML does; the persona
+  template and SCHEMA's field list use trailing comments. A comment ends a value,
+  so the value can't continue on the next line. Tabs are allowed only inside
+  quotes, comments and `>-` text, since PyYAML rejects them anywhere else.
 - **Every scalar is a string.** Dates are validated by regex (`created`,
   `updated`, `last_verified`: `YYYY-MM-DD`, quoted or not), never type-coerced.
   This makes quoting irrelevant to every reader (N6).
@@ -734,7 +746,10 @@ link site.
   `capture.py`, `wikifm.set_field`, R12's auto-fix and the migration all write
   this form. Existing single-quoted dates (176 values) need no change.
 - Anything else is a profile violation (R12; 🟡 until the migration, then 🔴).
-  R1 and R2 become two specific messages of this check.
+  R1 and R2 become two specific messages of this check. Shapes a YAML library
+  writes that the profile doesn't list (list items at column 0, a value
+  continued on the next line, `>-` on a key) are read the way YAML reads them,
+  so no reader loses a value, and reported like the rest (step 4).
 - Required keys: `title, created, updated, type, tags, sources` (as `lint.py`
   today). `coverage` is recommended and 🟡 on factual types (as today).
   CONTRIBUTING and worker-link-validator are corrected to match (N4). A missing
@@ -743,8 +758,13 @@ link site.
 
 **One parser, and one writer.** New `skills/llm-wiki-pm/scripts/wikifm.py`,
 stdlib only:
-- **Reading:** `parse(text) -> (fields, errors)` implementing the profile;
-  `sources(fields)`, `citations(body)`, `resolve(page, wiki)`.
+- **Reading:** `parse(text) -> (fields, errors)` implementing the profile, and
+  `parse_block()` for the text between the fences. Each error names its rule
+  (R1, R2, R5, or R12 for the rest of the profile) and its line.
+  `sources(fields)` and the accessors `str_field`, `list_field` and
+  `date_field` return an empty value for a value of the wrong type, so a list
+  where a string belongs can't crash a caller (review F8). `citations(body)` and
+  `resolve(page, wiki)` arrive with step 6, whose rules are their first callers.
 - **Writing (review F4):** `set_field(text, key, value)` and
   `set_list(text, key, items)` change one frontmatter field in place and leave
   every other byte of the page untouched, the way the Edit tool does, and write
@@ -769,9 +789,11 @@ stdlib only:
   over every page of a scratch copy of a real wiki and requires 0 exceptions
   (review F8). It reads the wiki's path from an environment variable (for
   example `WIKIFM_WIKI`) and skips when that's unset, since no wiki is in the
-  repo; step 4 runs it once against a scratchpad copy. The oracle tests skip
-  without PyYAML (`pytest.importorskip`), and README's test recipe adds `pyyaml`
-  (plan review P8).
+  repo. Step 4 ran it on a scratchpad copy on 2026-09-29: 701 `.md` files,
+  archive snapshots and records included, with 0 exceptions, and every
+  frontmatter block agreeing with PyYAML or reporting an error. The oracle
+  tests skip without PyYAML (`pytest.importorskip`), and README's test recipe
+  adds `pyyaml` (plan review P8).
 
 **Contract reconciliation.** The MCP tells agents to read `meta/contract.md` for
 frontmatter and naming. The default contract declares a different `type` enum, a
@@ -1038,7 +1060,7 @@ review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 | R9 | Two records with the same ID, a record ID equal to a page slug, or two pages with the same slug (review F11) | I5, I6 | New | 🔴 | 🔴 | No |
 | R10 | A page whose primary sources are all conversation or reconstructed records. Cleared only by declaring a non-conversation primary record; no date involved (review F1) | I8 | New | 🔵 | 🔵 | No |
 | R11 | `meta/contract.md` is still the MCP's default contract | none (competing spec) | New | 🟡 | 🟡 | No |
-| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check). 13 pages (the timestamp dates) violate it until migration M4, so it starts at 🟡 (review F3); the 15 pages with wrapped list items pass, because the profile now allows them. R1, R2 and R5 keep their own 🔴, and so do missing frontmatter and a missing required key, which are 🔴 today (plan review P15) | 🟡 | 🔴 | Only for timestamp dates at exactly midnight (N15), under `--auto-fix=content`: rewrites them as `'YYYY-MM-DD'`, which is lossless |
+| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check). 13 pages (the timestamp dates) violate it until migration M4, so it starts at 🟡 (review F3); the 15 pages with wrapped list items (`>-` items) pass, because the profile now allows them. R1, R2 and R5 keep their own 🔴, and so do missing frontmatter and a missing required key, which are 🔴 today (plan review P15) | 🟡 | 🔴 | Only for timestamp dates at exactly midnight (N15), under `--auto-fix=content`: rewrites them as `'YYYY-MM-DD'`, which is lossless |
 | R13 | **Dropped (review F6).** Was: a record without `source_type` or `captured`, dated after the rule ships | — | — | — | — | — |
 
 Other checks keep their current tiers and have no R-number: escaped `\[`
@@ -1121,7 +1143,7 @@ Current state against the new rules:
 | Raw record/asset stem pairs | 2 | allowed (asset exclusion) |
 | Timestamp-format dates (N15) | 17 values on 13 pages | normalize to `'YYYY-MM-DD'` in M4 (lossless: every time part is `T00:00:00.000Z`) |
 | Single-quoted dates | 176 values (114 `updated`, 62 `last_verified`) | none: already the canonical form (review F2) |
-| Wrapped `gaps:` list items | 15 pages | none: the profile accepts continuation lines (review F3) |
+| Wrapped `gaps:` list items (`>-`) | 15 pages | none: the profile accepts them (review F3) |
 | Source declared as a non-markdown file | 1 `.html` under `raw/attachments/`, on 1 page | M5: save a markdown record of it in a routed folder, move the original to `raw/assets/`, re-declare (review F15) |
 | Files in unrouted `raw/` folders | `raw/attachments/` 1 (the `.html` above), `raw/clippings/` 1 (cited by no page) | M4/M5: empty both folders into routed folders; the clippings file goes to `raw/articles/` (review F15) |
 | Briefs rotated into `_archive/briefings/` | 2 (one still linked from `index.md`) | M4: move back to `briefings/` (review F12) |
@@ -1189,7 +1211,7 @@ P29).
 | 3 | Hooks: MCP matchers for both tool-name forms (PreToolUse only; the PostToolUse matcher lands with step 7), with the `action`/`dryRun` filters, `create_from_template` included (plan review P4); `slug()`-named snapshots, made by one shared `snapshot()` function in `lint.py` that lint's auto-fix and M1 reuse (plan review P2); `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image, and `vault.create`/`update` judged from `content`; raw write-once warning; update `~/.claude/settings.json`, `hooks.json` and `hooks/README.md` (plan review P27); `tests/test_write_hooks.py` with synthetic MCP payloads, plus a manual live check, in a session pointed at a scratch wiki, that a PreToolUse hook fires on an MCP call (plan review P3). Permission rules: deny both name forms of the MCP `edit` tool and ask before both name forms of `vault` in `~/.claude/settings.json` (fork install), and document both in the README's install notes (review F4, F13; plan review P5). Mark ISSUE-2 mitigated in the fork changelog (plan review P28) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
 | 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write **and session-start's stale scan** switch to it (review F2), with the date-quote fix as the one intended behavior change and lint's and session-start's counts recorded before and after (plan review P6); delete the old parsers (replaces PATCH-3a, 543766c), rewriting `543766c`'s three tests against `wikifm.sources()` (plan review P7); PyYAML-oracle tests, skipped without PyYAML, with `pyyaml` added to README's test recipe, plus an opt-in whole-wiki no-exception test (review F8, plan review P8); the pointer comment in `test_lint.py`, a fork-changelog note correcting `91878dc`'s message, and PATCH-3a marked replaced (plan review P28) | — | patch | **Up** |
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md (Source Attribution; "No raw/ mutations"; "Snapshot before destructive ops" relabeled as the rule for paths the hook can't see), the SCHEMA template (Inline Provenance; Grounding, whose primary sources become records; a block-style `sources:` example), ingest-guide ① "Current conversation" and ⑤, update-guide (the `ae33f9d` block and the `(per [[raw/…]])` example), crystallize-guide, and `prd-templates.md:91` (plan review P9, P11); llm-wiki-crm §2 company enrichment and llm-wiki-research's stub enrichment capture each source through `worker-source-fetcher` and cite its ID (plan review P10); `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2) and its `[[raw/…]]` sources appendix; `skills/llm-wiki-pm/scripts/capture.py`, which picks the next free suffix, with `tests/test_capture.py` (plan review P12); `lint.py --cited-sources` (section 5.8; plan review P13, P19); SKILL.md §2/§4 edits, the References and Scripts lists, the §4 snapshot sentence, and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
-| 6 | Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
+| 6 | `wikifm.citations()` and `resolve()`, moved from step 4. Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check, resolving against lint's page set; split-procedure reminder when a page crosses 200 lines, review F9); registered with step 3's matchers in `~/.claude/settings.json` and `hooks.json` in place of `post-write.sh`, which stays in the repo unregistered so `TestPostWrite` keeps passing (plan review P23); tests in `tests/test_write_hooks.py`; `hooks/README.md` (plan review P27) | 3, 4, 6 | minor | **Up** |
 | 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` and `.markdown_vault_mcp/` as empty (review F10, plan review P24) | 5 | minor | **Up** |
 | 9 | Worker agents → user-level symlinks in `~/.claude/agents/`; delete the wiki repo's copy; verify `CLAUDE_SKILL_DIR` in subagents. It changes the wiki repo and user-level config, so confirm both with the user first (plan review P25) | — | — | Fork (install layout) |
@@ -1256,7 +1278,10 @@ To keep merges tractable: land step 4 first as a refactor whose one intended
 behavior change is the date-quote fix (F2), with all existing tests green, so
 later rule diffs are additive. That fix makes lint's 90-day check read about 115
 more pages and raises session-start's stale count, so record both before and
-after (plan review P6). Put new rules in `wikifm.py` and new lint functions
+after (plan review P6). Measured at step 4 on a copy of the wiki (2026-09-29):
+lint's 90-day check read `updated` on 244 of 245 pages instead of 131, with its
+report unchanged (0 🔴, 37 🟡, 44 🔵), and session-start's stale count rose from
+49 to 66. Put new rules in `wikifm.py` and new lint functions
 rather than inline in `main()`; put new tests in new files.
 
 ---
