@@ -7,6 +7,7 @@ Usage:
 """
 
 import re
+import shutil
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
@@ -149,6 +150,19 @@ def slug(path):
     if path.name == "README.md":
         return path.parent.name
     return path.stem
+
+
+def snapshot(page, wiki):
+    """Copy `page` to _archive/<slug>-<YYYY-MM-DD>.md before it changes.
+    At most one snapshot per page per day: an existing snapshot is kept.
+    Shared by pre-write.sh, lint --auto-fix and the migration, so backups are
+    named one way everywhere. Returns the snapshot path."""
+    page, wiki = Path(page), Path(wiki)
+    arc = wiki / "_archive" / f"{slug(page)}-{date.today().isoformat()}.md"
+    if not arc.exists():
+        arc.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(page, arc)
+    return arc
 
 
 def is_shareable(fm):

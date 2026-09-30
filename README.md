@@ -93,6 +93,28 @@ If you used Option B without installing the plugin, set `WIKI_PATH` before start
 echo 'export WIKI_PATH=$HOME/pm-wiki' >> ~/.bashrc && source ~/.bashrc
 ```
 
+### Recommended: permission rules for wiki-search
+
+The wiki-search MCP's `edit` tool rewrites the whole page on most operations,
+which escapes `[[wikilinks]]` as `\[\[` (wirux/mcp-markdown-vault#47) and turns
+dates into timestamps (#49). The built-in Edit tool does everything it does, so
+deny it. Its `vault` tool can also delete pages, so have it ask first. A plugin
+can't install permission rules, so add them to `~/.claude/settings.json`
+yourself. Each tool is listed under both of its names: the first when the
+server is configured directly, the second when it comes with the plugin.
+
+```json
+{
+  "permissions": {
+    "deny": ["mcp__wiki-search__edit", "mcp__plugin_llm-wiki-pm_wiki-search__edit"],
+    "ask": ["mcp__wiki-search__vault", "mcp__plugin_llm-wiki-pm_wiki-search__vault"]
+  }
+}
+```
+
+The `ask` rule also prompts on `vault` reads, which agents rarely make, since
+reads go through the `view` tool.
+
 Full setup, including mobile Obsidian sync, in
 [GETTING_STARTED.md](GETTING_STARTED.md).
 

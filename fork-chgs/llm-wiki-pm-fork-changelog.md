@@ -5,6 +5,10 @@ created: 2026-08-11
 The fork's local changes to the upstream plugin (PATCH-1 to PATCH-4), how to
 re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
 
+revised on: 2026-09-29
+Marked ISSUE-2 mitigated, now that the pre-write hook snapshots `overview.md`
+before any whole-file replacement (step 3 of the sources and references design).
+
 revised on: 2026-08-30
 Moved into the fork from the PM wiki, where it had been kept as a wiki page.
 Reorganized with PATCH-N/ISSUE-N IDs, merged five overlapping open issues into
@@ -599,7 +603,11 @@ safe fix needs one of:
 
 ### ISSUE-2 — `worker-wiki-indexer`'s Overview Regeneration mode: latent, dormant risk
 
-**Status:** open, no fix proposed — currently mitigated only by never firing.
+**Status:** mitigated (2026-09-29): `pre-write.sh` snapshots `overview.md` to
+`_archive/overview-<date>.md` before any whole-file replacement (`Write`, or
+the MCP's `vault` update or delete), which is how the indexer would replace it.
+A regeneration done section by section through `Edit` would not be caught.
+Step 3 of the [Sources and References Design](sources-and-references-design.md).
 
 - If ever triggered (overview.md >7 days stale + `log.md` shows activity
   since), it wipes everything in `overview.md` below the intro paragraph and
