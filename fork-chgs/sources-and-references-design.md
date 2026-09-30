@@ -18,6 +18,8 @@ the plan review's issues (P1–P29): each step now names the files, decisions an
 dependencies it needs, step 10 is split into writing and running the migration,
 and missing frontmatter and missing required keys stay 🔴. Completed step 2,
 adding `GETTING_STARTED.md`, whose export audit still filtered on `private: true`.
+Completed step 3 with the PostToolUse matcher moved to step 7 and dated digests
+exempt from the freshness gate, and recorded the live check's result.
 
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
@@ -32,7 +34,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–2 done (see section 8)
+Status: **in progress**: steps 0–3 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -820,9 +822,11 @@ to edit it. So:
      tool is decided by auto mode. Permission rules match on the tool name, so
      `vault` reads prompt too; agents rarely make them, since reads go through
      `view`. The README's install notes document this rule with the deny rule.
-   - **Hook matchers.** PreToolUse and PostToolUse match
+   - **Hook matchers.** PreToolUse matches
      `Write|Edit|MultiEdit|mcp__.*wiki-search__(vault|edit)`, which covers both
-     tool-name forms. The *registered* hooks are the user-level entries in
+     tool-name forms (step 3). PostToolUse gets the same matcher in step 7, when
+     post-validate replaces `post-write.sh`, which reads only `file_path` and
+     would do nothing on an MCP call. The *registered* hooks are the user-level entries in
      `~/.claude/settings.json`, not `hooks/hooks.json`, so both must be updated
      (hooks.json for upstream parity).
    - **Filters (review F13).** The hooks read `tool_input.action` and act only on
@@ -830,14 +834,15 @@ to edit it. So:
      once on reads. `create_from_template` also writes a new file (V1), so it is
      included (plan review P4). They skip any `edit` call with `dryRun: true`,
      which writes nothing.
-   - **Unverified.** Claude Code documents PreToolUse/PostToolUse matching on
-     `mcp__<server>__<tool>` names, but I have not tested it on this machine; step
-     3 includes that check. It is a manual check, not a test: in a session whose
-     `.wiki-path` points at a scratch wiki (the hooks and the MCP resolve the same
-     path, so nothing reaches the private wiki), call `vault.create` and then
-     `vault.update` on a scratch page, confirm the snapshot, and confirm the deny
-     rule refuses an `edit` call. `tests/test_write_hooks.py` covers MCP payloads
-     with synthetic stdin JSON (plan review P3).
+   - **Live check (done 2026-09-29).** Claude Code documents hook matching on
+     `mcp__<server>__<tool>` names, and step 3 checked it by hand in a session
+     whose `.wiki-path` pointed at a scratch wiki (the hooks and the MCP resolve
+     the same path, so nothing reached the private wiki). A `vault.update` on a
+     scratch page prompted under the `ask` rule (twice: the agent read the page
+     first), and the hook snapshotted the page before the write. The deny rule
+     doesn't refuse an `edit` call: it removes the tool from the session, so the
+     agent never sees it. `tests/test_write_hooks.py` covers MCP payloads with
+     synthetic stdin JSON (plan review P3).
 2. **Path extraction.** `tool_input.file_path` (Write/Edit/MultiEdit);
    `tool_input.path` (MCP single); `tool_input.operations[].path` (MCP batch).
    MCP paths are vault-relative and joined to `$WIKI`. The launcher and the hooks
@@ -875,7 +880,9 @@ to edit it. So:
    so the gate is skipped for them. Post-validate covers them. `vault.create` and
    `vault.update` carry the whole post-image in `content`, so the gate judges them
    like Write; `create_from_template` is checked after the write, by
-   post-validate (plan review P4).
+   post-validate (plan review P4). Pages with `lifecycle: dated-digest` are
+   exempt wherever they live: digests summarize the wiki and have no sources by
+   design (D6), and 5 of the 6 live ones are in `queries/`, not `briefings/`.
 6. **Post-validate (new, synchronous PostToolUse, `hooks/post-validate.sh`).**
    Reads the written file(s) from disk and runs `wikifm` checks for I1–I3, the
    R7 grammar, escaped `\[`, and links. When a write takes a page over 200 lines,
@@ -1179,7 +1186,7 @@ P29).
 | 0 | Scrub real names from the current files and from git history, then update cited commit IDs (N12, D8; detail below the table) | — | — | Fork (public repo hygiene) |
 | 1 | `wiki-search.sh` `.wiki-path` read fix + `tests/test_wiki_search.py` | — | patch | **Up** |
 | 2 | Doc drift: README/CONTRIBUTING/GETTING_STARTED `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)". `llm-wiki-maintain`: remove step ⑤ "Brief rotation" and the `_archive/briefings/` convention line (review F12), and reword step ⑥'s "non-destructive" note to name what plain `--auto-fix` does (review F5). The worker-link-validator item moved to step 6, since the validator needs lint's side-effect-free `--json` (plan review P1) | — | patch | **Up** |
-| 3 | Hooks: MCP matchers for both tool-name forms, with the `action`/`dryRun` filters, `create_from_template` included (plan review P4); `slug()`-named snapshots, made by one shared `snapshot()` function in `lint.py` that lint's auto-fix and M1 reuse (plan review P2); `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image, and `vault.create`/`update` judged from `content`; raw write-once warning; update `~/.claude/settings.json`, `hooks.json` and `hooks/README.md` (plan review P27); `tests/test_write_hooks.py` with synthetic MCP payloads, plus a manual live check, in a session pointed at a scratch wiki, that a PreToolUse hook fires on an MCP call (plan review P3). Permission rules: deny both name forms of the MCP `edit` tool and ask before both name forms of `vault` in `~/.claude/settings.json` (fork install), and document both in the README's install notes (review F4, F13; plan review P5). Mark ISSUE-2 mitigated in the fork changelog (plan review P28) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
+| 3 | Hooks: MCP matchers for both tool-name forms (PreToolUse only; the PostToolUse matcher lands with step 7), with the `action`/`dryRun` filters, `create_from_template` included (plan review P4); `slug()`-named snapshots, made by one shared `snapshot()` function in `lint.py` that lint's auto-fix and M1 reuse (plan review P2); `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image, and `vault.create`/`update` judged from `content`; raw write-once warning; update `~/.claude/settings.json`, `hooks.json` and `hooks/README.md` (plan review P27); `tests/test_write_hooks.py` with synthetic MCP payloads, plus a manual live check, in a session pointed at a scratch wiki, that a PreToolUse hook fires on an MCP call (plan review P3). Permission rules: deny both name forms of the MCP `edit` tool and ask before both name forms of `vault` in `~/.claude/settings.json` (fork install), and document both in the README's install notes (review F4, F13; plan review P5). Mark ISSUE-2 mitigated in the fork changelog (plan review P28) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
 | 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write **and session-start's stale scan** switch to it (review F2), with the date-quote fix as the one intended behavior change and lint's and session-start's counts recorded before and after (plan review P6); delete the old parsers (replaces PATCH-3a, 543766c), rewriting `543766c`'s three tests against `wikifm.sources()` (plan review P7); PyYAML-oracle tests, skipped without PyYAML, with `pyyaml` added to README's test recipe, plus an opt-in whole-wiki no-exception test (review F8, plan review P8); the pointer comment in `test_lint.py`, a fork-changelog note correcting `91878dc`'s message, and PATCH-3a marked replaced (plan review P28) | — | patch | **Up** |
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md (Source Attribution; "No raw/ mutations"; "Snapshot before destructive ops" relabeled as the rule for paths the hook can't see), the SCHEMA template (Inline Provenance; Grounding, whose primary sources become records; a block-style `sources:` example), ingest-guide ① "Current conversation" and ⑤, update-guide (the `ae33f9d` block and the `(per [[raw/…]])` example), crystallize-guide, and `prd-templates.md:91` (plan review P9, P11); llm-wiki-crm §2 company enrichment and llm-wiki-research's stub enrichment capture each source through `worker-source-fetcher` and cite its ID (plan review P10); `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2) and its `[[raw/…]]` sources appendix; `skills/llm-wiki-pm/scripts/capture.py`, which picks the next free suffix, with `tests/test_capture.py` (plan review P12); `lint.py --cited-sources` (section 5.8; plan review P13, P19); SKILL.md §2/§4 edits, the References and Scripts lists, the §4 snapshot sentence, and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
 | 6 | Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
