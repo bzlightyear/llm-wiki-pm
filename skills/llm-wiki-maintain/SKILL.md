@@ -1,6 +1,6 @@
 ---
 name: llm-wiki-maintain
-description: Orchestrates the recurring daily-maintenance loop for the PM wiki — registry-driven multi-source sweep, ingest, daily brief, brief rotation, and a health check — with explicit interactive-vs-autonomous mode handling.
+description: Orchestrates the recurring daily-maintenance loop for the PM wiki — registry-driven multi-source sweep, ingest, daily brief, and a health check — with explicit interactive-vs-autonomous mode handling.
 when_to_use: Use for "daily maintenance", "run the daily wiki", "morning sweep", "ingest all sources and brief me", "do the daily run", "maintain the wiki", or any scheduled/autonomous run that should sweep all sources and produce a brief. For a brief alone use llm-wiki-brief; for a single ingest use core llm-wiki-pm.
 allowed-tools: Read Grep Bash Edit Write
 ---
@@ -65,22 +65,21 @@ run?") and proceed on the answer; default to interactive.
    ledger (one row per registered source) and, in autonomous mode, a **Needs
    Review** section.
 
-⑤ **Brief rotation.** Keep the last 7 days in `briefings/`; move older briefs to
-   `_archive/briefings/`. Use `git mv` if the file is tracked, plain `mv` if not
-   (check first — don't let an untracked file abort the run).
-
-⑥ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
+⑤ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
    the export-surface (shareable) audit, and any new orphans/broken links.
-   Optionally `lint.py $WIKI --auto-fix` to backfill+sort the index (interactive:
-   offer it; autonomous: run it — it's non-destructive).
+   Optionally `lint.py $WIKI --auto-fix` (interactive: offer it; autonomous: run
+   it). Plain `--auto-fix` only backfills and alpha-sorts `index.md`, repairs
+   escaped `\[\[` brackets, and redirects links to superseded pages; it makes no
+   other content edits.
 
-⑦ **Report.** One consolidated summary: sweep coverage ledger, pages
+⑥ **Report.** One consolidated summary: sweep coverage ledger, pages
    created/updated, brief link, lint health delta, and the Needs Review queue.
 
 ## Brief lifecycle convention
 
-- `briefings/YYYY-MM-DD.md` — current briefs, `lifecycle: dated-digest`.
-- `_archive/briefings/` — briefs older than 7 days.
+- `briefings/YYYY-MM-DD.md` — every brief, `lifecycle: dated-digest`. Briefs
+  stay in `briefings/` permanently; never move or archive them, since that
+  breaks links to them.
 - Briefs are orphans by design; the `dated-digest` flag keeps them out of lint's
   orphan count. Never link-spam pages just to de-orphan a brief.
 

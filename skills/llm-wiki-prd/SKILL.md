@@ -33,7 +33,7 @@ WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
 ③ Read last 20-30 lines of `$WIKI/log.md` — recent activity
 ④ Read `$WIKI/overview.md` — current synthesis state
 
-**Orient gate (enforced):** if steps ①-④ are not complete in this session, refuse any write. Surface: "Need to orient first. Running now." Then orient, then proceed.
+**Orient gate (checklist):** before writing any artifact or wiki page, ensure ①-④ are done this session. If not: "Need to orient first. Running now." Then orient, then proceed.
 
 ## Key Constraint
 

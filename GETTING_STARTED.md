@@ -356,7 +356,7 @@ shared state between users.
 | Source uploaded               | ingest pipeline      | Save to `raw/`, trigger re-index                |
 | Page created/updated by agent | re-index             | wiki-search auto-reindexes on next query        |
 | Nightly                       | `lint.py --auto-fix` | Keep wiki healthy                               |
-| Monthly                       | export private audit | `grep -rl "^private: true"` report              |
+| Monthly                       | export surface audit | `grep -rl "^shareable: true"` report            |
 | User deletion                 | GDPR delete          | Remove wiki dir + `.markdown_vault_mcp/` + S3 backup |
 | Session start                 | inject context       | Load overview.md + recent log into agent prompt |
 
@@ -364,8 +364,9 @@ shared state between users.
 
 - **Filesystem isolation**: each wiki in its own dir, no shared paths
 - **Search isolation**: per-wiki `.markdown_vault_mcp/` index (never shared)
-- **Privacy enforcement**: server-side `grep "^private: true"` filter before
-  any export, not just client-side. Don't trust the agent to remember.
+- **Privacy enforcement**: server-side allowlist filter before any export
+  (export only pages matching `grep -rl "^shareable: true"`), not just
+  client-side. Don't trust the agent to remember.
 - **Audit log persistence**: ship `log.md` lines to your central logging for
   compliance
 - **Backup**: `raw/` and wiki `.md` files are the data. Search index is

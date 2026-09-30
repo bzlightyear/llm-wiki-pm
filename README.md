@@ -30,7 +30,7 @@ pages. Every query cites specific wiki entries. The wiki compounds.
 - **Ingest / query / update / lint / archive** flows with discipline guardrails
 - **Supersession** with auto-redirect of inbound links
 - **Crystallize** pattern: transcripts become structured decision digests
-- **Privacy-first**: pre-ingest filter + `private:` frontmatter flag
+- **Privacy-first**: pre-ingest filter + private-by-default pages (only `shareable: true` pages are exported)
 - **Bundled wiki-search**: semantic + TF-IDF search over your whole wiki (auto-indexes on startup)
 - **Obsidian-compatible**: works as a vault out of the box
 - **Worker agents**: five subagents (indexer, fetcher, link-validator, lint, people-updater)
@@ -104,7 +104,7 @@ Full setup, including mobile Obsidian sync, in
 | **Storage** | Plain markdown | Plain markdown | Plain markdown | Supabase + S3 | Cloud |
 | **Search** | Bundled semantic + TF-IDF (wiki-search) + backlinks | grep + index | grep + index | PGroonga | Proprietary |
 | **Update discipline** | Diffs + supersession fields + auto-link rewrite | Diffs + source cite | Human-in-loop audit | None explicit | N/A |
-| **Privacy** | Pre-ingest filter + `private:` flag | None | None | User-scoped | SaaS ToS |
+| **Privacy** | Pre-ingest filter + private by default (`shareable:` allowlist) | None | None | User-scoped | SaaS ToS |
 | **Transcript support** | `crystallize` flow (decisions + actions) | Generic ingest | Generic ingest | Generic ingest | Source-only |
 | **Install target** | Claude Code | Claude Code | OpenClaw / Codex | Self-host web | SaaS |
 | **Ops burden** | None (local files) | None | Obsidian plugin + Node server | Supabase + S3 + OCR | Zero |
@@ -326,7 +326,7 @@ How this skill maps to Karpathy's original gist and Rohit's v2 extensions:
 Implemented:
 
 - Explicit supersession with `supersedes:` / `superseded_by:` fields + auto-redirect
-- Privacy filter (pre-ingest checklist + `private:` frontmatter flag)
+- Privacy filter (pre-ingest checklist + private-by-default export allowlist, `shareable: true`)
 - Self-healing lint (`--auto-fix` for safe repairs)
 - Crystallization (transcript → decision digest)
 - Schema as the real product
