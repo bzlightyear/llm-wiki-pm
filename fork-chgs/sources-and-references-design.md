@@ -17,6 +17,10 @@ Completed step 6. `resolve()` takes one `sources:` entry, `slug()` moved into
 both R3 and R7 only when it resolves to nothing. Dated digests skip the
 staleness warnings, session-start keeps the new counts out of its health total,
 and section 8 records the lint counts before and after.
+Completed step 7. Post-validate checks what lint checks, with lint's exact link
+match. It runs the freshness gate for the two MCP writes pre-write can't judge,
+and reminds about splitting whenever a rewrite leaves a page over 200 lines. It
+measured about 0.09 s on a copy of the wiki.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -50,7 +54,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–6 done (see section 8)
+Status: **in progress**: steps 0–7 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -950,6 +954,12 @@ to edit it. So:
    of `post-write.sh`'s async entry. `post-write.sh` stays in the repo,
    unregistered, so `test_hooks.py`'s `TestPostWrite` (13 tests) keeps passing;
    removing it is proposed upstream together with those tests (plan review P23).
+   It also runs item 5's freshness gate for `create_from_template` and MCP
+   `edit`, whose result pre-write can't see. PostToolUse input carries no
+   pre-image, so the split reminder is exact for Edit, MultiEdit and new files;
+   a whole-file rewrite or MCP edit that leaves a page over 200 lines gets the
+   reminder as well (decided at step 7). The `_status.md` append covers every
+   problem it reports, but not the reminders.
 7. **Session-start** (already runs lint): add the counts of I1–I3 violations to
    the additionalContext line and `_status.md`. Stop writing a report in
    `--json` mode (N1). If lint exits nonzero or its JSON doesn't parse, report
