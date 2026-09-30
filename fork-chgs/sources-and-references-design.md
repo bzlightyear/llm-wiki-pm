@@ -12,6 +12,11 @@ Completed step 5. The one-pager joins the Marp deck in a directory page's
 marker parser until step 6 switches it to `citations()`. Section 8 records the
 measured sizes: SKILL.md grew 423 bytes, the gap from the estimate being the
 Scripts list, and `citation-spec.md` is 11.4 KB.
+Completed step 6. `resolve()` takes one `sources:` entry, `slug()` moved into
+`wikifm.py`, and R3 resolves what a malformed citation names, so a citation is
+both R3 and R7 only when it resolves to nothing. Dated digests skip the
+staleness warnings, session-start keeps the new counts out of its health total,
+and section 8 records the lint counts before and after.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -45,7 +50,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–5 done (see section 8)
+Status: **in progress**: steps 0–6 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -546,13 +551,15 @@ sources: [SCHEMA.md]                             # R6: structural file is not a 
 sources: [raw/assets/deck-2026-01.pdf]           # R6: cite the record, not the asset
 ```
 
-Grounding (existing `lint.py:502-520`) is redefined on resolved IDs: *primary* =
-resolves to a record; *secondary* = resolves to a page. Behavior is otherwise
-unchanged. A page path counts as secondary even when the page doesn't exist:
-R6 reports the missing file, and the grounding check keeps treating the entry
-as a wiki page, which keeps `test_hooks.py`'s `TestLint` fixtures valid. Pages
-with `lifecycle: dated-digest` are exempt from grounding (D6). Both land in
-step 6 (plan review P17).
+Grounding (existing `lint.py:502-520`) is redefined on what each entry names
+(plan review P17): *primary* = the path of a record; *secondary* = the path of
+a page. Anything else (a conversation shape, a URL, a root file) is neither,
+where the old prefix test counted it as primary. A path counts even when its
+file doesn't exist: R6 reports the missing file, and the grounding check keeps
+treating the entry as what it names, which keeps `test_hooks.py`'s `TestLint`
+fixtures valid. Pages with `lifecycle: dated-digest` are exempt from grounding
+(D6). Both landed in step 6, and on a copy of the wiki they changed no page's
+verdict.
 
 ### 5.4 Inline citations
 
@@ -581,8 +588,8 @@ Invalid
 pricing-2026-01-15, p.3]                          wrapped marker (R7, auto-fixable when the join resolves)
 [source: vendor-y-docs-2026 vs. competitor-x-docs-2026]     use ";" (R7)
 [source: [[crystallize-pricing-review-2026-01-10]]]         wikilink inside a marker (R7)
-[source: https://example.com/pricing, 2026-01-15]           URL; capture the page as a record (R7, see D2)
-[source: SCHEMA.md org chart]                    structural file (R3)
+[source: https://example.com/pricing, 2026-01-15]           URL; capture the page as a record (R3 and R7, see D2)
+[source: SCHEMA.md org chart]                    structural file (R3 and R7)
 ```
 
 Resolution is exact and page-local: split the marker on `"; "`, take the text
@@ -592,6 +599,13 @@ exemption. `_citation_matches_source` and `_is_conversation_citation` are
 deleted. R4, which counts cited sources with `_citation_matches_source` today,
 then counts a source as cited when a marker's ID equals its `slug()` (plan
 review P18).
+
+The ID is read once R7's mechanical defects are undone: a path becomes its
+slug, a wrapped ID is joined, a nested `source:` is dropped, `a vs. b` is two
+citations, and a wikilink gives its target (step 6). So a path-form or wrapped
+citation of a declared source is R7 only, as the examples above show, while a
+citation that is malformed and resolves to nothing, such as a URL or
+`SCHEMA.md org chart`, is both R3 and R7.
 
 `update-guide.md:77` and `output-formats.md:89-90` stop showing `[[raw/…]]`
 wikilinks as citations. `update-guide.md`'s `ae33f9d` block (lines 84-96) and
@@ -716,8 +730,12 @@ digest that cites a brief (review F12). Lint scans `briefings/` as pages (link
 targets, R9, escape checks), and pages with `lifecycle: dated-digest` are exempt
 from lint's index-completeness check and its auto-fix, so filed briefs aren't
 added to `index.md`. Without that exemption, the maintain loop's unattended
-`--auto-fix` would add every brief (plan review P16). Also, worker-link-validator
-runs `lint.py --json` instead of keeping its own three-directory resolver (N9),
+`--auto-fix` would add every brief (plan review P16). Dated digests are also
+exempt from lint's 90-day staleness and 120-day `last_verified` warnings,
+since a digest describes the wiki as of its date; otherwise each daily brief
+would add a warning once it's 90 days old (decided at step 6). Also,
+worker-link-validator runs `lint.py --json` instead of keeping its own
+three-directory resolver (N9),
 its `backlinks.py --all-orphans` call (a flag `backlinks.py` doesn't have) and
 its four-key field list (N4). That lands in step 6, once `--json` writes nothing
 (plan review P1). The post-write check runs on MCP writes too. A wikilink inside
@@ -771,7 +789,10 @@ stdlib only:
   `sources(fields)` and the accessors `str_field`, `list_field` and
   `date_field` return an empty value for a value of the wrong type, so a list
   where a string belongs can't crash a caller (review F8). `citations(body)` and
-  `resolve(page, wiki)` arrive with step 6, whose rules are their first callers.
+  `resolve(entry, wiki)` arrived with step 6, whose rules are their first
+  callers. `resolve()` takes one `sources:` entry, since lint and post-validate
+  already hold the parsed page. `slug()` moved into `wikifm.py` with them,
+  because wikifm can't import lint, and `lint.slug` stays the same function.
 - **Writing (review F4):** `set_field(text, key, value)` and
   `set_list(text, key, items)` change one frontmatter field in place and leave
   every other byte of the page untouched, the way the Edit tool does, and write
@@ -881,7 +902,8 @@ to edit it. So:
    `vault.update`, `vault.delete`, or any `edit` op: copy to
    `_archive/<slug>-<date>.md`, where slug = `lint.py`'s `slug()`, which fixes the
    README collision (N14). One shared function makes the copy:
-   `snapshot(page, wiki)` in `lint.py`, next to `slug()`. `pre-write.sh`, lint
+   `snapshot(page, wiki)` in `lint.py`, next to `slug()` (defined in
+   `wikifm.py` since step 6). `pre-write.sh`, lint
    `--auto-fix` (item 8) and migration step M1 all call it, so backups are named
    one way everywhere (plan review P2). `briefings/` joins the gated set. The two
    root files the page rule skips get their own rule:
@@ -934,7 +956,10 @@ to edit it. So:
    "lint failed: health unknown" instead of zero counts. Today
    `session-start.sh:136` discards stderr and leaves the counts at 0, so a crash
    reads as a clean wiki (review F8). With that, every write path, including Bash,
-   Obsidian and git, is detected within one session boundary.
+   Obsidian and git, is detected within one session boundary. Step 6 put the
+   I1–I3 counts in a sentence of their own, outside the health total: until a
+   wiki is migrated they are a known backlog, as in D7. A missing `lint.py` also
+   reads as health unknown.
 8. **lint `--auto-fix`** imports the snapshot function and snapshots each page
    before writing it. The new content repairs (R7 marker fixes, R12 date
    normalization) run only under a separate `--auto-fix=content` flag. The
@@ -1062,7 +1087,7 @@ review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 | R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept; also the backstop for splits (the `split_from` escalation was dropped, review F9). Counts a source as cited by exact `slug()` match once R3 is rewritten (plan review P18) | 🟡 | 🟡 | No |
 | R5 | The same frontmatter key twice | I1 | Exists, kept | 🔴 | 🔴 | No |
 | R6 | A `sources:` entry that isn't a canonical path to an existing file | I2 | New | 🟡 | 🔴 | No |
-| R7 | An inline citation that breaks the grammar (section 5.4): wrapped, nested `source:`, "X vs. Y", raw path form, URL, wikilink | I3 | New | 🟡 | 🟡 | Mechanical classes (path form, wraps, nested prefix, "vs."), under `--auto-fix=content` only |
+| R7 | An inline citation that breaks the grammar (section 5.4): wrapped, nested `source:`, "X vs. Y", raw path form, URL, wikilink, or text that isn't an ID (prose, a root file, a script path), or a marker that isn't closed (step 6) | I3 | New | 🟡 | 🟡 | Mechanical classes (path form, wraps, nested prefix, "vs."), under `--auto-fix=content` only, and only when every ID in the marker names exactly one file (step 6) |
 | R8 | **Dropped (review F7).** Was: a `## Sources` legend whose IDs differ from the declared IDs | — | — | — | — | — |
 | R9 | Two records with the same ID, a record ID equal to a page slug, or two pages with the same slug (review F11) | I5, I6 | New | 🔴 | 🔴 | No |
 | R10 | A page whose primary sources are all conversation or reconstructed records. Cleared only by declaring a non-conversation primary record; no date involved (review F1) | I8 | New | 🔵 | 🔵 | No |
@@ -1074,7 +1099,8 @@ Other checks keep their current tiers and have no R-number: escaped `\[`
 (PATCH-3d/3e), broken wikilinks, orphans, index drift, self-referential
 sourcing, missing inline provenance, `coverage:`, stale `last_verified` (which
 shares R10's old flaw, section 5.12). Lint's "> 200 lines — split candidate"
-warning also gains the split-procedure pointer (section 5.8).
+warning also gains the split-procedure pointer (section 5.8). Dated digests are
+exempt from both staleness warnings (section 5.9).
 
 ## 6. Dispositions
 
@@ -1295,6 +1321,25 @@ lint's 90-day check read `updated` on 244 of 245 pages instead of 131, with its
 report unchanged (0 🔴, 37 🟡, 44 🔵), and session-start's stale count rose from
 49 to 66. Put new rules in `wikifm.py` and new lint functions
 rather than inline in `main()`; put new tests in new files.
+
+**Lint counts at step 6.** Measured on a copy of the wiki (2026-09-30; 246
+pages, including the one brief now in lint's page set, and 153 records). The
+report went from 0 🔴, 37 🟡, 44 🔵 to 0 🔴, 253 🟡, 13 🔵:
+
+- R3 moved from 🔵 on 31 pages (loose match) to 🟡 on 101 pages (271
+  citations); 39 of those citations name a file that exists but isn't
+  declared, spread over 19 pages.
+- R4 fired on 14 pages instead of 12 (plan review P18).
+- R6 flagged 56 pages (82 entries), R7 43 pages (87 markers), R12 13 pages
+  (the 17 timestamp dates) and R11 the default contract. R9 and R10 found
+  nothing.
+- Grounding by what an entry names changed no page's verdict.
+
+`--auto-fix=content` on a second copy rewrote 56 markers and all 17 dates on
+41 pages, leaving R7 on 19 pages, mostly wrapped markers holding a
+`user, conversation` citation that wait for M3. It left R3 at 101. The counts
+differ from section 7's 2026-09-25 measurements because the wiki has grown
+(72 wrapped markers against 55).
 
 ---
 
