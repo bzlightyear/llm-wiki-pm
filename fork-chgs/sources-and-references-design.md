@@ -6,6 +6,13 @@ Invariant-based redesign of how the wiki writes and checks `raw/` source records
 frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
 lint rules, hooks, migration and implementation plan that enforce it.
 
+revised on: 2026-09-30
+Completed step 5. The one-pager joins the Marp deck in a directory page's
+`assets/` folder, and `--cited-sources` reads citations with lint's existing
+marker parser until step 6 switches it to `citations()`. Section 8 records the
+measured sizes: SKILL.md grew 423 bytes, the gap from the estimate being the
+Scripts list, and `citation-spec.md` is 11.4 KB.
+
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
 the full git history. Product and page-topic names stay, so only the test file
@@ -38,7 +45,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–4 done (see section 8)
+Status: **in progress**: steps 0–5 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -496,7 +503,7 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
   must be either a real page (full frontmatter and a slug unique across the
   wiki, like a research sprint's part pages) or an artifact stored under the
   folder's `assets/` subfolder, which lint and the hooks skip. A bare `deck.md`
-  next to `README.md`, as `output-formats.md` shows today, would be scanned as a
+  next to `README.md`, as `output-formats.md` showed until step 5, would be scanned as a
   page with no frontmatter, and two directory pages each holding one would
   collide on the slug `deck`. Non-markdown artifacts (`.py`, `.png`, `.csv`,
   `.pdf`) may stay beside `README.md`, since lint only scans `.md` files.
@@ -1211,7 +1218,7 @@ P29).
 | 3 | Hooks: MCP matchers for both tool-name forms (PreToolUse only; the PostToolUse matcher lands with step 7), with the `action`/`dryRun` filters, `create_from_template` included (plan review P4); `slug()`-named snapshots, made by one shared `snapshot()` function in `lint.py` that lint's auto-fix and M1 reuse (plan review P2); `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image, and `vault.create`/`update` judged from `content`; raw write-once warning; update `~/.claude/settings.json`, `hooks.json` and `hooks/README.md` (plan review P27); `tests/test_write_hooks.py` with synthetic MCP payloads, plus a manual live check, in a session pointed at a scratch wiki, that a PreToolUse hook fires on an MCP call (plan review P3). Permission rules: deny both name forms of the MCP `edit` tool and ask before both name forms of `vault` in `~/.claude/settings.json` (fork install), and document both in the README's install notes (review F4, F13; plan review P5). Mark ISSUE-2 mitigated in the fork changelog (plan review P28) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
 | 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write **and session-start's stale scan** switch to it (review F2), with the date-quote fix as the one intended behavior change and lint's and session-start's counts recorded before and after (plan review P6); delete the old parsers (replaces PATCH-3a, 543766c), rewriting `543766c`'s three tests against `wikifm.sources()` (plan review P7); PyYAML-oracle tests, skipped without PyYAML, with `pyyaml` added to README's test recipe, plus an opt-in whole-wiki no-exception test (review F8, plan review P8); the pointer comment in `test_lint.py`, a fork-changelog note correcting `91878dc`'s message, and PATCH-3a marked replaced (plan review P28) | — | patch | **Up** |
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md (Source Attribution; "No raw/ mutations"; "Snapshot before destructive ops" relabeled as the rule for paths the hook can't see), the SCHEMA template (Inline Provenance; Grounding, whose primary sources become records; a block-style `sources:` example), ingest-guide ① "Current conversation" and ⑤, update-guide (the `ae33f9d` block and the `(per [[raw/…]])` example), crystallize-guide, and `prd-templates.md:91` (plan review P9, P11); llm-wiki-crm §2 company enrichment and llm-wiki-research's stub enrichment capture each source through `worker-source-fetcher` and cite its ID (plan review P10); `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2) and its `[[raw/…]]` sources appendix; `skills/llm-wiki-pm/scripts/capture.py`, which picks the next free suffix, with `tests/test_capture.py` (plan review P12); `lint.py --cited-sources` (section 5.8; plan review P13, P19); SKILL.md §2/§4 edits, the References and Scripts lists, the §4 snapshot sentence, and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
-| 6 | `wikifm.citations()` and `resolve()`, moved from step 4. Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
+| 6 | `wikifm.citations()` and `resolve()`, moved from step 4; `--cited-sources` (step 5) switches to `citations()` from lint's old marker parser. Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check, resolving against lint's page set; split-procedure reminder when a page crosses 200 lines, review F9); registered with step 3's matchers in `~/.claude/settings.json` and `hooks.json` in place of `post-write.sh`, which stays in the repo unregistered so `TestPostWrite` keeps passing (plan review P23); tests in `tests/test_write_hooks.py`; `hooks/README.md` (plan review P27) | 3, 4, 6 | minor | **Up** |
 | 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` and `.markdown_vault_mcp/` as empty (review F10, plan review P24) | 5 | minor | **Up** |
 | 9 | Worker agents → user-level symlinks in `~/.claude/agents/`; delete the wiki repo's copy; verify `CLAUDE_SKILL_DIR` in subagents. It changes the wiki repo and user-level config, so confirm both with the user first (plan review P25) | — | — | Fork (install layout) |
@@ -1270,6 +1277,11 @@ Tool Selection line on frontmatter edits +~150.
 **Net ≈ +140 bytes, i.e. about +0.6%** (24,625 → ~24,765). The new rules cost the
 always-on budget nothing. They live in `citation-spec.md` (est. ~6–7 KB, read on
 demand, like `ingest-guide.md`) and in lint and hooks.
+Measured at step 5 (2026-09-30): +423 bytes, +1.7% (24,625 → 25,048). The
+estimated parts came out close: fast path +108, §4 ③ −221, snapshot sentence +52,
+References +100, Tool Selection +173. The difference is the Scripts list, which
+the estimate left out: +211 for the `capture.py` line and `--cited-sources`.
+`citation-spec.md` is 11.4 KB.
 
 **Upstream conflict surface.** Heavily edited upstream files touched: `SKILL.md`
 (~6 lines), `lint.py` (large: parser swap plus rules), `pre-write.sh` (large),
