@@ -33,6 +33,12 @@ isn't set in subagents, so the two lint workers had been calling a missing
 path, and now find the core skill themselves, a fix that can go upstream.
 Checked two points the design had left unverified: the write hooks fire inside
 subagents, and a project-level agent hides a user-level one of the same name.
+Completed step 10a. The migration declares each reconstructed record on the
+pages that cite it, runs lint's content fixes itself, empties dated digests of
+entries that aren't sources and makes both M7 edits, and `--declare-cited` adds
+the undeclared citations once they're reviewed. Moving the rotated briefs back
+exposes 4 🔴 findings lint never saw in `_archive/`, left to M5, and section 8
+records the dry run's counts.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -66,7 +72,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–9 done (see section 8)
+Status: **in progress**: steps 0–9 and 10a done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -1213,7 +1219,7 @@ Current state against the new rules:
 | · "X vs. Y" | 5 | → `"; "` (auto-fix) |
 | · structural file / script path / prose / wikilink | 6 + 2 + 4 + 1 | manual (13) |
 | · multi-line markers (any) | 55 | auto-join |
-| Raw-ID markers not declared on their page (I3) | 31 markers on 16 pages | auto-fix *proposes* adding the declaration; human confirms |
+| Raw-ID markers not declared on their page (I3) | 31 markers on 16 pages | auto-fix *proposes* adding the declaration; human confirms (`--declare-cited`, step 10a) |
 | Declared raw sources never cited (R4 territory) | 211 of 694 on 84 pages | none required; R4 flags 12 pages today |
 | `## Sources` legends | 49 pages, 166 bullets: 136 prose, 19 conversational, 7 wikilinks, 4 raw paths | none; legends stay prose (review F7) |
 | Raw records without frontmatter / with `private:` | 11 / 14 | leave records untouched (write-once); no rule (R13 dropped, review F6) |
@@ -1225,7 +1231,7 @@ Current state against the new rules:
 | Files in unrouted `raw/` folders | `raw/attachments/` 1 (the `.html` above), `raw/clippings/` 1 (cited by no page) | M4/M5: empty both folders into routed folders; the clippings file goes to `raw/articles/` (review F15) |
 | Briefs rotated into `_archive/briefings/` | 2 (one still linked from `index.md`) | M4: move back to `briefings/` (review F12) |
 | `_archive/README-<date>.md` collision | 1 file | rename by hand to the right slug if its origin can be identified from git, else leave |
-| `meta/contract.md` default | 1 | hand-edit (M7) |
+| `meta/contract.md` default | 1 | replaced with the template by the script (M7) |
 
 Migration steps (a script, `skills/llm-wiki-pm/scripts/migrate_sources.py`,
 dry-run by default, emitting a per-page before/after count table, per the LINT
@@ -1241,26 +1247,49 @@ the fork first (step 10a), then run on the wiki (step 10b; plan review P26):
   `reconstructed_on: '<migration date>'`, a body quoting that day's log entries,
   and the list of pages and claims that cite it. Read `log.md` **and** any
   rotated `log-*.md`: `log.md` was at 480 of its 500-entry rotation threshold on
-  2026-09-28 (review F14).
+  2026-09-28 (review F14). The body leaves out lint runs, which say nothing
+  about a conversation, and quotes each claim as the paragraph, list item or
+  table row holding its citation. The record also sets `stated_by: user`, puts
+  any "(context)" in its title, and has no `captured:`, since the conversation
+  wasn't captured then (step 10a).
 - **M3** Rewrite the 58 conversational `sources:` entries and 5 shredded pairs to
   the M2 paths, and the 217 conversational markers to the M2 IDs, keeping any
-  parenthetical context as the marker location.
+  parenthetical context as the marker location. Each page that cites a date
+  also declares its record, since many cite a date only inline. A marker with a
+  citation that is neither valid nor mechanically repairable stays as it is, for
+  M5 (step 10a).
 - **M4** Auto-fix the mechanical marker classes (path form, wraps, nested
   prefix, "vs.", multi-line), and normalize timestamp-format dates to
-  `'YYYY-MM-DD'` (N15), all through `wikifm.set_field` and `lint.py
-  --auto-fix=content`. Move the 2 rotated briefs back to `briefings/`, and the
-  `raw/clippings/` file to `raw/articles/`.
-- **M5** Human pass on the 13 manual markers, the 11 structural-file entries,
-  the 2 free-text entries, the 31 undeclared citations, the `.html` source
-  (save a markdown record, move the original to `raw/assets/`, re-declare), and
-  the `_archive/README-<date>.md` rename from the table above (plan review P26).
+  `'YYYY-MM-DD'` (N15), all through `wikifm` and the two functions behind
+  `lint.py --auto-fix=content`, `fix_citations()` and `fix_dates()`. The script
+  calls them itself, since running lint would also make the plain fixes and
+  write a report, and couldn't take part in the dry run. It also empties dated
+  digests of entries that name no record or page (D6): the 2 weekly briefs' root
+  files and one digest's free text. Move the 2 rotated briefs back to
+  `briefings/`, and the `raw/clippings/` file to `raw/articles/`; an entry that
+  declares a moved file follows it. The moved briefs join lint's page set, which
+  never checked them in `_archive/` (step 10a).
+- **M5** Human pass on the 13 manual markers, the 3 org-chart entries and the
+  absolute path (M4 empties the other 8 structural-file entries and 1 free-text
+  entry, which are on dated digests), the 31 undeclared citations (the dry run
+  lists each with the path to declare, and `--declare-cited` adds them once
+  reviewed), the `.html` source (save a markdown record, move the original to
+  `raw/assets/`, re-declare), the `_archive/README-<date>.md` rename from the
+  table above (plan review P26), and what lint reports on the moved briefs. On
+  the 2026-09-30 copy that is 4 🔴 findings: one brief lacks `created`, `type`
+  and `sources:` and has a tag outside the taxonomy, and the other quotes `[[…]]`
+  in inline code, which lint's link check reads as links, so reword it (step
+  10a).
 - **M6** *Dropped (review F7).* Legends are no longer converted.
 - **M7** Replace `meta/contract.md` content with the reconciled template, and
   add the split-procedure pointer to the wiki's own SCHEMA.md split rule (a
-  scaffolded copy doesn't pick up template changes; review F9).
-- **M8** Re-run lint; the expected result is 0 R3/R6/R7/R12 findings, with R10
-  listing every page resting only on reconstructed records (about 4). R12 can
-  then move to 🔴.
+  scaffolded copy doesn't pick up template changes; review F9). The script makes
+  both edits: the contract only while R11 reports it, and the split rule only
+  while it is still the template's old one-liner, as the wiki's is; otherwise
+  the edit goes to M5 (step 10a).
+- **M8** Re-run lint; the expected result, once M5 is done, is 0 R3/R6/R7/R12
+  findings, with R10 listing every page resting only on reconstructed records
+  (about 4; 5 on the 2026-09-30 copy). R12 can then move to 🔴.
 
 **What cannot be recovered.** The content of the 18 dated conversations was
 never captured. `log.md` records what the agent *did* that day, not what the
@@ -1384,6 +1413,22 @@ report went from 0 🔴, 37 🟡, 44 🔵 to 0 🔴, 253 🟡, 13 🔵:
 `user, conversation` citation that wait for M3. It left R3 at 101. The counts
 differ from section 7's 2026-09-25 measurements because the wiki has grown
 (72 wrapped markers against 55).
+
+**Migration dry run at step 10a.** Measured on a copy of the wiki (2026-09-30;
+248 pages with the 2 moved briefs; 0.5 s). The script would write 17 records
+(the wiki now cites 17 conversation dates, not 18), change 111 pages, move 3
+files and make both M7 edits:
+
+- R3 would go from 271 to 56, or to 18 with `--declare-cited`, all of them in
+  markers left for M5.
+- R6 from 82 to 5: the 3 org-chart entries, the `.html` and the absolute path.
+- R7 from 87 to 17: 6 org-chart, 2 `.html`, 2 script-path, 4 prose and 2
+  wikilink markers, and a conversation citation followed by prose.
+- R12 from 18 to 1, the moved brief that lacks required keys.
+
+That leaves 65 hand-pass items, or 27 with `--declare-cited`. Lint on the
+migrated copy gave the same counts, cleared R11 and listed 5 pages under R10,
+and a second run changed nothing.
 
 ---
 
