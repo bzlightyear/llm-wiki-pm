@@ -15,8 +15,9 @@ You are a link validation worker. Scan the wiki for structural integrity issues.
 ```bash
 WIKI=$(cat .wiki-path 2>/dev/null | tr -d '[:space:]')
 WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
-# CLAUDE_SKILL_DIR is injected by Claude Code at skill invocation time.
-# It points to the root of the llm-wiki-pm repo (where scripts/ lives).
+# Subagents don't get CLAUDE_SKILL_DIR (Claude Code fills it in only in skill files).
+SKILL_DIR=${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/llm-wiki-pm}
+SKILL_DIR=${SKILL_DIR:-$HOME/.claude/skills/llm-wiki-pm}
 ```
 
 ## Checks to Run
@@ -24,7 +25,7 @@ WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
 Run lint in JSON mode. It checks every page and writes nothing: no report, no log entry.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" "$WIKI" --json
+python3 "$SKILL_DIR/scripts/lint.py" "$WIKI" --json
 ```
 
 Report these fields of its output:

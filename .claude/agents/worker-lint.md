@@ -16,15 +16,16 @@ You are a lint worker. Run the lint script, parse the output, and return a struc
 ```bash
 WIKI=$(cat .wiki-path 2>/dev/null | tr -d '[:space:]')
 WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
-# CLAUDE_SKILL_DIR is injected by Claude Code at skill invocation time.
-# It points to the root of the llm-wiki-pm repo (where scripts/ lives).
+# Subagents don't get CLAUDE_SKILL_DIR (Claude Code fills it in only in skill files).
+SKILL_DIR=${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/llm-wiki-pm}
+SKILL_DIR=${SKILL_DIR:-$HOME/.claude/skills/llm-wiki-pm}
 ```
 
 ## Process
 
 1. Run lint script:
    ```bash
-   python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" "$WIKI"
+   python3 "$SKILL_DIR/scripts/lint.py" "$WIKI"
    ```
 2. The script writes a report to `$WIKI/queries/lint-<YYYY-MM-DD>.md`
 3. Read the generated report
@@ -41,7 +42,7 @@ Return ONLY:
 `"OK: lint complete — 🔴 critical=<N>, 🟡 warning=<N>, 🟠 advisory=<N>, 🔵 info=<N>. Report: $WIKI/queries/lint-<date>.md. Summary: /tmp/wiki-lint-summary-<YYYYMMDD>.md"`
 
 If lint script errors out, return:
-`"ERROR: lint.py failed — <error message>. Check CLAUDE_SKILL_DIR resolution."`
+`"ERROR: lint.py failed — <error message>. Check SKILL_DIR resolution."`
 
 ## Rules
 

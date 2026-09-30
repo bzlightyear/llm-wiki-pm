@@ -19,7 +19,6 @@ No Write access. This worker produces a report only.
 ```bash
 WIKI=$(cat .wiki-path 2>/dev/null | tr -d '[:space:]')
 WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
-# CLAUDE_SKILL_DIR is injected by Claude Code at skill invocation time.
 ```
 
 ## Process
