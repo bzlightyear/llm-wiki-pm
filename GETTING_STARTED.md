@@ -77,7 +77,7 @@ ln -s ~/llm-wiki-pm/skills/llm-wiki-pm ~/.claude/skills/llm-wiki-pm
 
 Restart Claude Code. Run `/skills` to confirm `llm-wiki-pm` appears.
 
-The symlink installs the skill but not the plugin. The `SessionStart` health-check hook and `PostToolUse` link-check hook do not run, and the wiki is not auto-scaffolded. Create the wiki directory and set `WIKI_PATH` yourself:
+The symlink installs the skill but not the plugin. The `SessionStart` health-check hook and `PostToolUse` page-check hook do not run, and the wiki is not auto-scaffolded. Create the wiki directory and set `WIKI_PATH` yourself:
 
 ```bash
 mkdir -p ~/pm-wiki

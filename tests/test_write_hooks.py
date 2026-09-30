@@ -1,8 +1,9 @@
 """
 Tests for the write hooks' coverage of every write path: wiki-search MCP
 payloads (both tool-name forms), slug-named snapshots, the overview.md rule,
-briefings/, directory-page assets/, the raw write-once warning, and the
-freshness gate judged on the post-edit text.
+briefings/, directory-page assets/, the raw write-once warning, the
+freshness gate judged on the post-edit text, and post-validate.sh's checks of
+the page as written.
 
 Kept apart from test_hooks.py (upstream-owned) to keep merges simple.
 
@@ -12,12 +13,16 @@ Run: python3 -m pytest tests/test_write_hooks.py -v
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
 
 from test_hooks import PRE_WRITE, REPO_ROOT, make_entity, make_wiki, run_hook
+
+POST_VALIDATE = REPO_ROOT / "hooks" / "post-validate.sh"
 
 sys.path.insert(0, str(REPO_ROOT / "skills" / "llm-wiki-pm" / "scripts"))
 from lint import snapshot  # noqa: E402
@@ -364,3 +369,284 @@ class TestMatcher:
         m = self._matcher()
         for tool in ("Read", "mcp__wiki-search__view", "mcp__wiki-search__system"):
             assert not re.fullmatch(m, tool), tool
+
+    def test_post_validate_registered_synchronously_with_same_matcher(self):
+        data = json.loads((REPO_ROOT / "hooks" / "hooks.json").read_text())
+        (group,) = data["hooks"]["PostToolUse"]
+        assert group["matcher"] == self._matcher()
+        (hook,) = group["hooks"]
+        assert hook["command"].endswith("/hooks/post-validate.sh")
+        assert not hook.get("async"), "its output must reach the agent in the same turn"
+
+
+# ---------------------------------------------------------------------------
+# post-validate.sh
+# ---------------------------------------------------------------------------
+
+CLEAN = (
+    "---\ntitle: Acme\ncreated: '2026-01-01'\nupdated: '2026-01-02'\n"
+    "type: entity\ntags: [company]\nsources:\n  - raw/articles/acme-2026.md\n---\n"
+    "# Acme\nClaim [source: acme-2026, p.1]. See [[beta]] and [[overview]].\n"
+)
+
+
+def post(wiki: Path, tool: str, tool_input: dict, tool_response: dict = None):
+    payload = {
+        "session_id": "test-session-123",
+        "hook_event_name": "PostToolUse",
+        "tool_name": tool,
+        "tool_input": tool_input,
+        "tool_response": tool_response or {},
+        "cwd": "/tmp",
+    }
+    r = run_hook(POST_VALIDATE, payload, {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+    assert r.returncode == 0, r.stderr
+    assert r.stderr == "", r.stderr
+    return r.stdout
+
+
+def valid_wiki(tmp_path: Path) -> Path:
+    """A wiki where CLEAN, written to entities/acme.md, breaks no rule."""
+    wiki = make_wiki(tmp_path)
+    write_page(wiki, "raw/articles/acme-2026.md", "---\ntitle: src\n---\nbody\n")
+    write_page(wiki, "entities/beta.md", CLEAN.replace("Acme", "Beta").replace("[[beta]]", "[[acme]]"))
+    return wiki
+
+
+def write_acme(wiki: Path, text: str, tool: str = "Write", response: dict = None):
+    """Write entities/acme.md, then run post-validate as a Write of it."""
+    p = write_page(wiki, "entities/acme.md", text)
+    return post(wiki, tool, {"file_path": str(p), "content": text},
+                response or {"path": str(p), "status": "updated"})
+
+
+def status_text(wiki: Path) -> str:
+    s = wiki / "_status.md"
+    return s.read_text() if s.exists() else ""
+
+
+class TestPostValidateChecks:
+    def test_clean_page_is_silent(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        assert write_acme(wiki, CLEAN) == ""
+        assert status_text(wiki) == ""
+
+    def test_block_item_on_key_line(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("tags: [company]", "tags: - company"))
+        assert "(R1)" in context(out)
+
+    def test_missing_required_key(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("type: entity\n", ""))
+        assert "frontmatter missing ['type'] (R12)" in context(out)
+
+    def test_missing_frontmatter(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, "# Acme\nNo frontmatter. [[beta]]\n")
+        assert "missing frontmatter (R12)" in context(out)
+
+    def test_date_outside_profile(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("'2026-01-02'", "2026-01-02T00:00:00Z"))
+        assert "(R12)" in context(out)
+
+    def test_source_that_does_not_exist(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("acme-2026.md", "missing-2026.md"))
+        ctx = context(out)
+        assert "(R6)" in ctx and "raw/articles/missing-2026.md" in ctx
+
+    def test_undeclared_citation_names_the_path_to_declare(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "raw/articles/other-2026.md", "body")
+        out = write_acme(wiki, CLEAN.replace("p.1]", "p.1] [source: other-2026, p.2]"))
+        ctx = context(out)
+        assert "(R3)" in ctx and "declare raw/articles/other-2026.md" in ctx
+
+    def test_citation_outside_the_grammar(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("[source: acme-2026, p.1]",
+                                             "[source: raw/articles/acme-2026.md, p.1]"))
+        ctx = context(out)
+        assert "(R7)" in ctx and "(R3)" not in ctx
+
+    def test_escaped_bracket(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN.replace("See [[beta]]", "See \\[[beta]]"))
+        assert "escaped bracket" in context(out)
+
+    def test_broken_link(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN + "Also [[nowhere]] and [[nowhere|again]].\n")
+        assert "1 broken [[wikilink]](s): entities/acme.md — [[nowhere]]" in context(out)
+
+    def test_links_resolve_against_lints_page_set(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "briefings/brief-2026-01-01.md", DIGEST)
+        write_page(wiki, "concepts/pricing/README.md", CLEAN)
+        out = write_acme(wiki, CLEAN + "[[brief-2026-01-01]] [[pricing]] [[index]] [[beta#h|b]]\n")
+        assert out == ""
+
+    def test_link_match_is_exact_as_in_lint(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, CLEAN + "[[Beta]]\n")
+        assert "[[Beta]]" in context(out)
+
+    def test_problems_appended_to_status(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_acme(wiki, CLEAN + "[[nowhere]]\n")
+        s = status_text(wiki)
+        assert "## Recent Write Issues" in s
+        assert "write | acme**" in s and "[[nowhere]]" in s
+
+    def test_output_capped_at_six_lines(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        bad = (
+            "---\ntitle: Acme\ntitle: again\ncreated: 2026-01-01T10:00:00Z\n"
+            "tags: - x\nsources:\n  - nowhere\n---\n"
+            "[source: ghost] [source: a vs. b] \\[x] [[nowhere]]\n"
+        )
+        lines = context(write_acme(wiki, bad)).splitlines()
+        assert len(lines) == 7  # header + 6
+        assert lines[-1].startswith("- …and ") and "run lint.py" in lines[-1]
+        # _status.md keeps every problem, uncapped
+        assert status_text(wiki).count("\n  - ") > 6
+
+
+class TestPostValidateScope:
+    def test_root_file_gets_escape_check_only(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        p = write_page(wiki, "overview.md", "# Overview\n\\[[beta]] [[nowhere]]\n")
+        ctx = context(post(wiki, "Write", {"file_path": str(p)}))
+        assert "escaped bracket" in ctx and "nowhere" not in ctx
+
+    def test_records_archive_and_reports_are_not_checked(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        for rel in ("raw/articles/x-2026.md", "_archive/acme-2026-01-01.md",
+                    "queries/lint-2026-01-01.md", "SCHEMA.md",
+                    "concepts/pricing/assets/deck.md"):
+            p = write_page(wiki, rel, "[[nowhere]] \\[ no frontmatter\n")
+            assert post(wiki, "Write", {"file_path": str(p)}) == "", rel
+
+    def test_outside_wiki_and_non_markdown_ignored(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        outside = tmp_path / "outside.md"
+        outside.write_text("[[nowhere]]")
+        png = write_page(wiki, "entities/pic.png", "[[nowhere]]")
+        assert post(wiki, "Write", {"file_path": str(outside)}) == ""
+        assert post(wiki, "Write", {"file_path": str(png)}) == ""
+
+    def test_unparseable_stdin_exits_zero(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        r = subprocess.run(["bash", str(POST_VALIDATE)], input="not json",
+                           capture_output=True, text=True,
+                           env={**os.environ, "CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+        assert r.returncode == 0 and r.stdout == ""
+
+
+class TestPostValidateMcp:
+    def test_vault_update_under_both_tool_names(self, tmp_path):
+        for prefix in MCP_NAMES:
+            (tmp_path / prefix).mkdir()
+            wiki = valid_wiki(tmp_path / prefix)
+            text = CLEAN.replace("acme-2026.md", "missing-2026.md")
+            write_page(wiki, "entities/acme.md", text)
+            out = post(wiki, f"{prefix}__vault",
+                       {"action": "update", "path": "entities/acme.md", "content": text})
+            assert "(R6)" in context(out), prefix
+
+    def test_batch_edit_checks_every_path(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "entities/acme.md", CLEAN + "[[nowhere-a]]\n")
+        write_page(wiki, "entities/beta.md", CLEAN + "[[nowhere-b]]\n")
+        out = post(wiki, "mcp__wiki-search__edit", {"operations": [
+            {"path": "entities/acme.md", "operation": "string_replace"},
+            {"path": "entities/beta.md", "operation": "string_replace"},
+        ]})
+        ctx = context(out)
+        assert "[[nowhere-a]]" in ctx and "[[nowhere-b]]" in ctx
+
+    def test_reads_deletes_and_dry_runs_ignored(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "entities/acme.md", CLEAN + "[[nowhere]]\n")
+        for tool, ti in [
+            ("mcp__wiki-search__vault", {"action": "read", "path": "entities/acme.md"}),
+            ("mcp__wiki-search__vault", {"action": "delete", "path": "entities/acme.md"}),
+            ("mcp__wiki-search__edit", {"path": "entities/acme.md", "dryRun": True}),
+        ]:
+            assert post(wiki, tool, ti) == "", ti
+
+    def test_freshness_gate_after_create_from_template(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "entities/new.md", UNGROUNDED)
+        out = post(wiki, "mcp__wiki-search__vault",
+                   {"action": "create_from_template", "path": "entities/new.md",
+                    "templatePath": "templates/entity.md"})
+        assert "freshness gate: entities/new.md" in context(out)
+
+    def test_freshness_gate_after_mcp_edit(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "entities/acme.md", UNGROUNDED)
+        out = post(wiki, "mcp__wiki-search__edit",
+                   {"path": "entities/acme.md", "operation": "string_replace"})
+        assert "freshness gate" in context(out)
+
+    def test_no_freshness_gate_where_pre_write_judged_it(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, UNGROUNDED)
+        assert "freshness gate" not in context(out)
+
+    def test_dated_digest_exempt_from_gate(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_page(wiki, "briefings/brief.md", DIGEST)
+        out = post(wiki, "mcp__wiki-search__edit",
+                   {"path": "briefings/brief.md", "operation": "append"})
+        assert "freshness gate" not in context(out)
+
+
+def long_page(n: int) -> str:
+    """CLEAN padded to exactly n lines."""
+    return CLEAN + "x\n" * (n - CLEAN.count("\n"))
+
+
+class TestSplitReminder:
+    def test_edit_that_crosses_200_lines(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        text = long_page(203)
+        p = write_page(wiki, "entities/acme.md", text)
+        out = post(wiki, "Edit", {"file_path": str(p), "old_string": "x\n",
+                                  "new_string": "x\ny\ny\ny\ny\n"})
+        ctx = context(out)
+        assert "page is now 203 lines (> 200)" in ctx and "--cited-sources" in ctx
+        assert status_text(wiki) == "", "a reminder isn't a problem"
+
+    def test_edit_to_a_page_already_over_200_lines(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        p = write_page(wiki, "entities/acme.md", long_page(250))
+        out = post(wiki, "MultiEdit", {"file_path": str(p), "edits": [
+            {"old_string": "x\n", "new_string": "x\ny\n"},
+            {"old_string": "y\n", "new_string": "z\n"},
+        ]})
+        assert out == ""
+
+    def test_new_page_over_200_lines(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, long_page(210), response={"status": "created"})
+        assert "page is now 210 lines" in context(out)
+
+    def test_rewrite_with_unknown_old_length(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        out = write_acme(wiki, long_page(210))  # status "updated"
+        assert "page is now 210 lines" in context(out)
+
+    def test_replace_all_with_unknown_count(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        p = write_page(wiki, "entities/acme.md", long_page(250))
+        out = post(wiki, "Edit", {"file_path": str(p), "old_string": "x",
+                                  "new_string": "x\n", "replace_all": True})
+        assert "page is now 250 lines" in context(out)
+
+    def test_short_page_no_reminder(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        assert write_acme(wiki, long_page(200), response={"status": "created"}) == ""

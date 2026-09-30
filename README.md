@@ -180,7 +180,7 @@ llm-wiki-pm/
 └── skills/
     ├── llm-wiki-pm/                 # Core skill (required)
     │   ├── SKILL.md
-    │   ├── hooks/   (session-start.sh, post-write.sh, session-stop.sh)
+    │   ├── hooks/   (session-start.sh, post-validate.sh, session-stop.sh)
     │   ├── references/
     │   ├── scripts/ (lint.py, backlinks.py, wikifm.py, capture.py)
     │   └── templates/ (SCHEMA.md, index.md, overview.md, log.md, persona.md,
