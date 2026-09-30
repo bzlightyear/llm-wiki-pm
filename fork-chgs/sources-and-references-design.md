@@ -31,6 +31,8 @@ Completed step 9. The worker agents now load from user-level links, and the
 wiki's copy, which had fallen behind the fork's, is deleted. `CLAUDE_SKILL_DIR`
 isn't set in subagents, so the two lint workers had been calling a missing
 path, and now find the core skill themselves, a fix that can go upstream.
+Checked two points the design had left unverified: the write hooks fire inside
+subagents, and a project-level agent hides a user-level one of the same name.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -1090,7 +1092,10 @@ with a message when no node is found. No network and no real MCP needed.
   steps 2, 5 and 6 edited worker-link-validator and worker-source-fetcher in the
   fork only. The wiki kept the unedited originals and had no edits of its own,
   which shows why one source is needed. One source, visible in every
-  project. The fork's own project copy is the same file. Separately, the workers
+  project. The fork's own project copy is the same file. Step 9 checked what
+  happens when two copies share a name: a session lists only the project-level
+  one, so a project copy that drifts would hide the user-level one. Separately,
+  the workers
   reference `${CLAUDE_SKILL_DIR}`, which is a *skill* variable. Step 9 checked
   whether it reaches a subagent. It doesn't: the agent's instructions keep it
   word for word, and it is empty in the subagent's Bash, so worker-lint and
@@ -1103,6 +1108,10 @@ with a message when no node is found. No network and no real MCP needed.
   yet, and its symlinks affect every session), so both need the user's
   confirmation first (plan review P25). The user created the links, because the
   auto-mode classifier blocks an agent's writes to `~/.claude/agents/`.
+  Step 9 also checked that the write hooks fire inside a subagent. A
+  subagent's Edit on a scratch wiki page got the same results as the main
+  session's Edit: pre-write's snapshot in `_archive/`, and post-validate's
+  report in the same turn and in `_status.md`.
 
 ---
 
@@ -1583,8 +1592,8 @@ wiki repo covered `c910309`, `c4de70c` and `5cc416c`.
 Not verified in this session, and flagged where used: that PreToolUse and
 PostToolUse hooks fire on MCP tool calls on this install (documented behavior);
 whether async hook output reaches the model; whether hooks fire inside
-subagents (whether `CLAUDE_SKILL_DIR` is set there was checked at step 9: it
-isn't, section 5.14); the origin of the LINT doc's 18th hybrid page;
+subagents and whether `CLAUDE_SKILL_DIR` is set there (both checked at step 9:
+the hooks fire and the variable isn't set, section 5.14); the origin of the LINT doc's 18th hybrid page;
 token counts (reported as bytes).
 
 **Revision of 2026-09-28.** This document was revised to take in the accepted
@@ -1605,7 +1614,7 @@ findings and the current code. The accepted issues (P1–P29) are in
 [Sources and References Plan Review](sources-and-references-plan-review.md) and
 are marked "(plan review Pn)" here. Newly unverified: which agent definition wins
 when a user-level and a project-level agent share a name, as they will in the
-fork after step 9.
+fork after step 9. Step 9 checked it: the project-level one (section 5.14).
 
 ---
 
