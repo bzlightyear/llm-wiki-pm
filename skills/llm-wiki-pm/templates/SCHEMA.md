@@ -27,14 +27,16 @@ Out of scope: code specifics. Personal life.
 ```yaml
 ---
 title: Page Title
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: entity | concept | comparison | query | summary | persona
 tags: [from taxonomy below]
-sources: [raw/articles/example.md, raw/transcripts/call-YYYY-MM-DD.md]
-last_verified: YYYY-MM-DD  # optional, date the page was last checked against a
-                           #   live primary source (Slack/Gmail/Granola/CRM/web).
-                           #   Lint warns when this goes stale (>120 days).
+sources:
+  - raw/articles/example.md
+  - raw/transcripts/call-YYYY-MM-DD.md
+last_verified: 'YYYY-MM-DD'  # optional, date the page was last checked against a
+                             #   live primary source (Slack/Gmail/Granola/CRM/web).
+                             #   Lint warns when this goes stale (>120 days).
 contradictions: []        # optional, pages with conflicting claims
 supersedes: []            # optional, page slugs this page replaces
 superseded_by: null       # optional, slug of the page that replaces this one
@@ -121,7 +123,9 @@ Rule: tag sprawl kills wikis. Max ~40 tags. Consolidate quarterly.
 - **Person entities**: same rule applies. When a named person appears in 2+ sources, or is the central subject of one source, create `entities/<slug>.md`. When a concept page accumulates 3+ distinct attributes for a person (role, employer, decisions, relationships), that person meets the entity threshold and should be promoted to their own page.
 - **Update** existing page for new info on covered ground
 - **Don't create** for passing mentions, footnote name-drops, out-of-scope items
-- **Split** when page > 200 lines, break by sub-topic with cross-links
+- **Split** when page > 200 lines, break by sub-topic with cross-links. Follow the
+  split procedure in the skill's `references/citation-spec.md` and set each page's
+  sources with `lint.py --cited-sources`
 - **Archive** when fully superseded, move to `_archive/`, remove from index
 
 ## Entity Pages
@@ -285,24 +289,23 @@ know whether to trust a page's completeness or dig deeper.
 ### Inline Provenance
 
 Every non-obvious factual claim in a wiki page must carry an inline source
-marker anchoring it to the specific raw source:
+marker citing the ID of a source declared in `sources:`:
 
 ```markdown
 Vendor X holds ~15% market share in region Y [source: gartner-mq-2026, p.12]
 ```
 
-The `sources:` frontmatter field lists all sources for the page. Inline markers
-anchor individual claims. Without inline markers, updates silently corrupt
-provenance because the agent can't tell which source backs which claim.
-
-Format: `[source: <raw-slug>, <location>]` where location is a page number,
-section name, or timestamp.
+Without inline markers, updates silently corrupt provenance because the agent
+can't tell which source backs which claim. The grammar, how IDs resolve, and how
+to capture a fact stated in conversation are in the skill's
+`references/citation-spec.md`.
 
 ### Grounding (anti-self-reinforcement)
 
 A wiki is only as good as the fresh information fed into it. Every knowledge
-page must trace to at least one **primary source** — `raw/`, `external/`, web,
-or a captured conversation/Slack/Gmail/meeting note. A page whose `sources:`
+page must trace to at least one **primary source**: a record in `raw/` (a
+captured web page, document, transcript, chat or email thread, warehouse
+snapshot, or conversation). A page whose `sources:`
 point only to *other wiki pages* is self-referential: it launders secondhand
 mentions into false confidence (e.g. a person mislabeled by role because that's
 all the linked pages happened to say). Lint flags this:

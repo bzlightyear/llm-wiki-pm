@@ -43,7 +43,7 @@ Add fields for PM-specific signals:
 
 ```yaml
 relevance: high | medium | low    # How much this matters to our strategy
-last_reviewed: YYYY-MM-DD         # When a human last eyeballed it
+last_reviewed: 'YYYY-MM-DD'       # When a human last eyeballed it
 owner: pm | manager | data-team   # Who owns verifying this
 confidence: verified | likely | rumor
 lifecycle: stub-intentional       # By-design thin page (see below)

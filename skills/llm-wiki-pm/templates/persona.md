@@ -1,7 +1,7 @@
 ---
 title: "Persona: [Full Name]"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: persona
 tags: [person, persona, internal]
 sources: [entities/name.md, raw/internal/<tool>-channel-YYYY-MM-DD.md]

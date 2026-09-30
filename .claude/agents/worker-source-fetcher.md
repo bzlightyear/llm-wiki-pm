@@ -39,7 +39,7 @@ Add no privacy flag: wiki pages are private by default, and only pages marked
 Add frontmatter to raw file:
 ```yaml
 ---
-fetched: YYYY-MM-DD
+fetched: 'YYYY-MM-DD'
 source_url: <url if applicable>
 ---
 ```

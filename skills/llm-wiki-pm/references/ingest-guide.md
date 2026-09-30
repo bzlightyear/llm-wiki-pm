@@ -36,12 +36,15 @@ and laundered secondhand claims.
   `coverage: stub` — see the two-axes note in `schema-guide.md`; do not downgrade
   confidence for thin coverage.
 - **Current conversation**: when user says "from this conversation" or "use what
-  we discussed", treat the session as a source. Save a summary to
-  `raw/internal/conversation-<YYYY-MM-DD>.md`. Distinguish:
-    - User-stated facts: attribute as `user, <date>`
-    - Tool-retrieved (chat, email, web_fetch): attribute to original source
-  Do not collapse these. Keep provenance separate in the raw file.
-- Name descriptively: `raw/articles/gartner-test-automation-mq-2026.md`
+  we discussed", treat the session as a source. Distinguish:
+    - Stated facts (by the user, or relayed from someone else): capture each
+      topic as a record with `scripts/capture.py` and cite its ID
+      (`citation-spec.md` → Conversational facts)
+    - Tool-retrieved (chat, email, web_fetch): capture by that source's route
+      above and cite it, not the conversation
+  Do not collapse these.
+- Name descriptively: `raw/articles/gartner-test-automation-mq-2026.md`. The
+  filename stem is the record's permanent ID (`citation-spec.md` → Records).
 - **Privacy filter (mandatory)**: strip API keys, tokens, passwords from raw.
   If the source contains customer-identifying info, deal sizes, 1:1 content,
   or internal-only strategy, leave the resulting wiki pages unflagged — they are
@@ -84,10 +87,11 @@ create vs update.
   set `supersedes: [old-slug]` on new page, `superseded_by: new-slug` on old page.
   Archive the old page. `lint --auto-fix` rewrites inbound links.
 - **Inline provenance (mandatory):** every non-obvious factual claim must have an
-  inline source marker: `[source: raw-slug, p.N]` or `[source: raw-slug, section-name]`.
-  Frontmatter `sources:` lists all sources for the page; inline markers anchor
+  inline source marker: `[source: <id>, p.N]` or `[source: <id>, section-name]`,
+  where `<id>` is a record's filename stem or a page's slug. Frontmatter
+  `sources:` lists the paths of all sources for the page; inline markers anchor
   specific claims to specific sources. Without inline markers, updates silently
-  corrupt provenance.
+  corrupt provenance. Full rules: `citation-spec.md`.
 - **Coverage marker:** set `coverage: stub | partial | comprehensive` in frontmatter.
   `stub` = bare entity with minimal facts. `partial` = some sections filled but
   known gaps. `comprehensive` = all known sections covered. Add `gaps:` list for
@@ -148,5 +152,7 @@ described with 3+ attributes (role, style, concerns, position, history, etc.).
 - Don't silently promote. Always confirm.
 - After splitting, update the concept page to link out: `[[entity-slug]]` instead
   of the inline prose.
+- Promotion is a split: follow the split procedure in `citation-spec.md` and set
+  each page's sources with `lint.py --cited-sources`.
 - Check whether a persona page is warranted for any promoted person entity (the
   `llm-wiki-persona` sub-skill handles persona pages).

@@ -1,6 +1,6 @@
 ---
 title: My Integrations
-updated: YYYY-MM-DD
+updated: 'YYYY-MM-DD'
 ---
 
 # My Integrations

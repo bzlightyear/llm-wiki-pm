@@ -29,11 +29,11 @@ See `${CLAUDE_SKILL_DIR}/templates/SCHEMA-crm-fields.md` for a merge-ready patch
 
 ```yaml
 relationship_tier: strategic | active | watch | dormant
-last_touchpoint: YYYY-MM-DD
+last_touchpoint: 'YYYY-MM-DD'
 meeting_cadence: daily | weekly | biweekly | monthly | quarterly | ad-hoc
-next_meeting: YYYY-MM-DD        # optional
+next_meeting: 'YYYY-MM-DD'      # optional
 influence_level: high | medium | low
-enriched_at: YYYY-MM-DD         # when auto-enrichment last ran
+enriched_at: 'YYYY-MM-DD'       # when auto-enrichment last ran
 ```
 
 ### Company Entity Additions
@@ -41,10 +41,10 @@ enriched_at: YYYY-MM-DD         # when auto-enrichment last ran
 ```yaml
 relationship_tier: strategic | active | watch | dormant
 account_health: green | yellow | red
-last_touchpoint: YYYY-MM-DD
+last_touchpoint: 'YYYY-MM-DD'
 key_asks: []                    # list of feature/product asks from this account
 arr_tier: enterprise | mid-market | smb | prospect   # optional, no dollar figures
-enriched_at: YYYY-MM-DD         # when auto-enrichment last ran
+enriched_at: 'YYYY-MM-DD'       # when auto-enrichment last ran
 ```
 
 ### Tier Definitions
@@ -101,7 +101,10 @@ standalone fallback when research isn't available.
 **Company enrichment:**
 ① WebSearch: company name + "about", funding, headcount, key products, recent news
 ② Extract: founded year, HQ, employee count, funding stage, key products, recent press
-③ Update entity page. Set `enriched_at: today`. Add inline: `[source: <url>, <date>]`
+③ Capture each page you use through `worker-source-fetcher`, which saves it to `raw/`
+   and returns its path. Update the entity page: declare each record's path in
+   `sources:` and cite its ID inline, `[source: <id>, <section>]`; a URL is never an
+   ID (core `references/citation-spec.md`). Set `enriched_at: today`.
 ④ Bump `coverage:` stub → partial if meaningful data found
 ⑤ Flag time-sensitive data with `confidence_decay_days: 90`
 

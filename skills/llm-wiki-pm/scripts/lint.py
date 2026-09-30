@@ -4,6 +4,7 @@
 Usage:
     lint.py <wiki_path>              # report only
     lint.py <wiki_path> --auto-fix   # report + repair safe issues
+    lint.py <wiki_path> --cited-sources <page>   # paths for a page's sources:
 """
 
 import re
@@ -133,6 +134,18 @@ def snapshot(page, wiki):
         arc.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(page, arc)
     return arc
+
+
+def wiki_pages(wiki):
+    """Lint's page set: every .md file under WIKI_DIRS except lint reports."""
+    pages = []
+    for d in WIKI_DIRS:
+        for p in (wiki / d).rglob("*.md"):
+            # skip lint reports — self-generated, would cause false positives
+            if p.name.startswith("lint-"):
+                continue
+            pages.append(p)
+    return pages
 
 
 def is_shareable(fm):
@@ -301,11 +314,81 @@ def check_provenance_cross_reference(rel_path, text, sources):
     return notes
 
 
+# ── --cited-sources: the split procedure's helper ──
+# references/citation-spec.md, "Page lifecycle": a split child's sources: is
+# set to the paths of exactly the IDs its body cites.
+
+
+def cited_sources(wiki, page):
+    """Resolve the IDs `page` cites against every raw/ record and wiki page,
+    not against the page's own sources:, since a new split child declares
+    nothing yet. An ID is the text of a citation before its first comma.
+    Returns (paths, unresolved, ambiguous): the path of each cited ID in the
+    order first cited, the IDs that match no file, and {ID: paths} for IDs
+    that match more than one."""
+    files = defaultdict(list)
+    raw = wiki / "raw"
+    for p in raw.rglob("*.md"):
+        if raw / "assets" not in p.parents:
+            files[p.stem].append(p)
+    for p in wiki_pages(wiki):
+        files[slug(p)].append(p)
+
+    text = page.read_text()
+    fm_m = FRONTMATTER_RE.match(text)
+    body = text[fm_m.end():] if fm_m else text
+    paths, unresolved, ambiguous = [], [], {}
+    for citation in _inline_citations(body):
+        cid = " ".join(citation.split(",")[0].split())  # a wrapped ID shows its break
+        matches = files.get(cid, [])
+        if len(matches) > 1:
+            ambiguous[cid] = sorted(matches)
+        elif matches and matches[0] not in paths:
+            paths.append(matches[0])
+        elif not matches and cid not in unresolved:
+            unresolved.append(cid)
+    return paths, unresolved, ambiguous
+
+
+def print_cited_sources(wiki, page_arg):
+    """Print `sources:` for the page, then any IDs that don't resolve to
+    exactly one file. Writes nothing. Returns the exit status: 0 when every
+    ID resolves, 1 when some don't, 2 when the page doesn't exist."""
+    page = Path(page_arg).expanduser()
+    if not page.is_absolute() and (wiki / page).is_file():
+        page = wiki / page
+    if not page.is_file():
+        print(f"error: {page_arg} is not a file", file=sys.stderr)
+        return 2
+    paths, unresolved, ambiguous = cited_sources(wiki, page)
+    if paths:
+        print("sources:")
+        print("\n".join(f"  - {p.relative_to(wiki).as_posix()}" for p in paths))
+    else:
+        print("sources: []")
+    if unresolved:
+        print("unresolved:")
+        print("\n".join(f"  - {cid}" for cid in unresolved))
+    if ambiguous:
+        print("ambiguous:")
+        for cid, matches in ambiguous.items():
+            print(f"  - {cid}: " + ", ".join(p.relative_to(wiki).as_posix() for p in matches))
+    return 1 if unresolved or ambiguous else 0
+
+
 def main():
     args = sys.argv[1:]
+    usage = "usage: lint.py <wiki_path> [--auto-fix] | <wiki_path> --cited-sources <page>"
     if not args:
-        print("usage: lint.py <wiki_path> [--auto-fix]", file=sys.stderr)
+        print(usage, file=sys.stderr)
         sys.exit(1)
+    cited_page = None
+    if "--cited-sources" in args:
+        i = args.index("--cited-sources")
+        if i + 1 == len(args):
+            print(usage, file=sys.stderr)
+            sys.exit(1)
+        cited_page = args.pop(i + 1)
     auto_fix = "--auto-fix" in args
     output_json = "--json" in args
     quiet = "--quiet" in args
@@ -315,14 +398,11 @@ def main():
         print(f"error: {wiki} does not exist", file=sys.stderr)
         sys.exit(2)
 
+    if cited_page is not None:
+        sys.exit(print_cited_sources(wiki, cited_page))
+
     today = date.today().isoformat()
-    pages = []
-    for d in WIKI_DIRS:
-        for p in (wiki / d).rglob("*.md"):
-            # skip lint reports — self-generated, would cause false positives
-            if p.name.startswith("lint-"):
-                continue
-            pages.append(p)
+    pages = wiki_pages(wiki)
 
     slugs = {slug(p): p for p in pages}
     # root-level architecture singletons (overview.md, index.md) are valid

@@ -19,11 +19,11 @@ Before any write (ingest, update, archive, supersede), complete the core skill's
 
 Every non-obvious factual claim in wiki pages must carry an inline source marker:
 
-`[source: raw-slug, location]`
+`[source: <id>, <location>]`
 
-Where `location` is a page number, section name, or timestamp (e.g. `[source: gartner-mq-2026, p.12]`).
+Where `<id>` is the slug of a path in the page's `sources:` and `location` is a page number, section name, or timestamp (e.g. `[source: gartner-mq-2026, p.12]`).
 
-The page's frontmatter `sources:` field lists all sources for the page. Inline markers anchor individual claims. Both are mandatory — frontmatter alone doesn't anchor which source backs which claim.
+The page's frontmatter `sources:` field lists the paths of all sources for the page. Inline markers anchor individual claims. Both are mandatory — frontmatter alone doesn't anchor which source backs which claim. The full rules, including how to capture a fact stated in conversation, are in `skills/llm-wiki-pm/references/citation-spec.md`.
 
 ## Core Operations Summary
 
@@ -37,11 +37,11 @@ Operation procedures (Ingest, Query, Update, Lint, Crystallize) live in the core
 
 **No orphan pages.** Min 2 outbound `[[wikilinks]]` per page. After creating a page, add inbound links from related pages.
 
-**Snapshot before destructive ops.** Copy to `_archive/<slug>-<YYYY-MM-DD>.md` before overwrite, archive, or supersede.
+**Snapshot before destructive ops.** The pre-write hook snapshots automatically before Write, Edit and MCP `vault` writes. For writes it can't see (Bash `mv`, scripts), copy to `_archive/<slug>-<YYYY-MM-DD>.md` yourself before overwrite, archive, or supersede.
 
 **Verify writes.** Re-read after writing. If frontmatter is malformed or write failed, do not update index.md or log.md.
 
-**No raw/ mutations.** Layer 1 sources are immutable. Corrections live in wiki pages.
+**No raw/ mutations.** Layer 1 sources are immutable. Corrections live in wiki pages; a record that is itself wrong is replaced by a new record (`citation-spec.md` → Records).
 
 **Privacy by default (allowlist).** Every page is private and excluded from exports unless it carries `shareable: true`. Do NOT add a `private:` flag — it is noise the tooling never reads. Leave customer names, deal sizes, and 1:1 content unflagged (they stay private automatically); add `shareable: true` only to genuinely public-safe pages.
 

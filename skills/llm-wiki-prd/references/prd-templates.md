@@ -3,9 +3,10 @@
 Output structures for the three llm-wiki-prd operations. The SKILL.md stub gates
 each operation's procedure; copy the matching template here when drafting.
 
-All artifacts use `type: query`, list every consulted page in `sources:`, list
-unbacked sections in `gaps:`, get added to `index.md` under `queries/`, and get a
-`log.md` entry. See SKILL.md "Output Filing Conventions" for the canonical rule.
+All artifacts use `type: query`, list the path of every consulted page in
+`sources:`, list unbacked sections in `gaps:`, get added to `index.md` under
+`queries/`, and get a `log.md` entry. See SKILL.md "Output Filing Conventions"
+for the canonical rule.
 
 ## PRD Draft
 
@@ -14,8 +15,8 @@ File to `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/README.md`.
 ```markdown
 ---
 title: "PRD: <Feature Name>"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: query
 tags: [roadmap, decision]
 sources: [<list of wiki pages cited>]
@@ -67,8 +68,8 @@ an assumption with no wiki backing.
 ```markdown
 ---
 title: "User Stories: <Feature Name>"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: query
 tags: [roadmap]
 sources: [<wiki pages cited>]
@@ -88,7 +89,7 @@ As a [persona], I want [action] so that [outcome].
 - When [Y]
 - Then [Z]
 
-[source: [[wiki-page]]]
+[source: <page-slug>, <section>]
 ```
 
 Log: `## [YYYY-MM-DD] user-stories | user-stories-<feature-slug> | persona: [list] | gaps: [list]`
@@ -104,8 +105,8 @@ bottom, so the artifact stays grounded while the user-facing sections read clean
 ```markdown
 ---
 title: "Release Notes: <date or version>"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: query
 tags: [roadmap]
 sources: [<wiki pages referenced during drafting>]

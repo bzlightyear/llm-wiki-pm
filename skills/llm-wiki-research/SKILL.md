@@ -85,10 +85,10 @@ Produce a synthesis page at `queries/research-<topic>-<YYYY-MM-DD>/README.md`:
 ```markdown
 ---
 title: "Research Sprint: <Topic>"
-created: YYYY-MM-DD
+created: 'YYYY-MM-DD'
 type: query
 tags: [<relevant tags>]
-sources: [<raw slugs fetched>]
+sources: [<raw/ paths fetched>]
 ---
 
 ## Scope
@@ -192,9 +192,9 @@ WebSearch: "[entity name]" official website
 WebSearch: "[entity name]" [primary domain, e.g. pricing / funding / product]
 ```
 
-**③ Extract** — description, key facts, relationships to other wiki entities, recent events.
+**③ Capture and extract** — capture each page you use through `worker-source-fetcher`, which returns its `raw/` path. Extract description, key facts, relationships to other wiki entities, recent events.
 
-**④ Update stub page** with inline provenance `[source: url, date]`. Bump `coverage:` stub → partial if meaningful data found. Update `gaps:` and `sources:` frontmatter. Bump `updated:`.
+**④ Update stub page**: declare each record's path in `sources:` and cite its ID inline, `[source: <id>, <section>]`; a URL is never an ID (core `references/citation-spec.md`). Bump `coverage:` stub → partial if meaningful data found. Update `gaps:`. Bump `updated:`.
 
 Do NOT fabricate. If search returns nothing useful, say so. Leave `coverage: stub`.
 

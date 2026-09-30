@@ -182,7 +182,7 @@ llm-wiki-pm/
     │   ├── SKILL.md
     │   ├── hooks/   (session-start.sh, post-write.sh, session-stop.sh)
     │   ├── references/
-    │   ├── scripts/ (lint.py, backlinks.py, wikifm.py)
+    │   ├── scripts/ (lint.py, backlinks.py, wikifm.py, capture.py)
     │   └── templates/ (SCHEMA.md, index.md, overview.md, log.md, persona.md,
     │                    MY-INTEGRATIONS.md)
     ├── llm-wiki-brief/              # Optional: daily/weekly briefs, tag digests
@@ -302,9 +302,10 @@ python3 -m venv .venv && .venv/bin/pip install pytest pyyaml -q
 ```
 
 Tests cover scaffold, wikilink validation, log rotation, stdin parsing,
-plugin manifest compliance, lint, the write hooks and the frontmatter parser
-(`wikifm.py`). Hook tests create isolated temp wikis and feed the real Claude
-Code hook JSON schema to the scripts. The parser tests check it against PyYAML,
+plugin manifest compliance, lint, the write hooks, the frontmatter parser
+(`wikifm.py`) and the conversation-capture script (`capture.py`). Hook tests
+create isolated temp wikis and feed the real Claude Code hook JSON schema to
+the scripts. The parser tests check it against PyYAML,
 and skip that check when PyYAML isn't installed. To also parse every page of a
 real wiki, set `WIKIFM_WIKI` (the tests only read it):
 

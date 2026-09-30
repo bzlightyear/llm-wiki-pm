@@ -30,8 +30,8 @@ Without this, transcripts just become entity-page updates and the "decision
 ```markdown
 ---
 title: "Crystallize: <Topic or Meeting>"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
+created: 'YYYY-MM-DD'
+updated: 'YYYY-MM-DD'
 type: query
 tags: [decision, timeline, <domain tags>]
 sources: [raw/transcripts/<slug>.md]
@@ -89,7 +89,8 @@ After ingesting a transcript into `raw/transcripts/`:
    - Update `overview.md` if the crystallize shifted the big picture
 
 ⑤ **Update affected pages**:
-   - Entity pages: add the meeting as a source, note new facts
+   - Entity pages: note new facts citing the transcript's record ID, and declare
+     its path in `sources:` (`citation-spec.md`)
    - Concept pages: reinforce or challenge, bump confidence
    - Roadmap pages: add action items or decisions
 

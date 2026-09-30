@@ -91,8 +91,8 @@ Add to `### Domains` in your SCHEMA.md tag taxonomy:
 ```yaml
 ---
 title: Jane Smith
-created: 2026-01-10
-updated: 2026-04-20
+created: '2026-01-10'
+updated: '2026-04-20'
 type: entity
 tags: [person, customer, crm]
 sources: [raw/transcripts/qbr-acme-2026-04.md]
@@ -104,11 +104,11 @@ direct_reports: []
 peers: []
 interaction_frequency: monthly
 relationship_tier: strategic
-last_touchpoint: 2026-04-18
+last_touchpoint: '2026-04-18'
 meeting_cadence: monthly
-next_meeting: 2026-05-15
+next_meeting: '2026-05-15'
 influence_level: high
-enriched_at: 2026-03-01
+enriched_at: '2026-03-01'
 ---
 ```
 
@@ -117,8 +117,8 @@ enriched_at: 2026-03-01
 ```yaml
 ---
 title: Acme Corp
-created: 2025-11-02
-updated: 2026-04-20
+created: '2025-11-02'
+updated: '2026-04-20'
 type: entity
 tags: [company, customer, crm]
 sources: [raw/transcripts/qbr-acme-2026-04.md]
@@ -127,9 +127,9 @@ coverage: partial
 gaps: ["competitive alternatives being evaluated unknown"]
 relationship_tier: strategic
 account_health: yellow
-last_touchpoint: 2026-04-18
+last_touchpoint: '2026-04-18'
 key_asks: ["SSO support", "audit logs", "better CI/CD integration"]
 arr_tier: enterprise
-enriched_at: 2026-02-14
+enriched_at: '2026-02-14'
 ---
 ```

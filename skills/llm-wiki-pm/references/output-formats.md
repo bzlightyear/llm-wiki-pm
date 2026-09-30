@@ -15,15 +15,20 @@ Rich-format query answers go under `queries/<slug>/` as a directory with:
 queries/
 └── competitor-pricing-2026-q2/
     ├── README.md          # wiki page with frontmatter + links to artifacts
-    ├── deck.md            # Marp source
-    ├── deck.pdf           # rendered (optional, for sharing)
+    ├── assets/            # markdown artifacts; lint and the hooks skip this folder
+    │   ├── deck.md        # Marp source
+    │   ├── deck.pdf       # rendered (optional, for sharing)
+    │   └── brief.md       # one-pager for a handoff
     ├── pricing-trend.png  # matplotlib output
     ├── pricing-trend.py   # script that generated it (for reproducibility)
     └── customers.csv      # structured export
 ```
 
 The `README.md` is the wiki page, shows up in index.md, has frontmatter,
-links to the artifacts. Artifacts are not standalone wiki pages.
+links to the artifacts. Artifacts are not standalone wiki pages. Markdown
+artifacts go in `assets/`: anywhere else in the folder, a `.md` file is checked
+as a page, and every deck would share the slug `deck` (`citation-spec.md` →
+Page slugs). Other files can sit beside `README.md`.
 
 ## Format Selection
 
@@ -51,7 +56,7 @@ CLI exists.
 
 ### Template
 
-`queries/<slug>/deck.md`:
+`queries/<slug>/assets/deck.md`:
 
 ```markdown
 ---
@@ -86,8 +91,8 @@ Supporting points:
 
 ## Appendix: Sources
 
-- [[raw/articles/...]]
-- [[raw/transcripts/...]]
+- <record ID>: <title>
+- <record ID>: <title>
 ```
 
 ### Render
@@ -97,9 +102,9 @@ Supporting points:
 npm install -g @marp-team/marp-cli
 
 # Generate PDF
-marp queries/<slug>/deck.md --pdf
+marp queries/<slug>/assets/deck.md --pdf
 # or PPTX
-marp queries/<slug>/deck.md --pptx
+marp queries/<slug>/assets/deck.md --pptx
 ```
 
 ### Privacy
@@ -231,16 +236,12 @@ authoritative. Canvas is a visualization layer.
 
 ## One-Pagers (Briefs)
 
-Short markdown documents under `queries/<slug>/brief.md` for handing off to
+Short markdown documents under `queries/<slug>/assets/brief.md` for handing off to
 someone else. Structure:
 
 ```markdown
 ---
 title: Brief, <Topic> (for <audience>)
-type: query
-tags: [brief, <domain>]
-sources: [entities/..., concepts/..., ...]
-# private by default — no flag needed. lifecycle: dated-digest if it's a dated one-shot.
 ---
 
 # <Topic>

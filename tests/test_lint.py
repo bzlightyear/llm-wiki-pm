@@ -9,6 +9,7 @@ Run: python3 -m pytest tests/test_lint.py -v
 """
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -203,3 +204,116 @@ def test_r4_silent_on_8_listed_8_cited():
         "p.md", page("sources: [" + ", ".join(sources) + "]", body), sources
     )
     assert notes["warnings"] == []
+
+
+# ---------------------------------------------------------------------------
+# --cited-sources — the split procedure's helper
+# ---------------------------------------------------------------------------
+
+
+def run_cited_sources(wiki, page_arg, cwd=None):
+    return subprocess.run(
+        [sys.executable, str(LINT_PATH), str(wiki), "--cited-sources", str(page_arg)],
+        capture_output=True, text=True, cwd=cwd,
+    )
+
+
+def split_wiki(tmp_path, body):
+    """A wiki holding two records, a page and a directory page, plus a new
+    split child, concepts/child.md, that cites with `body` and declares
+    nothing yet."""
+    wiki = make_wiki(tmp_path)
+    for rel in (
+        "raw/articles/competitor-x-pricing-2026-01-15.md",
+        "raw/internal/conversation-2026-01-15-pricing-tier.md",
+        "queries/crystallize-pricing-review-2026-01-10.md",
+        "queries/pricing-deep-dive/README.md",
+    ):
+        (wiki / rel).parent.mkdir(parents=True, exist_ok=True)
+        (wiki / rel).write_text("---\ntitle: t\n---\nx\n")
+    (wiki / "concepts" / "child.md").write_text(page("sources: []", body))
+    return wiki
+
+
+def test_cited_sources_prints_paths_in_first_cited_order(tmp_path):
+    wiki = split_wiki(
+        tmp_path,
+        "The team chose usage-based billing [source: conversation-2026-01-15-pricing-tier].\n"
+        'Three tiers [source: competitor-x-pricing-2026-01-15, "Plans"; '
+        "crystallize-pricing-review-2026-01-10, Decisions].\n"
+        "See [[pricing-deep-dive]] [source: pricing-deep-dive, Findings].\n"
+        "Again [source: competitor-x-pricing-2026-01-15, p.3].\n",
+    )
+    result = run_cited_sources(wiki, "concepts/child.md")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "sources:\n"
+        "  - raw/internal/conversation-2026-01-15-pricing-tier.md\n"
+        "  - raw/articles/competitor-x-pricing-2026-01-15.md\n"
+        "  - queries/crystallize-pricing-review-2026-01-10.md\n"
+        "  - queries/pricing-deep-dive/README.md\n"
+    )
+
+
+def test_cited_sources_lists_ids_that_resolve_to_nothing(tmp_path):
+    wiki = split_wiki(
+        tmp_path,
+        "A [source: user, conversation, 2026-01-15].\n"
+        "B [source: raw/articles/competitor-x-pricing-2026-01-15.md].\n"
+        "C [source: competitor-x-\npricing-2026-01-15, p.3].\n"
+        "D [source: deck-2026-01].\n"
+        "E [source: conversation-2026-01-15-pricing-tier].\n",
+    )
+    (wiki / "raw" / "assets" / "deck-2026-01.md").write_text("x\n")  # never a source
+    result = run_cited_sources(wiki, "concepts/child.md")
+    assert result.returncode == 1
+    assert result.stdout == (
+        "sources:\n"
+        "  - raw/internal/conversation-2026-01-15-pricing-tier.md\n"
+        "unresolved:\n"
+        "  - user\n"
+        "  - raw/articles/competitor-x-pricing-2026-01-15.md\n"
+        "  - competitor-x- pricing-2026-01-15\n"
+        "  - deck-2026-01\n"
+    )
+
+
+def test_cited_sources_lists_ids_that_match_two_files(tmp_path):
+    wiki = split_wiki(tmp_path, "A [source: dup-2026, p.1].\nB [source: pricing-deep-dive].\n")
+    (wiki / "raw" / "articles" / "dup-2026.md").write_text("x\n")
+    (wiki / "raw" / "papers" / "dup-2026.md").write_text("x\n")
+    (wiki / "raw" / "internal" / "pricing-deep-dive.md").write_text("x\n")  # a page's slug
+    result = run_cited_sources(wiki, "concepts/child.md")
+    assert result.returncode == 1
+    assert result.stdout == (
+        "sources: []\n"
+        "ambiguous:\n"
+        "  - dup-2026: raw/articles/dup-2026.md, raw/papers/dup-2026.md\n"
+        "  - pricing-deep-dive: queries/pricing-deep-dive/README.md, "
+        "raw/internal/pricing-deep-dive.md\n"
+    )
+
+
+def test_cited_sources_with_no_citations(tmp_path):
+    wiki = split_wiki(tmp_path, "No citations here.\n")
+    result = run_cited_sources(wiki, "concepts/child.md")
+    assert (result.returncode, result.stdout) == (0, "sources: []\n")
+
+
+def test_cited_sources_takes_an_absolute_or_wiki_relative_page(tmp_path):
+    wiki = split_wiki(tmp_path, "A [source: pricing-deep-dive].\n")
+    for page_arg in (wiki / "concepts" / "child.md", "concepts/child.md"):
+        result = run_cited_sources(wiki, page_arg, cwd=tmp_path)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == "sources:\n  - queries/pricing-deep-dive/README.md\n"
+    result = run_cited_sources(wiki, "concepts/missing.md", cwd=tmp_path)
+    assert result.returncode == 2
+    assert "not a file" in result.stderr
+
+
+def test_cited_sources_writes_nothing(tmp_path):
+    wiki = split_wiki(tmp_path, "A [source: pricing-deep-dive].\n")
+    before = {p: p.read_bytes() for p in wiki.rglob("*") if p.is_file()}
+    run_cited_sources(wiki, "concepts/child.md")
+    after = {p: p.read_bytes() for p in wiki.rglob("*") if p.is_file()}
+    assert after == before  # no lint report, no log.md entry
