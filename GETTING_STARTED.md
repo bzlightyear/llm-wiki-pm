@@ -248,6 +248,10 @@ def scaffold(wiki_path: Path, domain: str, user_id: str | None = None) -> None:
 
     ov = (TEMPLATES / "overview.md").read_text().replace("YYYY-MM-DD", today)
     (wiki_path / "overview.md").write_text(ov)
+
+    # vault contract, read by the bundled wiki-search MCP
+    (wiki_path / "meta").mkdir(exist_ok=True)
+    shutil.copy(TEMPLATES / "vault-contract.md", wiki_path / "meta" / "contract.md")
 ```
 
 #### Node.js / TypeScript
@@ -292,6 +296,10 @@ export async function scaffold(
   const ov = (await fs.readFile(join(TEMPLATES, "overview.md"), "utf8"))
     .replace("YYYY-MM-DD", today);
   await fs.writeFile(join(wikiPath, "overview.md"), ov);
+
+  // vault contract, read by the bundled wiki-search MCP
+  await fs.mkdir(join(wikiPath, "meta"), { recursive: true });
+  await fs.copyFile(join(TEMPLATES, "vault-contract.md"), join(wikiPath, "meta", "contract.md"));
 }
 ```
 

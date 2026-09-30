@@ -49,10 +49,14 @@ fi
 
 # ② Scaffold wiki on first run — only if dir is new or truly empty
 # Never overwrite files in an existing non-empty directory.
+# The wiki-search MCP may start first and write meta/ (and later its
+# .markdown_vault_mcp/ index), and a run that skipped the scaffold leaves this
+# hook's own _status.md and .wiki-lock. None of them makes the dir non-empty.
 SCAFFOLD=false
 if [[ ! -e "$WIKI" ]]; then
   SCAFFOLD=true
-elif [[ -z "$(find "$WIKI" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+elif [[ -z "$(find "$WIKI" -mindepth 1 -maxdepth 1 ! -name meta ! -name .markdown_vault_mcp \
+    ! -name _status.md ! -name .wiki-lock -print -quit 2>/dev/null)" ]]; then
   SCAFFOLD=true
 elif [[ ! -f "$WIKI/SCHEMA.md" ]]; then
   echo "Warning: $WIKI exists and is non-empty but has no SCHEMA.md. Skipping scaffold to avoid overwriting files." >&2
@@ -85,6 +89,11 @@ open(sys.argv[3], 'w').write(text)
     echo "- Domain: $DOMAIN"
     echo "- Structure scaffolded automatically by llm-wiki-pm plugin"
   } > "$WIKI/log.md"
+
+  # Vault contract for the wiki-search MCP. If the MCP already wrote its
+  # default, keep it (lint R11 flags it); noclobber never overwrites.
+  mkdir -p "$WIKI/meta"
+  (set -C; cat "$TEMPLATES_DIR/vault-contract.md" > "$WIKI/meta/contract.md") 2>/dev/null || true
 fi
 
 # ②b Concurrent session lock

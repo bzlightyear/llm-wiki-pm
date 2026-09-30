@@ -68,11 +68,12 @@ echo ~/test-wiki > .wiki-path
 
 # The SessionStart hook scaffolds the wiki on first session start.
 # To test without a full Claude Code session, manually create the structure:
-mkdir -p ~/test-wiki/{raw/{articles,papers,transcripts,internal,assets},entities,concepts,comparisons,queries,_archive}
+mkdir -p ~/test-wiki/{raw/{articles,papers,transcripts,internal,assets},entities,concepts,comparisons,queries,_archive,meta}
 cp skills/llm-wiki-pm/templates/SCHEMA.md ~/test-wiki/SCHEMA.md
 cp skills/llm-wiki-pm/templates/index.md ~/test-wiki/index.md
 cp skills/llm-wiki-pm/templates/overview.md ~/test-wiki/overview.md
 cp skills/llm-wiki-pm/templates/log.md ~/test-wiki/log.md
+cp skills/llm-wiki-pm/templates/vault-contract.md ~/test-wiki/meta/contract.md
 
 # Run lint on the scaffolded wiki (should report no errors)
 python3 skills/llm-wiki-pm/scripts/lint.py ~/test-wiki
