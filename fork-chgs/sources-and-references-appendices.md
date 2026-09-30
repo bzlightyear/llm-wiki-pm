@@ -9,7 +9,8 @@ it.
 revised on: 2026-09-29
 Narrowed N12 to the names of people and customer companies, in one doc and the
 test file, to match the design's narrowed step 0 scrub. Corrected N13's fix to
-match the design's section 5.13.
+match the design's section 5.13. Moved N9's fix to step 6, added step 6 to N4's,
+and renamed the migration step 10b, after the plan review.
 
 Companion to [Sources and References Design](sources-and-references-design.md).
 Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the
@@ -372,7 +373,7 @@ know about. They only look at `entities/`, `concepts/`, `comparisons/` and
   already broken one of those `index.md` links, and it would break a meeting
   digest that lists a brief among its sources.
 
-**The fix (plan steps 2, 3, 6 and 10):** `briefings/` joins the folders the
+**The fix (plan steps 2, 3, 6 and 10b):** `briefings/` joins the folders the
 hooks watch and lint scans, and brief names become valid link targets. Briefs
 stay in `briefings/` permanently: the 7-day rotation is removed from the
 maintenance skill, since nothing reads old briefs from the archive, and the two
@@ -433,10 +434,10 @@ top, and they disagree:
 - **Fixes don't stick.** Correcting one list leaves the other three to keep
   steering agents the old way (RC7).
 
-**The fix (plan steps 2, 4 and 8):** one definition of the required fields,
-enforced by lint (R12, section 5.10). The contributing guide and the helper
-agent are corrected to match, and the MCP's settings file is rewritten to point
-at the wiki's own schema.
+**The fix (plan steps 2, 4, 6 and 8):** one definition of the required fields,
+enforced by lint (R12, section 5.10). The contributing guide (step 2) and the
+helper agent (step 6) are corrected to match, and the MCP's settings file is
+rewritten to point at the wiki's own schema (plan review P1, P7).
 
 ### N5. The source-saving helper still uses a retired privacy label
 
@@ -522,7 +523,7 @@ of those still work, but they're fragile.
 - **They can't be fixed by guessing.** The current lint matches loosely to avoid
   false alarms, which also means it can't point at exactly what's wrong.
 
-**The fix (plan steps 6 and 10):** the new format rule (R7) names each of these
+**The fix (plan steps 6 and 10b):** the new format rule (R7) names each of these
 defects specifically. Lint can repair the mechanical ones (line breaks, doubled
 prefixes, "vs."), but only when asked to with a separate option, so the
 unattended daily run never rewrites citations; the migration uses it after a
@@ -565,8 +566,9 @@ for the target in `entities/`, `concepts/` and `comparisons/`. It never looks in
   `queries/`) is what normally reports broken links, so this hasn't caused
   visible trouble yet.
 
-**The fix (plan step 2):** the helper uses lint's link check instead of keeping
-its own, so there's one definition of a valid link.
+**The fix (plan step 6):** the helper uses lint's link check instead of keeping
+its own, so there's one definition of a valid link. It waits for step 6, when
+lint's quick-check mode stops writing files (plan review P1).
 
 ### N10. Two saved sources share a name with their original file
 
@@ -730,7 +732,7 @@ quotes either.
 - **Read every form (plan step 4):** the one shared reader, now also used by the
   session-start scan, accepts a date quoted or not, and reports anything else
   (R12). The post-write check reports it in the same turn.
-- **Clean up (plan step 10):** the migration rewrites the 17 timestamp values in
+- **Clean up (plan step 10b):** the migration rewrites the 17 timestamp values in
   the single-quoted form, using the content-repair option of lint's auto-fix.
   That's lossless, because every one has a time of exactly midnight.
 - **Not needed now:** the patched local MCP copy (step 12) is dropped, and the MCP

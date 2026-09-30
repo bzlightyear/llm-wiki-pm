@@ -13,7 +13,10 @@ and the lint-checks design are scrubbed, and N12 and D8 were updated to match.
 Completed step 0, decided to implement in the fork before offering anything
 upstream (D10), and set the status to in progress. Completed step 1 with the
 other hooks' `.wiki-path` read in place of the `-f` test in section 5.13, which
-would have stopped the launcher when the file exists but can't be read.
+would have stopped the launcher when the file exists but can't be read. Took in
+the plan review's issues (P1–P29): each step now names the files, decisions and
+dependencies it needs, step 10 is split into writing and running the migration,
+and missing frontmatter and missing required keys stay 🔴.
 
 revised on: 2026-09-28
 Took in the design review's findings (F1–F16). It dropped the legend checks, R13,
@@ -43,6 +46,11 @@ Changes that came from the
 [Sources and References Review](sources-and-references-review.md) (F1–F16) are
 marked with the finding that caused them, for example "(review F7)". Counts from the review's 2026-09-28 scratch copy are used where
 they differ from this document's 2026-09-25 measurements.
+
+Changes that came from the
+[Sources and References Plan Review](sources-and-references-plan-review.md)
+(P1–P29), an audit of the implementation plan against this document, the review
+and the code, are marked the same way, for example "(plan review P9)".
 
 Line references are against the fork at `11fa847` (upstream `2.21.0` plus local
 commits). Wiki measurements come from a scratch copy of the private production
@@ -156,7 +164,7 @@ makes them revisitable.
 
 | # | Invariant | Single spec location | Write paths that can violate it | Enforcement | Resulting guarantee |
 |---|---|---|---|---|---|
-| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint for all (R12 🟡 until migration, then 🔴, with R1/R2/R5 as specific messages) | Detected in the same turn for Write/Edit/MultiEdit and MCP `vault` writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
+| I1 | **Parseable frontmatter.** Every wiki page starts with one frontmatter block that parses under the *frontmatter profile* (section 5.10): unique keys, values are strings, lists of strings, or one level of string mappings, and the required keys are present. | `references/citation-spec.md`, "Frontmatter profile" section (new). `SCHEMA.md` template keeps the field list and points there. | W1–W3, W5, W7–W12, W14–W16, V1–V4, B1–B6 (all page writers) | Write-time advisory (post-validate hook) for tool writes; lint for all (R12 🟡 until migration, then 🔴, with R1/R2/R5 as specific messages; missing frontmatter and missing required keys stay 🔴 throughout, plan review P15) | Detected in the same turn for Write/Edit/MultiEdit and MCP `vault` writes; detected at next session start (or next lint) for Bash, script, Obsidian and git writes. Not prevented. |
 | I2 | **Declared ⇒ exists.** Every `sources:` entry is a canonical path (`raw/<dir>/<id>.md` or `<wiki-dir>/<slug>.md`) to a file that exists. | `citation-spec.md`, "Declarations" section | Same as I1, plus any rename or deletion under `raw/` or of a page (B1, B3, V3) | Post-validate hook (stat each path); lint 🔴 (R6) | Same as I1. Because IDs have a closed grammar, a malformed entry *cannot be written by a correct writer*, and no serializer can split one. That is the only prevention-by-construction in the design. |
 | I3 | **Cited ⇒ declared.** Every inline citation ID on a page equals the `slug()` of exactly one entry in that page's own `sources:` (section 5.2). | `citation-spec.md`, "Inline grammar" section | Any body edit, including split children and MCP `string_replace` | Post-validate hook; lint 🔴 (R3 rewritten as exact match) | Same as I1. With I2, this closes the chain claim → ID → declared path → file. |
 | I4 | **Dropped (review F7).** Was: a `## Sources` legend's IDs equal the declared IDs. No skill or template prescribes legends, agents have almost stopped writing them, and 1 drift instance was found, against a migration of up to 136 prose bullets. Legends are optional free prose, not a declaration site (section 5.5). | — | — | — | — |
@@ -413,9 +421,10 @@ entries), so the fast path is where the invariant has to be paid for.
 
 All normative text below goes into **one new file,
 `skills/llm-wiki-pm/references/citation-spec.md`**. Every other location (AGENTS.md
-Source Attribution, SCHEMA.md template Inline Provenance, ingest-guide ⑤,
-update-guide section 3, sub-skills, templates) is reduced to a one-line pointer plus at
-most one example. That makes it the single spec location for I1–I3, I5 and I8.
+Source Attribution, SCHEMA.md template Inline Provenance, ingest-guide ① "Current
+conversation" and ⑤, update-guide section 3, sub-skills, templates) is reduced to a
+one-line pointer plus at most one example (plan review P9). That makes it the
+single spec location for I1–I3, I5 and I8.
 
 ### 5.1 Records (`raw/`)
 
@@ -525,7 +534,11 @@ sources: [raw/assets/deck-2026-01.pdf]           # R6: cite the record, not the 
 
 Grounding (existing `lint.py:502-520`) is redefined on resolved IDs: *primary* =
 resolves to a record; *secondary* = resolves to a page. Behavior is otherwise
-unchanged.
+unchanged. A page path counts as secondary even when the page doesn't exist:
+R6 reports the missing file, and the grounding check keeps treating the entry
+as a wiki page, which keeps `test_hooks.py`'s `TestLint` fixtures valid. Pages
+with `lifecycle: dated-digest` are exempt from grounding (D6). Both land in
+step 6 (plan review P17).
 
 ### 5.4 Inline citations
 
@@ -562,10 +575,14 @@ Resolution is exact and page-local: split the marker on `"; "`, take the text
 before the first `", "` as the ID, and look it up in
 `{slug(p): p for p in sources}`, using the `slug()` function from section 5.2. No substring matching and no conversational
 exemption. `_citation_matches_source` and `_is_conversation_citation` are
-deleted.
+deleted. R4, which counts cited sources with `_citation_matches_source` today,
+then counts a source as cited when a marker's ID equals its `slug()` (plan
+review P18).
 
 `update-guide.md:77` and `output-formats.md:89-90` stop showing `[[raw/…]]`
-wikilinks as citations. Prose citations of wiki pages ("Per [[page]]") remain
+wikilinks as citations. `update-guide.md`'s `ae33f9d` block (lines 84-96) and
+`prd-templates.md:91` (`[source: [[wiki-page]]]`) change to the ID form too
+(plan review P11). Prose citations of wiki pages ("Per [[page]]") remain
 valid *as links* (I6). They are not source citations and need no declaration.
 
 ### 5.5 `## Sources` legend
@@ -589,11 +606,13 @@ applies to micro-capture, Update, Learn and CRM alike.
   conversation`, `stated_by:`, and the statement near-verbatim. One record per
   topic per conversation. A later fact on the same topic gets a new record with a
   `-2` suffix, never an append.
-- `scripts/capture.py <wiki> --topic <slug> [--stated-by user] < statement`
-  writes the record with correct frontmatter (including `source_type:
-  conversation`, which R10 reads), refuses to overwrite, and prints the path (for
-  `sources:`) and ID (for the marker). It is one Bash call, stdlib only, and
-  writes through `wikifm` (section 5.10).
+- `skills/llm-wiki-pm/scripts/capture.py <wiki> --topic <slug> [--stated-by
+  user] < statement` writes the record with correct frontmatter (including
+  `source_type: conversation`, which R10 reads), picks the next free suffix
+  (`-2`, `-3`, …) when the topic already has a record that day, never
+  overwrites, and prints the path (for `sources:`) and ID (for the marker). It is
+  one Bash call, stdlib only, and writes through `wikifm` (section 5.10). Its
+  tests go in `tests/test_capture.py` (plan review P12).
 - Tool-retrieved facts (a chat thread read via MCP) are *not* conversation
   records. They follow the chat/email capture routes (`ingest-guide ①`), as today.
 - The SKILL.md §2 fast path changes from `source: conversation | <date>` to
@@ -604,14 +623,18 @@ applies to micro-capture, Update, Learn and CRM alike.
 ### 5.7 Non-file sources
 
 - **Web**: captured as a record (`source_type: web`, `source_url`). The
-  CRM and research enrichment steps delegate capture to `worker-source-fetcher`,
-  which research already does. D2 asks whether a URL may stand in as an ID for
-  low-stakes enrichment. My recommendation is no.
+  CRM enrichment steps and research's stub enrichment delegate capture to
+  `worker-source-fetcher`, as research's sprints already do: fetch each source
+  used, declare the record's path and cite its ID. Today both enrichment
+  procedures cite `[source: <url>, <date>]` with no capture (plan review P10).
+  D2 asks whether a URL may stand in as an ID for low-stakes enrichment. My
+  recommendation is no.
 - **Warehouse**: already file-shaped. The snapshot record
   `raw/internal/<metric>-<snapshot>.md` *is* the source, and `query <ref>` is the
   citation's location: `[source: metric-arr-202601, query saved-query-123]`. The
-  existing `source_query_ref`/`source_snapshot` fields move from page
-  frontmatter guidance to the record, where they describe the artifact.
+  existing `source_query_ref`/`source_snapshot` fields stay on the record, where
+  they describe the artifact, as ingest-guide ① already prescribes (plan review
+  P14).
 - **Email/chat/transcripts/PDF**: unchanged routes. The ID is the record stem.
 - **Live read without capture** (a fact read from a system but not saved): not
   citable. Capture a record of what was read, or leave the claim uncited and
@@ -629,8 +652,12 @@ applies to micro-capture, Update, Learn and CRM alike.
   errors multiply, since a split copies whatever is wrong on the parent onto
   every child.
   1. Snapshot the parent (automatic for tool writes).
-  2. Set each child's `sources:` to exactly the IDs its body cites, computed with
-     `lint.py --cited-sources <page>` (a new read-only flag).
+  2. Set each child's `sources:` to the paths of exactly the IDs its body cites,
+     computed with `lint.py --cited-sources <page>`. The new flag prints the
+     canonical path of each ID the page cites, resolved against every record and
+     page with `slug()` (a new child declares nothing yet, so page-local
+     resolution would find nothing), lists IDs that resolve to nothing, and
+     writes nothing: no report and no `log.md` entry (plan review P19).
   3. Run `--cited-sources` on the parent too, and trim its `sources:` to what it
      still cites (review F9: the procedure missed this step).
   4. Link parent and children to each other.
@@ -671,10 +698,17 @@ Format unchanged (CONTRIBUTING "do not change"). Additions: `briefings/` joins
 the resolvable set, and briefs stay there permanently. The maintain skill's
 7-day rotation into `_archive/briefings/` is removed: nothing reads a filed
 brief, the rotation already broke one `index.md` link, and it would break a
-digest that cites a brief (review F12). Also, worker-link-validator defers to `lint.py` instead of keeping
-its own three-directory resolver (N9); the post-write check runs on MCP writes
-too. A wikilink inside a `[source: ...]` marker is invalid (R7), because the
-marker is an ID site, not a link site.
+digest that cites a brief (review F12). Lint scans `briefings/` as pages (link
+targets, R9, escape checks), and pages with `lifecycle: dated-digest` are exempt
+from lint's index-completeness check and its auto-fix, so filed briefs aren't
+added to `index.md`. Without that exemption, the maintain loop's unattended
+`--auto-fix` would add every brief (plan review P16). Also, worker-link-validator
+runs `lint.py --json` instead of keeping its own three-directory resolver (N9),
+its `backlinks.py --all-orphans` call (a flag `backlinks.py` doesn't have) and
+its four-key field list (N4). That lands in step 6, once `--json` writes nothing
+(plan review P1). The post-write check runs on MCP writes too. A wikilink inside
+a `[source: ...]` marker is invalid (R7), because the marker is an ID site, not a
+link site.
 
 ### 5.10 Frontmatter profile, the single parser, and `meta/contract.md`
 
@@ -700,7 +734,9 @@ marker is an ID site, not a link site.
   R1 and R2 become two specific messages of this check.
 - Required keys: `title, created, updated, type, tags, sources` (as `lint.py`
   today). `coverage` is recommended and 🟡 on factual types (as today).
-  CONTRIBUTING and worker-link-validator are corrected to match (N4).
+  CONTRIBUTING and worker-link-validator are corrected to match (N4). A missing
+  frontmatter block or a missing required key stays 🔴, as today; only the other
+  profile messages start at 🟡 (plan review P15).
 
 **One parser, and one writer.** New `skills/llm-wiki-pm/scripts/wikifm.py`,
 stdlib only:
@@ -716,8 +752,9 @@ stdlib only:
   Scripts that follow the rule are correct by construction; lint still catches
   ones that don't.
 - **Callers:** `lint.py`, `pre-write.sh`, the new `post-validate` hook,
-  **session-start's stale scan** (`session-start.sh:151-189`, review F2),
-  `backlinks.py` if needed, and `capture.py` all import it.
+  **session-start's stale scan** (`session-start.sh:151-189`, review F2), and
+  `capture.py` all import it. `backlinks.py` has no frontmatter parser, so it
+  doesn't change (plan review P7).
   `parse_frontmatter`, `extract_sources`, `_split_flow_list`, `extract_tags`'s
   comma split, the copy in `pre-write.sh` and session-start's inline parser are
   deleted.
@@ -727,7 +764,11 @@ stdlib only:
   the documented case where it deliberately disagrees. Fixtures include wrapped
   list items and every date form found in the wiki. A further test runs `parse`
   over every page of a scratch copy of a real wiki and requires 0 exceptions
-  (review F8).
+  (review F8). It reads the wiki's path from an environment variable (for
+  example `WIKIFM_WIKI`) and skips when that's unset, since no wiki is in the
+  repo; step 4 runs it once against a scratchpad copy. The oracle tests skip
+  without PyYAML (`pytest.importorskip`), and README's test recipe adds `pyyaml`
+  (plan review P8).
 
 **Contract reconciliation.** The MCP tells agents to read `meta/contract.md` for
 frontmatter and naming. The default contract declares a different `type` enum, a
@@ -747,10 +788,13 @@ to edit it. So:
   The MCP server writes its default at startup, concurrently with the
   SessionStart hook, and which runs first is unverified. So on a new install the
   default may win (review F10).
-- The scaffold treats a wiki directory that contains only `meta/` as empty. Today
-  an MCP that starts first makes a new wiki directory non-empty, and
-  `session-start.sh:53-59` then skips the whole scaffold (no SCHEMA, index or
-  log).
+- The scaffold treats a wiki directory that contains only `meta/` and
+  `.markdown_vault_mcp/` as empty. Today an MCP that starts first makes a new
+  wiki directory non-empty, and `session-start.sh:53-59` then skips the whole
+  scaffold (no SCHEMA, index or log). Besides `meta/`, the MCP creates
+  `.markdown_vault_mcp/`, its search index, on its first index flush (60 seconds
+  after start) or at shutdown, so a wiki whose first session skipped the scaffold
+  would hold both (plan review P24).
 - Lint R11 🟡: `meta/contract.md` still carries the MCP default schema (detected
   by `generated_by: mcp-markdown-vault` plus a `status` enum line). It is the
   backstop for the startup race. The fix for the existing wiki is a one-time hand
@@ -768,17 +812,31 @@ to edit it. So:
      rule isn't a hook, so "hooks never deny" still holds. A plugin can't install
      permission rules, so the plugin README's install notes document it for other
      installs (review F13).
+   - **Ask before MCP `vault` calls (plan review P5).** Add a `permissions.ask`
+     rule for `mcp__wiki-search__vault` and
+     `mcp__plugin_llm-wiki-pm_wiki-search__vault`, so every MCP write, including
+     `vault.delete`, needs confirmation. Under `defaultMode: "auto"` an unlisted
+     tool is decided by auto mode. Permission rules match on the tool name, so
+     `vault` reads prompt too; agents rarely make them, since reads go through
+     `view`. The README's install notes document this rule with the deny rule.
    - **Hook matchers.** PreToolUse and PostToolUse match
      `Write|Edit|MultiEdit|mcp__.*wiki-search__(vault|edit)`, which covers both
      tool-name forms. The *registered* hooks are the user-level entries in
      `~/.claude/settings.json`, not `hooks/hooks.json`, so both must be updated
      (hooks.json for upstream parity).
    - **Filters (review F13).** The hooks read `tool_input.action` and act only on
-     `vault` `create`, `update` and `delete`, exiting at once on reads. They skip
-     any `edit` call with `dryRun: true`, which writes nothing.
+     `vault` `create`, `create_from_template`, `update` and `delete`, exiting at
+     once on reads. `create_from_template` also writes a new file (V1), so it is
+     included (plan review P4). They skip any `edit` call with `dryRun: true`,
+     which writes nothing.
    - **Unverified.** Claude Code documents PreToolUse/PostToolUse matching on
      `mcp__<server>__<tool>` names, but I have not tested it on this machine; step
-     3 includes that check.
+     3 includes that check. It is a manual check, not a test: in a session whose
+     `.wiki-path` points at a scratch wiki (the hooks and the MCP resolve the same
+     path, so nothing reaches the private wiki), call `vault.create` and then
+     `vault.update` on a scratch page, confirm the snapshot, and confirm the deny
+     rule refuses an `edit` call. `tests/test_write_hooks.py` covers MCP payloads
+     with synthetic stdin JSON (plan review P3).
 2. **Path extraction.** `tool_input.file_path` (Write/Edit/MultiEdit);
    `tool_input.path` (MCP single); `tool_input.operations[].path` (MCP batch).
    MCP paths are vault-relative and joined to `$WIKI`. The launcher and the hooks
@@ -787,8 +845,11 @@ to edit it. So:
 3. **Snapshot (pre).** On any existing page targeted by Write, Edit, MultiEdit,
    `vault.update`, `vault.delete`, or any `edit` op: copy to
    `_archive/<slug>-<date>.md`, where slug = `lint.py`'s `slug()`, which fixes the
-   README collision (N14). `briefings/` joins the gated set. The two root files
-   the page rule skips get their own rule:
+   README collision (N14). One shared function makes the copy:
+   `snapshot(page, wiki)` in `lint.py`, next to `slug()`. `pre-write.sh`, lint
+   `--auto-fix` (item 8) and migration step M1 all call it, so backups are named
+   one way everywhere (plan review P2). `briefings/` joins the gated set. The two
+   root files the page rule skips get their own rule:
    - `overview.md` is snapshotted **only on a whole-file replacement**: `Write`,
      `vault.update` or `vault.delete`. Never on `Edit`, `MultiEdit` or an MCP
      `edit` op. The ISSUE-2 risk is the indexer (K2) replacing the page
@@ -810,7 +871,10 @@ to edit it. So:
 5. **Freshness gate (pre).** Unchanged message, but it judges the *post-edit*
    text: Edit and MultiEdit apply `old_string → new_string` to the disk content
    first (fixes the brief-item-7 inversion). MCP `edit` ops are not simulated,
-   so the gate is skipped for them. Post-validate covers them.
+   so the gate is skipped for them. Post-validate covers them. `vault.create` and
+   `vault.update` carry the whole post-image in `content`, so the gate judges them
+   like Write; `create_from_template` is checked after the write, by
+   post-validate (plan review P4).
 6. **Post-validate (new, synchronous PostToolUse, `hooks/post-validate.sh`).**
    Reads the written file(s) from disk and runs `wikifm` checks for I1–I3, the
    R7 grammar, escaped `\[`, and links. When a write takes a page over 200 lines,
@@ -820,7 +884,13 @@ to edit it. So:
    Budget: one python start plus one file parse plus a stat per declared source,
    well under 200 ms. It is synchronous because the agent must see the result in
    the same turn. Whether an *async* hook's context would reach the model is not
-   something I verified, so the design doesn't rely on it.
+   something I verified, so the design doesn't rely on it. Its link check
+   resolves against lint's page set, including `briefings/` (plan review P16).
+   Post-validate is registered with item 1's matchers, as a synchronous
+   PostToolUse entry in `~/.claude/settings.json` and `hooks/hooks.json`, in place
+   of `post-write.sh`'s async entry. `post-write.sh` stays in the repo,
+   unregistered, so `test_hooks.py`'s `TestPostWrite` (13 tests) keeps passing;
+   removing it is proposed upstream together with those tests (plan review P23).
 7. **Session-start** (already runs lint): add the counts of I1–I3 violations to
    the additionalContext line and `_status.md`. Stop writing a report in
    `--json` mode (N1). If lint exits nonzero or its JSON doesn't parse, report
@@ -835,7 +905,10 @@ to edit it. So:
    "non-destructive" (`llm-wiki-maintain/SKILL.md:74-75`). Plain `--auto-fix`
    keeps that meaning: index backfill and sort, de-escaping, supersession link
    redirects. Content repairs stay behind the migration's dry run and sign-off
-   (review F5).
+   (review F5). `--auto-fix=content` runs the plain fixes plus the content
+   repairs, and every auto-fix frontmatter write goes through `wikifm`.
+   lint-guide.md documents both forms and says unattended runs never pass
+   `=content` (plan review P20).
 9. **Frontmatter edits (Tool Selection rule).** One line in SKILL.md's Tool
    Selection rules: edit frontmatter with the Edit tool, or, in a script, with
    `wikifm.set_field`/`set_list`. Never use a YAML library's load-and-dump. The
@@ -863,9 +936,9 @@ Honest summary:
 Permission note: `mcp__wiki-search__edit` is denied (item 1). Leave `vault` off
 the allowlist. Permissions match on tool name, so allowing `vault` would also
 allow `vault.delete`. `defaultMode: "auto"` does not guarantee a prompt for an
-unlisted tool, so add an explicit `permissions.ask` entry for both name forms of
-`vault` if every MCP write should be confirmed (review F4). Revisit the deny rule
-only if NW2 fixes the round-trip.
+unlisted tool, so an explicit `permissions.ask` entry for both name forms of
+`vault` confirms every MCP write (review F4; added in item 1, plan review P5).
+Revisit the deny rule only if NW2 fixes the round-trip.
 
 ### 5.12 Revisit obligation (I8)
 
@@ -873,6 +946,10 @@ Lint R10 🔵: pages whose primary sources all resolve to records with `source_t
 conversation` or `reconstructed: true`. They are listed in `_status.md` under
 "Secondhand, unverified". A page leaves the list only when a non-conversation
 primary record is declared on it, meaning someone captured a real source.
+Lint's JSON carries the list, and session-start writes it to `_status.md`. Lint
+reads a record's frontmatter only for `source_type` and `reconstructed`, since
+records aren't pages (11 have no frontmatter), and never reports R12 on a record
+(plan review P21).
 
 No date clears it (review F1). An earlier version cleared the flag on a
 `last_verified` date less than 30 days old. Nothing in the skills or hooks sets
@@ -915,14 +992,20 @@ with a message when no node is found. No network and no real MCP needed.
   upstream together with the parser PR. New hook tests (MCP matchers, post-image,
   README snapshot) go in a new `tests/test_write_hooks.py`, not appended to
   `test_hooks.py`, for the same reason. Also correct the commit-message claim in
-  the changelog, not in git history.
+  the changelog, not in git history: a note in the
+  [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) saying `91878dc`'s
+  message wrongly calls `test_lint.py` the first lint test module. Step 4 adds
+  both the pointer comment and the note (plan review P28).
 - **Worker copies.** Replace per-project copies with user-level symlinks, the
   same way skills are installed: `~/.claude/agents/worker-*.md →
   ~/Projects/llm-wiki-pm/.claude/agents/`. Then delete `pm-wiki/.claude/agents/`
   (identical today, verified with `diff -r`). One source, visible in every
   project. The fork's own project copy is the same file. Separately, the workers
   reference `${CLAUDE_SKILL_DIR}`, which is a *skill* variable. Whether it is set
-  in a subagent is unverified; step 9 checks it.
+  in a subagent is unverified; step 9 checks it. Step 9 changes the wiki repo
+  (deleting its copy) and user-level config (`~/.claude/agents/` doesn't exist
+  yet, and its symlinks affect every session), so both need the user's
+  confirmation first (plan review P25).
 
 ---
 
@@ -937,9 +1020,9 @@ review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 | Rule | Checks for | Invariant | Status | Now | 3.0 | Auto-fix |
 |---|---|---|---|---|---|---|
 | R1 | A list item on the same line as its key (`tags: - x`) | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No |
-| R2 | Block list items under an already-closed `[...]` list | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | Merge into one block list, reporting item counts before and after |
-| R3 | An inline citation ID that equals the `slug()` of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | Proposes adding the declaration; a human confirms |
-| R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept; also the backstop for splits (the `split_from` escalation was dropped, review F9) | 🟡 | 🟡 | No |
+| R2 | Block list items under an already-closed `[...]` list | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No. The merge suggested in the lint-checks design was never built, and R2 has no violations today (plan review P22) |
+| R3 | An inline citation ID that equals the `slug()` of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | No; the message names the path to declare, and a human adds it (M5 for the migration; plan review P22) |
+| R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept; also the backstop for splits (the `split_from` escalation was dropped, review F9). Counts a source as cited by exact `slug()` match once R3 is rewritten (plan review P18) | 🟡 | 🟡 | No |
 | R5 | The same frontmatter key twice | I1 | Exists, kept | 🔴 | 🔴 | No |
 | R6 | A `sources:` entry that isn't a canonical path to an existing file | I2 | New | 🟡 | 🔴 | No |
 | R7 | An inline citation that breaks the grammar (section 5.4): wrapped, nested `source:`, "X vs. Y", raw path form, URL, wikilink | I3 | New | 🟡 | 🟡 | Mechanical classes (path form, wraps, nested prefix, "vs."), under `--auto-fix=content` only |
@@ -947,7 +1030,7 @@ review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 | R9 | Two records with the same ID, a record ID equal to a page slug, or two pages with the same slug (review F11) | I5, I6 | New | 🔴 | 🔴 | No |
 | R10 | A page whose primary sources are all conversation or reconstructed records. Cleared only by declaring a non-conversation primary record; no date involved (review F1) | I8 | New | 🔵 | 🔵 | No |
 | R11 | `meta/contract.md` is still the MCP's default contract | none (competing spec) | New | 🟡 | 🟡 | No |
-| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check). 13 pages (the timestamp dates) violate it until migration M4, so it starts at 🟡 (review F3); the 15 pages with wrapped list items pass, because the profile now allows them. R1, R2 and R5 keep their own 🔴 | 🟡 | 🔴 | Only for timestamp dates at exactly midnight (N15), under `--auto-fix=content`: rewrites them as `'YYYY-MM-DD'`, which is lossless |
+| R12 | Frontmatter outside the profile (section 5.10), or a required key missing | I1 | New (replaces the key-presence check). 13 pages (the timestamp dates) violate it until migration M4, so it starts at 🟡 (review F3); the 15 pages with wrapped list items pass, because the profile now allows them. R1, R2 and R5 keep their own 🔴, and so do missing frontmatter and a missing required key, which are 🔴 today (plan review P15) | 🟡 | 🔴 | Only for timestamp dates at exactly midnight (N15), under `--auto-fix=content`: rewrites them as `'YYYY-MM-DD'`, which is lossless |
 | R13 | **Dropped (review F6).** Was: a record without `source_type` or `captured`, dated after the rule ships | — | — | — | — | — |
 
 Other checks keep their current tiers and have no R-number: escaped `\[`
@@ -962,9 +1045,9 @@ warning also gains the split-procedure pointer (section 5.8).
 
 | Commit | Disposition | Reason |
 |---|---|---|
-| `91878dc` R1–R5 | **Revise.** R1/R2/R5 kept as messages of the profile parser (step 4). R3 **replaced** by exact ID resolution (🟡 in 2.22, 🔴 in 3.0). R4 kept as a ratio on every page (the `split_from` escalation was dropped, review F9). Tests kept and extended. | R3's permissive matcher and conversational exemption exist only because IDs were undefined. |
+| `91878dc` R1–R5 | **Revise.** R1/R2/R5 kept as messages of the profile parser: from step 4 `wikifm.parse` reports their conditions and lint keeps their messages and 🔴 tier, and step 6 folds them into R12's report (plan review P7). R3 **replaced** by exact ID resolution (🟡 in 2.22, 🔴 in 3.0). R4 kept as a ratio on every page (the `split_from` escalation was dropped, review F9). Tests kept and extended. | R3's permissive matcher and conversational exemption exist only because IDs were undefined. |
 | `ae33f9d` §4 conversational citation | **Revise.** Keep "never coin an ID for an uncaptured artifact". Replace the `[source: user, conversation, DATE]` alternative with "capture a record". Move the detail to citation-spec. SKILL.md ③ drops from 402 to ~150 bytes of added text. | It legitimized one of the 12 shapes. |
-| `543766c` quote-aware split | **Replace** when `wikifm` lands; keep until then (it is correct in the interim). Its shredding tests become R6 migration tests. | Unnecessary once no valid entry contains a comma. |
+| `543766c` quote-aware split | **Replace** when `wikifm` lands; keep until then (it is correct in the interim). Its shredding tests become R6 migration tests: step 4 rewrites its three tests against `wikifm.sources()` with the same expectations, and step 6 adds the R6 assertions (plan review P7). | Unnecessary once no valid entry contains a comma. |
 | `11fa847` template refs | **Keep.** | Plumbing; unrelated to the rules. |
 
 ### [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md)
@@ -975,12 +1058,16 @@ warning also gains the split-procedure pointer (section 5.8).
 | PATCH-2 backlinks README self-slug | **Keep; offer upstream.** |
 | PATCH-3a block-list parsing | **Replace** with `wikifm` lists-as-lists. Joining into `"[a, b]"` reintroduces comma ambiguity for `extract_tags` and makes the two parsers disagree. |
 | PATCH-3b `slug()` README | **Keep; offer upstream.** It is now also the snapshot naming function. |
-| PATCH-3c overview/index link targets | **Keep; offer upstream.** Extend the same registration to `briefings/`. |
+| PATCH-3c overview/index link targets | **Keep; offer upstream.** Extend the same registration to `briefings/`: in step 6, `briefings/` joins lint's page set, with dated digests exempt from the index check (section 5.9, plan review P16). |
 | PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed. Checked 2026-09-26: #47 is open with no maintainer response, and the repo has had no activity since 2026-06-02. A comment now links it to #49, the date bug from the same code path. Post-validate now reports escaped brackets at write time. The permission rule on the MCP `edit` tool (section 5.11, item 1) removes the cause on this install. NW2 is deferred (review F4). |
 | PATCH-4 relationship-map wiring | **Keep.** Its end-to-end verification is still pending and unrelated to this design. |
 | ISSUE-1 action-item update mechanism | **Keep open, re-scoped.** Shares RC6. I8's horizon mechanism is the reusable piece; action-item status is out of scope here. |
 | ISSUE-2 indexer overview regeneration | **Keep open, mitigated.** Snapshotting `overview.md` on whole-file replacements (section 5.11, item 3) makes a regeneration recoverable without a daily copy. The destructive behavior itself is untouched. |
 | ISSUE-3 conversational citations / legend drift | **Close when steps 5–7 and M1–M5, M7–M8 land.** Part A → I2 + conversation records + reconstructed records. Part B → legends become optional free prose, not a declaration site, so there is nothing to drift from (review F7). Its open question "lint or pre-write hook?" is answered: both, with lint authoritative and a non-blocking post-write hook for same-turn feedback. Its proposed rule ("exempt `conversation, <date>` only if the dated file exists") is superseded: conversational citations stop being a special case. |
+
+The step that settles each entry updates its status line in the fork changelog:
+ISSUE-2 in step 3, PATCH-3a in step 4, and ISSUE-3 after step 10b (plan review
+P28).
 
 ### PLUGIN-REVIEW items touched
 
@@ -1033,12 +1120,14 @@ Current state against the new rules:
 | `_archive/README-<date>.md` collision | 1 file | rename by hand to the right slug if its origin can be identified from git, else leave |
 | `meta/contract.md` default | 1 | hand-edit (M7) |
 
-Migration steps (a script, `scripts/migrate_sources.py`, dry-run by default,
-emitting a per-page before/after count table, per the LINT doc's lesson that
-counts must be visible):
+Migration steps (a script, `skills/llm-wiki-pm/scripts/migrate_sources.py`,
+dry-run by default, emitting a per-page before/after count table, per the LINT
+doc's lesson that counts must be visible). The script is written and tested in
+the fork first (step 10a), then run on the wiki (step 10b; plan review P26):
 
 - **M1** Snapshot every page to be touched (bulk; 10+ pages needs sign-off per
-  AGENTS.md).
+  AGENTS.md), with the shared `snapshot()` function (section 5.11, item 3; plan
+  review P2).
 - **M2** For each of the **18 distinct conversation dates** (all 18 have a
   `log.md` entry that day), write `raw/internal/conversation-YYYY-MM-DD-reconstructed.md`
   with `source_type: conversation`, `reconstructed: true`,
@@ -1055,8 +1144,9 @@ counts must be visible):
   --auto-fix=content`. Move the 2 rotated briefs back to `briefings/`, and the
   `raw/clippings/` file to `raw/articles/`.
 - **M5** Human pass on the 13 manual markers, the 11 structural-file entries,
-  the 2 free-text entries, the 31 undeclared citations, and the `.html` source
-  (save a markdown record, move the original to `raw/assets/`, re-declare).
+  the 2 free-text entries, the 31 undeclared citations, the `.html` source
+  (save a markdown record, move the original to `raw/assets/`, re-declare), and
+  the `_archive/README-<date>.md` rename from the table above (plan review P26).
 - **M6** *Dropped (review F7).* Legends are no longer converted.
 - **M7** Replace `meta/contract.md` content with the reconciled template, and
   add the split-procedure pointer to the wiki's own SCHEMA.md split rule (a
@@ -1079,22 +1169,25 @@ are immutable and exempt, so they stay as they are.
 ## 8. Implementation plan
 
 Ordered by dependency. "Up" = candidate to offer upstream as a PR; "Fork" =
-fork-only. Semver is per CONTRIBUTING's table.
+fork-only. Semver is per CONTRIBUTING's table, and is the bump each step implies
+when it's offered upstream (D10). The fork doesn't bump versions (plan review
+P29).
 
 | Step | Change | Depends on | Semver | Up/Fork |
 |---|---|---|---|---|
 | 0 | Scrub real names from the current files and from git history, then update cited commit IDs (N12, D8; detail below the table) | — | — | Fork (public repo hygiene) |
 | 1 | `wiki-search.sh` `.wiki-path` read fix + `tests/test_wiki_search.py` | — | patch | **Up** |
-| 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)", worker-link-validator resolver. `llm-wiki-maintain`: remove step ⑤ "Brief rotation" and the `_archive/briefings/` convention line (review F12), and reword step ⑥'s "non-destructive" note to name what plain `--auto-fix` does (review F5) | — | patch | **Up** |
-| 3 | Hooks: MCP matchers for both tool-name forms, with the `action`/`dryRun` filters; `slug()`-named snapshots; `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image; raw write-once warning; update `~/.claude/settings.json` and `hooks.json`; `tests/test_write_hooks.py` incl. a live check that a PreToolUse hook fires on an MCP call. Permission rule: deny both name forms of the MCP `edit` tool in `~/.claude/settings.json` (fork install), and document it in the README's install notes (review F4, F13) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
-| 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write, backlinks **and session-start's stale scan** switch to it (review F2); delete the old parsers (replaces PATCH-3a, 543766c); PyYAML-oracle tests plus a whole-wiki no-exception test (review F8) | — | patch | **Up** |
-| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md, SCHEMA template, ingest-guide, update-guide, crystallize-guide, prd/crm/research templates; `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2); `capture.py`; SKILL.md §2/§4 edits and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
-| 6 | Lint: R6, R3 exact, R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3); `--cited-sources`; the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content` (review F5); auto-fix snapshots; `--json` stops writing a report; session-start surfaces I1–I3 counts and reports a lint failure instead of zero counts (review F8) | 4, 5 | minor | **Up** |
-| 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check; split-procedure reminder when a page crosses 200 lines, review F9) | 3, 4, 6 | minor | **Up** |
-| 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` as empty (review F10) | 5 | minor | **Up** |
-| 9 | Worker agents → user-level symlinks; delete the wiki's copy; verify `CLAUDE_SKILL_DIR` in subagents | — | — | Fork (install layout) |
-| 10 | Wiki migration M1–M8 (dry-run, review, apply, commit in the wiki repo) | 5, 6 | — | Fork (wiki content) |
-| 11 | Promote R3/R6 to 🔴, and R12 to 🔴 once M8 shows 0 violations | 10 | **major (3.0.0)**: it narrows the valid value space of `sources:`, a frontmatter-schema change that makes existing wikis report errors | **Up**, with the migration script |
+| 2 | Doc drift: README/CONTRIBUTING `private:`, CONTRIBUTING required-field list, worker-source-fetcher `private:` and routing table, `llm-wiki-prd` "(enforced)". `llm-wiki-maintain`: remove step ⑤ "Brief rotation" and the `_archive/briefings/` convention line (review F12), and reword step ⑥'s "non-destructive" note to name what plain `--auto-fix` does (review F5). The worker-link-validator item moved to step 6, since the validator needs lint's side-effect-free `--json` (plan review P1) | — | patch | **Up** |
+| 3 | Hooks: MCP matchers for both tool-name forms, with the `action`/`dryRun` filters, `create_from_template` included (plan review P4); `slug()`-named snapshots, made by one shared `snapshot()` function in `lint.py` that lint's auto-fix and M1 reuse (plan review P2); `overview.md` snapshot on whole-file replacement; `briefings/` gated; skip `assets/` subfolders of directory pages; Edit post-image, and `vault.create`/`update` judged from `content`; raw write-once warning; update `~/.claude/settings.json`, `hooks.json` and `hooks/README.md` (plan review P27); `tests/test_write_hooks.py` with synthetic MCP payloads, plus a manual live check, in a session pointed at a scratch wiki, that a PreToolUse hook fires on an MCP call (plan review P3). Permission rules: deny both name forms of the MCP `edit` tool and ask before both name forms of `vault` in `~/.claude/settings.json` (fork install), and document both in the README's install notes (review F4, F13; plan review P5). Mark ISSUE-2 mitigated in the fork changelog (plan review P28) | — | patch (bug fixes) + minor (MCP coverage) | **Up** (the README note; the settings entry is per-user) |
+| 4 | `wikifm.py` profile parser, including wrapped list items (review F3), and its text-preserving `set_field`/`set_list` writers with the canonical `'YYYY-MM-DD'` date form (review F2, F4); lint, pre-write **and session-start's stale scan** switch to it (review F2), with the date-quote fix as the one intended behavior change and lint's and session-start's counts recorded before and after (plan review P6); delete the old parsers (replaces PATCH-3a, 543766c), rewriting `543766c`'s three tests against `wikifm.sources()` (plan review P7); PyYAML-oracle tests, skipped without PyYAML, with `pyyaml` added to README's test recipe, plus an opt-in whole-wiki no-exception test (review F8, plan review P8); the pointer comment in `test_lint.py`, a fork-changelog note correcting `91878dc`'s message, and PATCH-3a marked replaced (plan review P28) | — | patch | **Up** |
+| 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md (Source Attribution; "No raw/ mutations"; "Snapshot before destructive ops" relabeled as the rule for paths the hook can't see), the SCHEMA template (Inline Provenance; Grounding, whose primary sources become records; a block-style `sources:` example), ingest-guide ① "Current conversation" and ⑤, update-guide (the `ae33f9d` block and the `(per [[raw/…]])` example), crystallize-guide, and `prd-templates.md:91` (plan review P9, P11); llm-wiki-crm §2 company enrichment and llm-wiki-research's stub enrichment capture each source through `worker-source-fetcher` and cite its ID (plan review P10); `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2) and its `[[raw/…]]` sources appendix; `skills/llm-wiki-pm/scripts/capture.py`, which picks the next free suffix, with `tests/test_capture.py` (plan review P12); `lint.py --cited-sources` (section 5.8; plan review P13, P19); SKILL.md §2/§4 edits, the References and Scripts lists, the §4 snapshot sentence, and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
+| 6 | Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
+| 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check, resolving against lint's page set; split-procedure reminder when a page crosses 200 lines, review F9); registered with step 3's matchers in `~/.claude/settings.json` and `hooks.json` in place of `post-write.sh`, which stays in the repo unregistered so `TestPostWrite` keeps passing (plan review P23); tests in `tests/test_write_hooks.py`; `hooks/README.md` (plan review P27) | 3, 4, 6 | minor | **Up** |
+| 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` and `.markdown_vault_mcp/` as empty (review F10, plan review P24) | 5 | minor | **Up** |
+| 9 | Worker agents → user-level symlinks in `~/.claude/agents/`; delete the wiki repo's copy; verify `CLAUDE_SKILL_DIR` in subagents. It changes the wiki repo and user-level config, so confirm both with the user first (plan review P25) | — | — | Fork (install layout) |
+| 10a | `skills/llm-wiki-pm/scripts/migrate_sources.py`, dry-run by default, with fixture tests for every class in section 7's table, F14's rotated logs and F15's cases (plan review P26) | 4, 5, 6 | — | Fork until step 11, then **Up** with it |
+| 10b | Wiki migration M1–M8 (dry-run, review, apply, commit in the wiki repo); mark ISSUE-3 closed in the fork changelog (plan review P28) | 8, 10a | — | Fork (wiki content) |
+| 11 | Promote R3/R6 to 🔴, and R12 to 🔴 once M8 shows 0 violations | 10b | **major (3.0.0)**: it narrows the valid value space of `sources:`, a frontmatter-schema change that makes existing wikis report errors | **Up**, with the migration script |
 | 12 | **Dropped (D11, review F2, F4).** Was: a pinned, patched local copy of the MCP using `CORE_SCHEMA`. The permission rule removes the damaging operations, and `CORE_SCHEMA` would write dates unquoted, which PyYAML reads as date objects (N6) | — | — | — |
 
 **Step 0 in detail.** Do it before any implementation commit and before pushing
@@ -1151,10 +1244,12 @@ demand, like `ingest-guide.md`) and in lint and hooks.
 **Upstream conflict surface.** Heavily edited upstream files touched: `SKILL.md`
 (~6 lines), `lint.py` (large: parser swap plus rules), `pre-write.sh` (large),
 `hooks.json` (2 matchers), `ingest-guide.md`/`update-guide.md` (a few lines each).
-To keep merges tractable: land step 4 first as a pure refactor (no behavior
-change, all existing tests green) so later rule diffs are additive; put new
-rules in `wikifm.py` and new lint functions rather than inline in `main()`; put
-new tests in new files.
+To keep merges tractable: land step 4 first as a refactor whose one intended
+behavior change is the date-quote fix (F2), with all existing tests green, so
+later rule diffs are additive. That fix makes lint's 90-day check read about 115
+more pages and raises session-start's stale count, so record both before and
+after (plan review P6). Put new rules in `wikifm.py` and new lint functions
+rather than inline in `main()`; put new tests in new files.
 
 ---
 
@@ -1192,14 +1287,15 @@ retired independently once its claims are re-sourced.
 `sources: []` plus `lifecycle: dated-digest`, with lint exempting dated digests
 from the grounding check. Today lint's grounding check only fires when `srcs` is
 non-empty, so an empty list already passes, but that is accidental and should be
-made explicit.
+made explicit. Step 6 adds the exemption (plan review P17).
 
 **D7. Severity timeline.** **Decided:** 🟡 for R3/R6/R7/R12 through the
 migration, then 🔴 for R3, R6 and R12 in a 3.0.0. R7 stays 🟡: a citation that
 breaks the format but still resolves is cosmetic, and one that no longer
 resolves is already an R3 error. Starting any of them at 🔴 would turn the
 session-start health line red on day one for a known, scheduled backlog. R12 has
-13 violating pages until M4 (review F3).
+13 violating pages until M4 (review F3). Within R12, missing frontmatter and
+missing required keys stay 🔴 throughout, as they are today (plan review P15).
 
 **D8. Public-repo hygiene (N12).** One fork doc and one test file carry the names
 of real people and customer companies from the wiki, and both are already on
@@ -1219,7 +1315,9 @@ changed by review F4). It holds every operation that re-serializes a page (#47,
 #49), agents have avoided it since 2026-08-11, and the Edit tool covers all its
 operations. Leave `vault` off the allowlist (it includes delete), and add an
 explicit `ask` entry if MCP writes should always prompt, since `defaultMode:
-"auto"` doesn't guarantee one.
+"auto"` doesn't guarantee one. **Decided 2026-09-29: add the `ask` entry** for
+both name forms of `vault` (plan review P5). It also prompts on `vault` reads,
+which agents rarely make, since reads go through `view`.
 
 **D10. Upstream first or fork first?** **Decided 2026-09-29: fork first.**
 Implement the whole plan in the fork, then offer it upstream as a separate task
@@ -1334,6 +1432,14 @@ Additional unverified points from the review: who wrote the timestamp dates
 committed after 2026-08-11 (the saved transcripts miss about a third of the
 wiki-editing days); the MCP-versus-SessionStart startup order; how auto mode
 treats unlisted MCP write tools.
+
+**Plan review of 2026-09-29.** After step 1 found design text that contradicted
+the code, the implementation plan was audited against section 5, the review's
+findings and the current code. The accepted issues (P1–P29) are in
+[Sources and References Plan Review](sources-and-references-plan-review.md) and
+are marked "(plan review Pn)" here. Newly unverified: which agent definition wins
+when a user-level and a project-level agent share a name, as they will in the
+fork after step 9.
 
 ---
 

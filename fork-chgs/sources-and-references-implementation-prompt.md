@@ -14,7 +14,7 @@ the step number filled in.
 Implement step <N> of the implementation plan in ~/Projects/llm-wiki-pm/fork-chgs/sources-and-references-design.md (section 8).
 
 <context>
-- The design is the spec. Read section 8's row for this step and its "Depends on" column, then the sections that row points to (the rules in section 5, the lint catalog in 5.15, the migration in section 7), and the decisions in section 9. Changes marked "(review Fn)" came from sources-and-references-review.md; read that finding when you need the reasoning behind a rule.
+- The design is the spec. Read section 8's row for this step and its "Depends on" column, then the sections that row points to (the rules in section 5, the lint catalog in 5.15, the migration in section 7), and the decisions in section 9. Changes marked "(review Fn)" came from sources-and-references-review.md, and those marked "(plan review Pn)" from sources-and-references-plan-review.md; read that finding or issue when you need the reasoning behind a rule.
 - Also follow AGENTS.md (behavioral contract), CONTRIBUTING.md (semver, protected formats) and fork-chgs/doc-conventions-guide.md (for any fork-chgs doc you touch).
 - Implement in the fork only. Offering changes upstream is a separate task after the whole plan is done, so don't open issues or pull requests. Still follow the design's merge-friendly layout (section 8, "Upstream conflict surface"): new tests go in new files, and new rules go in `wikifm.py` and separate lint functions.
 - Steps 0 and earlier are done; check the design's status line and the git log for what else has landed. If a step this one depends on isn't done, stop and tell me.
@@ -23,7 +23,7 @@ Implement step <N> of the implementation plan in ~/Projects/llm-wiki-pm/fork-chg
 <environment>
 - Hooks registered in ~/.claude/settings.json point at this repo's hooks/ and run in every Claude Code session, so a broken hook affects all sessions at once. Change hook scripts only with tests covering the change. Show me any settings.json edit before making it.
 - Test on the system Python, /usr/bin/python3 (3.9), which is what the hooks run under: `python3 -m pytest -q tests`. One failure predates this work and can be left alone unless this step touches it: TestPostWrite::test_parses_file_path_from_stdin_without_jq (upstream v2.20.0 made post-write.sh silent on clean writes but kept this test). Keep code compatible with Python 3.9.
-- The private wiki is ~/Projects/pm-wiki. Only step 10 writes to it. For any measurement, or to run lint.py (which writes a report and appends to log.md), use a copy in your scratchpad.
+- The private wiki is ~/Projects/pm-wiki. Only steps 9 and 10b write to it (step 9 deletes its copy of the worker agents). For any measurement, or to run lint.py (which writes a report and appends to log.md), use a copy in your scratchpad.
 - The fork is public. Use no real names of people or customer companies from the wiki in code, tests, docs or commit messages; product and page-topic names are fine. Describe wiki data with counts.
 - ~/Projects/llm-wiki-pm-prerewrite-backup-2026-09-29.git holds pre-rewrite history with private names. Never push from it or copy from it.
 </environment>
