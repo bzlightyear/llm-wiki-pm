@@ -25,7 +25,8 @@ Completed step 8. The contract's Note Template holds a placeholder `sources:`
 path that R6 reports until it's filled, since an empty list passes lint. The
 scaffold also counts session-start's own `_status.md` and `.wiki-lock` as
 empty, and the `GETTING_STARTED.md` and CONTRIBUTING setup steps copy the
-contract.
+contract. Added NW5 to section 10: one shared wiki-search server instead of one
+per session.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -1448,7 +1449,7 @@ canonical `'YYYY-MM-DD'` form and re-exposes N6. NW2 stays deferred.
 
 ## 10. Follow-on work (after this design)
 
-Four pieces of work were deliberately left out of this design. They are recorded
+Five pieces of work were deliberately left out of this design. They are recorded
 here so they aren't lost.
 
 **NW1. Orient content and `overview.md` freshness (separate design).**
@@ -1513,6 +1514,46 @@ on the per-day report in `queries/`. Found in the design review
 
   They aren't exclusive: option 1 now, and option 2 once ISSUE-1 is solved.
 - **Found in:** the design review (F15).
+
+**NW5. One wiki-search server per session.**
+- **What happens:** `wiki-search` is registered at user scope in
+  `~/.claude.json` as a stdio server (`sh …/hooks/wiki-search.sh`), so every
+  Claude Code session in any project starts its own copy at session start,
+  whether or not it uses the wiki. The SessionStart hook doesn't start it; its
+  npx step only warms the package cache when it's missing. Measured 2026-09-30:
+  one copy uses about 580 MB. Every open session adds another, and each one
+  writes the same `.markdown_vault_mcp/` vector index.
+- **Wanted:** wiki access from every project (all 13 `.wiki-path` files point at
+  pm-wiki), served by a single process.
+- **Proposal:** the MCP already has a multi-client mode (`MCP_TRANSPORT_TYPE=sse`:
+  `GET /sse` per client, shared vault, index and embedder, separate workflow
+  state per client). This is a local install change, with no plugin change.
+  1. A LaunchAgent, `~/Library/LaunchAgents/local.wiki-search.plist`, like the
+     existing `local.wiki-path-env.plist`. It runs `sh hooks/wiki-search.sh` at
+     login with `KeepAlive`, `MCP_TRANSPORT_TYPE=sse`, `PORT=3100` (3000 is a
+     common dev-server port), `HOST_BIND_ADDRESS=127.0.0.1`, the vault fixed to
+     pm-wiki through `WIKI_PATH` and a pm-wiki working directory, and a log in
+     `~/Library/Logs/wiki-search.log`.
+  2. Replace the user-scope entry with
+     `claude mcp add --transport sse -s user wiki-search http://127.0.0.1:3100/sse`.
+     The server name stays `wiki-search`, so tool names, D9's deny and `ask`
+     rules, and the pre-write and post-validate matchers are unchanged.
+  3. Verify from a new session that the tools work and exactly one server
+     process runs.
+- **Costs and open points:**
+  - A port on 127.0.0.1 can be reached by any local process, and in principle by
+    a web page through DNS rebinding, while a stdio copy talks only to its own
+    session. pm-wiki holds customer and 1:1 content, so set `MCP_AUTH_TOKEN` in
+    the plist and a matching `Authorization: Bearer` header in the Claude Code
+    entry.
+  - A package upgrade, or switching to NW2's fork build, needs
+    `launchctl kickstart -k`. Sessions open at the time may have to reconnect.
+  - The vault is fixed to pm-wiki for every project. A project whose
+    `.wiki-path` pointed at another wiki would still get pm-wiki.
+  - The plugin manifest keeps its per-session stdio server for plugin installs.
+    Whether the plugin should document the shared setup is left open.
+- **Related:** NW2's possible #45 fix (orphaned server processes).
+- **Found in:** a check of running servers after step 8, 2026-09-30.
 
 ## Provenance of this document
 
