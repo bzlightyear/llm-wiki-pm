@@ -9,10 +9,19 @@ Run: python3 -m pytest tests/test_lint.py -v
 """
 
 import importlib.util
+import sys
 from pathlib import Path
+
+from test_hooks import make_wiki, run_lint
+
+# TestLint in tests/test_hooks.py holds more lint tests; it stays there so that
+# upstream file isn't edited.
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LINT_PATH = REPO_ROOT / "skills" / "llm-wiki-pm" / "scripts" / "lint.py"
+
+sys.path.insert(0, str(LINT_PATH.parent))  # lint imports wikifm from beside it
+import wikifm  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("lint", LINT_PATH)
 lint = importlib.util.module_from_spec(_spec)
@@ -81,13 +90,17 @@ def test_r5_duplicate_key_fires_and_still_parses_as_yaml():
 
 
 # ---------------------------------------------------------------------------
-# extract_sources — quote-aware flow-list parsing
+# wikifm.sources — quote-aware flow-list parsing
 # ---------------------------------------------------------------------------
+
+
+def sources_of(text):
+    return wikifm.sources(wikifm.parse(text)[0])
 
 
 def test_quoted_source_with_commas_stays_one_entry():
     t = '---\nsources: [raw/a.md, "user, conversation, 2026-08-14", raw/b.md]\n---\n\nbody\n'
-    assert lint.extract_sources(t) == [
+    assert sources_of(t) == [
         "raw/a.md",
         "user, conversation, 2026-08-14",
         "raw/b.md",
@@ -98,12 +111,38 @@ def test_unquoted_conversational_entry_still_splits():
     # genuinely ambiguous in YAML — the commas do create separate entries, so
     # this must keep reporting the fragments rather than silently repairing it
     t = "---\nsources: [raw/a.md, user, conversation, 2026-08-14]\n---\n\nbody\n"
-    assert lint.extract_sources(t) == ["raw/a.md", "user", "conversation", "2026-08-14"]
+    assert sources_of(t) == ["raw/a.md", "user", "conversation", "2026-08-14"]
 
 
 def test_block_style_and_single_quotes():
     t = "---\nsources:\n  - raw/a.md\n  - 'user, conversation, 2026-08-14'\n---\n\nbody\n"
-    assert lint.extract_sources(t) == ["raw/a.md", "user, conversation, 2026-08-14"]
+    assert sources_of(t) == ["raw/a.md", "user, conversation, 2026-08-14"]
+
+
+# ---------------------------------------------------------------------------
+# Dates and tags read through wikifm
+# ---------------------------------------------------------------------------
+
+
+def test_stale_check_reads_single_quoted_updated(tmp_path):
+    """The MCP and PyYAML write dates single-quoted; lint used to skip them."""
+    wiki = make_wiki(tmp_path)
+    (wiki / "entities" / "old.md").write_text(
+        "---\ntitle: t\ncreated: '2024-01-01'\nupdated: '2024-01-01'\ntype: entity\n"
+        "tags: [company]\nsources: [raw/articles/a.md]\ncoverage: stub\n---\n# t\n"
+    )
+    assert "d since update): entities/old.md" in run_lint(wiki)
+
+
+def test_block_style_tags_are_checked_against_the_taxonomy(tmp_path):
+    wiki = make_wiki(tmp_path)
+    (wiki / "entities" / "acme.md").write_text(
+        "---\ntitle: t\ncreated: 2024-01-01\nupdated: 2024-01-01\ntype: entity\n"
+        "tags:\n  - company\n  - not-in-taxonomy\nsources: [raw/articles/a.md]\n---\n# t\n"
+    )
+    report = run_lint(wiki)
+    assert "tag 'not-in-taxonomy' not in SCHEMA.md taxonomy: entities/acme.md" in report
+    assert "tag 'company' not in" not in report
 
 
 # ---------------------------------------------------------------------------

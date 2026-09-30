@@ -34,6 +34,7 @@ except Exception:
 sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
 sys.path.insert(0, scripts)
 from lint import snapshot
+import wikifm
 
 tool = data.get("tool_name") or ""
 ti = data.get("tool_input") or {}
@@ -64,7 +65,6 @@ GATED_DIRS = ("entities/", "concepts/", "comparisons/", "queries/", "briefings/"
 EXEMPT_DIRS = ("_archive/", "_drafts/", "drafts/")
 EXEMPT_STEMS = {"index", "log", "_status", "SCHEMA", "MY-INTEGRATIONS", "overview"}
 WIKI_PREFIXES = ("entities/", "concepts/", "comparisons/", "queries/")
-DATED_DIGEST_RE = re.compile(r"^lifecycle:\s*['\"]?dated-digest\b", re.MULTILINE)
 
 wiki_real = os.path.realpath(os.path.abspath(wiki))
 
@@ -98,24 +98,10 @@ def post_image(abs_fp):
 
 def ungrounded(content):
     """True when the page has no primary source and no inline marker."""
-    fm_m = re.match(r"^---\n(.*?)\n---\n", content, re.DOTALL)
-    srcs = []
-    if fm_m:
-        if DATED_DIGEST_RE.search(fm_m.group(1)):
-            return False  # dated digests summarize the wiki; no sources by design
-        lines = fm_m.group(1).splitlines()
-        for i, line in enumerate(lines):
-            if re.match(r"^sources:", line):
-                rest = line.partition(":")[2].strip()
-                if rest.startswith("["):
-                    srcs += [s.strip().strip("'\"") for s in rest.strip("[]").split(",")]
-                for nxt in lines[i + 1:]:
-                    if re.match(r"^\s*-\s+", nxt):
-                        srcs.append(re.sub(r"^\s*-\s+", "", nxt).strip().strip("'\""))
-                    elif re.match(r"^\S", nxt):
-                        break
-                break
-    primary = [s for s in srcs if s and not s.startswith(WIKI_PREFIXES)]
+    fm, _ = wikifm.parse(content)
+    if wikifm.str_field(fm, "lifecycle") == "dated-digest":
+        return False  # dated digests summarize the wiki; no sources by design
+    primary = [s for s in wikifm.sources(fm) if s and not s.startswith(WIKI_PREFIXES)]
     has_inline = bool(re.search(r"\[source:", content, re.IGNORECASE))
     return not (primary or has_inline)
 

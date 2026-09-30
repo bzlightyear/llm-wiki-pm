@@ -147,16 +147,16 @@ fi
 # pages that dominated session-start latency (8s+). One python process does the
 # same work in-process (~0.2s). Semantics unchanged: stale = updated >30d ago;
 # decay = explicit confidence_decay_days elapsed, else competitive-tagged >60d.
+# Frontmatter is read with wikifm, the parser lint uses, so a quoted date
+# counts like any other.
 # (STALE_PAGES / DECAY_PAGES already initialized in ③.)
-mapfile -t _SCAN_OUT < <(python3 - "$WIKI" "$NOW_TS" "$THRESHOLD_STALE" "$THRESHOLD_DECAY" <<'PYEOF' 2>/dev/null || true
-import os, re, sys
+mapfile -t _SCAN_OUT < <(python3 - "$WIKI" "$NOW_TS" "$THRESHOLD_STALE" "$THRESHOLD_DECAY" "$SCRIPTS_DIR" <<'PYEOF' 2>/dev/null || true
+import os, sys
 from datetime import datetime
 wiki, now_ts, th_stale, th_decay = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
-def epoch(v):
-    try:
-        return int(datetime.fromisoformat(v).timestamp())
-    except Exception:
-        return 0
+sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
+sys.path.insert(0, sys.argv[5])
+import wikifm
 for d in ("entities", "concepts", "comparisons"):
     dp = os.path.join(wiki, d)
     if not os.path.isdir(dp):
@@ -169,23 +169,19 @@ for d in ("entities", "concepts", "comparisons"):
             text = open(os.path.join(dp, fn), encoding="utf-8", errors="replace").read()
         except Exception:
             continue
-        m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
-        fm = m.group(1) if m else ""
-        um = re.search(r"^updated:\s*(.+)$", fm, re.M)
-        if not um:
+        fm, _ = wikifm.parse(text)
+        updated = wikifm.date_field(fm, "updated")
+        if updated is None:
             continue
-        uval = um.group(1).strip().strip('"').strip()
-        uts = epoch(uval)
-        if uts == 0:
-            continue
+        uts = int(datetime(updated.year, updated.month, updated.day).timestamp())
         if uts < th_stale:
-            print(f"STALE\t{d}/{slug} ({uval})")
-        dm = re.search(r"^confidence_decay_days:\s*(\d+)", fm, re.M)
-        if dm:
-            if uts < now_ts - int(dm.group(1)) * 86400:
-                print(f"DECAY\t{d}/{slug} ({uval})")
-        elif re.search(r"^tags:.*competitive", fm, re.M) and uts < th_decay:
-            print(f"DECAY\t{d}/{slug} ({uval})")
+            print(f"STALE\t{d}/{slug} ({updated})")
+        decay_days = wikifm.str_field(fm, "confidence_decay_days")
+        if decay_days.isdecimal():
+            if uts < now_ts - int(decay_days) * 86400:
+                print(f"DECAY\t{d}/{slug} ({updated})")
+        elif any("competitive" in t for t in wikifm.list_field(fm, "tags")) and uts < th_decay:
+            print(f"DECAY\t{d}/{slug} ({updated})")
 PYEOF
 )
 for _line in "${_SCAN_OUT[@]}"; do

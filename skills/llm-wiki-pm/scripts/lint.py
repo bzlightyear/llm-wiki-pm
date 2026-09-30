@@ -13,16 +13,16 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
+import wikifm  # noqa: E402  (the frontmatter parser, beside this script)
+
 REQUIRED_FRONTMATTER = {"title", "created", "updated", "type", "tags", "sources"}
 WIKI_DIRS = ["entities", "concepts", "comparisons", "queries"]
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
-TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
+FRONTMATTER_RE = wikifm.FRONTMATTER_RE
 TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
 INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
 SOURCE_MARKER_RE = re.compile(r"\[source:\s*([^\]]*)\]", re.IGNORECASE)
-FRONTMATTER_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):(.*)$")
-BLOCK_ITEM_RE = re.compile(r"^[ \t]+-\s*(.*)$")
 
 # Interim workaround for the recurring wiki-search MCP bug that re-escapes
 # `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
@@ -104,40 +104,10 @@ GROUNDING_EXEMPT_STEMS = {"index", "log", "_status", "SCHEMA", "MY-INTEGRATIONS"
 LAST_VERIFIED_STALE_DAYS = 120
 
 
-def parse_frontmatter(text):
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return None
-    fm = {}
-    lines = m.group(1).splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if ":" in line:
-            k, _, v = line.partition(":")
-            key, val = k.strip(), v.strip()
-            if not val:
-                # possible block-style YAML list: key: \n  - item \n  - item
-                items = []
-                j = i + 1
-                while j < len(lines) and re.match(r"^[ \t]+-\s*(.*)$", lines[j]):
-                    items.append(re.match(r"^[ \t]+-\s*(.*)$", lines[j]).group(1).strip())
-                    j += 1
-                if items:
-                    val = "[" + ", ".join(items) + "]"
-                    i = j - 1
-            fm[key] = val
-        i += 1
-    return fm
-
-
-def extract_tags(fm):
-    if not fm or "tags" not in fm:
-        return []
-    m = TAG_LINE_RE.search(f"tags: {fm['tags']}")
-    if not m:
-        return []
-    return [t.strip().strip("'\"") for t in m.group(1).split(",") if t.strip()]
+def _days_since(d):
+    """Whole days from midnight UTC on date `d` to now."""
+    midnight = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - midnight).days
 
 
 def load_taxonomy(schema_path):
@@ -167,7 +137,7 @@ def snapshot(page, wiki):
 
 def is_shareable(fm):
     # Private-by-default: a page is in the export set only if it opts in.
-    return bool(fm) and fm.get("shareable", "").strip().strip("'\"").lower() in ("true", "yes")
+    return wikifm.str_field(fm, "shareable").lower() in ("true", "yes")
 
 
 _LINK_BULLET = re.compile(r"^\s*-\s*\[\[([^\]]+)\]\]")
@@ -216,106 +186,45 @@ def merge_sort_index(idx_text, additions):
 
 
 def get_superseded_by(fm):
-    if not fm:
-        return None
-    v = fm.get("superseded_by", "").strip()
+    v = wikifm.str_field(fm, "superseded_by")
     if v in ("", "null", "none", "~"):
         return None
-    return v.strip("'\"")
-
-
-def _split_flow_list(rest):
-    """Split a YAML flow list's contents on top-level commas only, respecting
-    quoted entries. A naive split on ',' shreds any quoted source containing
-    commas — notably the `"user, conversation, DATE"` convention — into phantom
-    entries, inflating source counts and giving R3/R4 fragments to match on."""
-    items, buf, quote = [], "", None
-    for ch in rest:
-        if quote:
-            if ch == quote:
-                quote = None
-            else:
-                buf += ch
-        elif ch in "\"'":
-            quote = ch
-        elif ch == ",":
-            items.append(buf)
-            buf = ""
-        else:
-            buf += ch
-    items.append(buf)
-    return [i.strip() for i in items if i.strip()]
-
-
-def extract_sources(text):
-    """Return source entries from frontmatter, handling both inline
-    `sources: [a, b]` and the multiline `sources:\\n  - a\\n  - b` YAML forms."""
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return []
-    lines = m.group(1).splitlines()
-    out = []
-    for i, line in enumerate(lines):
-        if re.match(r"^sources:", line):
-            _, _, rest = line.partition(":")
-            rest = rest.strip()
-            if rest.startswith("["):
-                out += _split_flow_list(rest.strip("[]"))
-            for nxt in lines[i + 1:]:
-                if re.match(r"^\s*-\s+", nxt):
-                    out.append(re.sub(r"^\s*-\s+", "", nxt).strip().strip("'\""))
-                elif re.match(r"^\S", nxt):
-                    break
-            break
-    return [s for s in out if s]
+    return v
 
 
 # ── Frontmatter validity + provenance cross-reference ──
 # Rationale and evidence: fork-chgs/lint-frontmatter-checks-design.md.
-# parse_frontmatter() partitions on the first ':' rather than parsing YAML, so
-# it accepts input that silently discards keys — a wiki-wide yaml.safe_load
-# found 23 unreadable pages while this script reported 0 errors. R1/R2 catch
-# the two structural corruption patterns; R5 catches duplicate keys, which
-# yaml.safe_load itself does NOT raise on (last-wins), so it must stay a
-# line-level check rather than folding into any parse attempt.
+# wikifm.parse() reads frontmatter by its profile and reports what falls
+# outside it, where the old line-partitioning parser silently discarded keys
+# (a wiki-wide yaml.safe_load once found 23 unreadable pages while lint
+# reported 0 errors). R1/R2 are the two structural corruption patterns found
+# in the wiki; R5 is duplicate keys, which yaml.safe_load itself does NOT
+# raise on (last-wins).
 
 
 def check_frontmatter_structure(rel_path, fm_block_text):
-    """R1/R2/R5 structural frontmatter errors. Takes the raw text between the
-    --- fences; returns a list of 🔴 error strings."""
-    errors = []
-    seen_keys = Counter()
-    last_key_closed_flow = False
-    orphan_count = 0
-
-    for line in fm_block_text.splitlines():
-        key_m = FRONTMATTER_KEY_RE.match(line)
-        if key_m:
-            key, val = key_m.group(1), key_m.group(2).strip()
-            seen_keys[key] += 1
-            # R1 — a key's value may not begin with a list-item dash
-            if re.match(r"^-\s", val):
-                errors.append(
-                    f"malformed frontmatter — block list item on key line "
-                    f"'{key}:' (R1): {rel_path}"
-                )
-            # a closed flow list leaves nothing for an indented item to join
-            last_key_closed_flow = val.startswith("[") and val.endswith("]")
-        elif BLOCK_ITEM_RE.match(line) and last_key_closed_flow:
-            # R2 — everything from here to the next key line is unreachable
-            orphan_count += 1
-
+    """R1/R2/R5 structural frontmatter errors, as wikifm reports them. Takes
+    the raw text between the --- fences; returns a list of 🔴 error strings.
+    wikifm also reports the rest of the profile (R12), which lint doesn't
+    report yet."""
+    _, fm_errors = wikifm.parse_block(fm_block_text)
+    # R1 — a key's value may not begin with a list-item dash
+    errors = [
+        f"malformed frontmatter — block list item on key line '{e.key}:' (R1): {rel_path}"
+        for e in fm_errors if e.rule == "R1"
+    ]
+    # R2 — a closed flow list leaves nothing for an indented item to join
+    orphan_count = sum(1 for e in fm_errors if e.rule == "R2")
     if orphan_count:
         errors.append(
             f"malformed frontmatter — {orphan_count} orphan block list item(s) "
             f"under a closed flow list, unreachable by any parser (R2): {rel_path}"
         )
-    for key, n in seen_keys.items():
-        if n > 1:
-            errors.append(
-                f"duplicate frontmatter key '{key}' (x{n}, last wins — earlier "
-                f"value silently discarded) (R5): {rel_path}"
-            )
+    for key, n in Counter(e.key for e in fm_errors if e.rule == "R5").items():
+        errors.append(
+            f"duplicate frontmatter key '{key}' (x{n + 1}, last wins — earlier "
+            f"value silently discarded) (R5): {rel_path}"
+        )
     return errors
 
 
@@ -461,7 +370,7 @@ def main():
             (fixes_applied if auto_fix else errors).append(escape_note)
             if auto_fix:
                 p.write_text(text)
-        fm = parse_frontmatter(text)
+        fm, _ = wikifm.parse(text)
 
         if fm is None:
             errors.append(f"missing frontmatter: {p.relative_to(wiki)}")
@@ -494,9 +403,7 @@ def main():
         #                      account/escalation stubs)
         #   dated-digest     — one-shot dated pages (daily briefs, synthesis
         #                      digests) that never earn inbound links by design
-        if (fm.get("lifecycle") or "").strip().strip("'\"") in (
-            "stub-intentional", "dated-digest"
-        ):
+        if wikifm.str_field(fm, "lifecycle") in ("stub-intentional", "dated-digest"):
             intentional_stubs.add(slug(p))
 
         # export allowlist audit (private-by-default): surface what would leave
@@ -505,7 +412,7 @@ def main():
             shareable_pages.append(str(p.relative_to(wiki)))
 
         # tags
-        tags = extract_tags(fm)
+        tags = wikifm.list_field(fm, "tags")
         for t in tags:
             tag_usage[t] += 1
             if taxonomy and t not in taxonomy:
@@ -516,8 +423,8 @@ def main():
         # ── grounding / freshness (anti-self-reinforcement) ──
         stem = p.stem
         if not stem.startswith("lint-") and stem not in GROUNDING_EXEMPT_STEMS:
-            ptype = (fm.get("type") or "").strip().strip("'\"")
-            srcs = extract_sources(text)
+            ptype = wikifm.str_field(fm, "type")
+            srcs = wikifm.sources(fm)
             primary_srcs = [s for s in srcs if not s.startswith(WIKI_PAGE_PREFIXES)]
             wiki_srcs = [s for s in srcs if s.startswith(WIKI_PAGE_PREFIXES)]
             # self-referential: every source points back into the wiki, none primary
@@ -548,23 +455,18 @@ def main():
                     f"no inline [source:] provenance markers: {p.relative_to(wiki)}"
                 )
             # provenance gone stale — re-check against live sources
-            lv = (fm.get("last_verified") or "").strip().strip("'\"")
-            if lv:
-                try:
-                    lv_dt = datetime.fromisoformat(lv).replace(tzinfo=timezone.utc)
-                    lv_age = (datetime.now(timezone.utc) - lv_dt).days
-                    if lv_age > LAST_VERIFIED_STALE_DAYS:
-                        warnings.append(
-                            f"provenance unverified for {lv_age}d (last_verified {lv}): "
-                            f"{p.relative_to(wiki)} — re-check live sources"
-                        )
-                except Exception:
-                    pass
+            lv = wikifm.date_field(fm, "last_verified")
+            lv_age = _days_since(lv) if lv else 0
+            if lv_age > LAST_VERIFIED_STALE_DAYS:
+                warnings.append(
+                    f"provenance unverified for {lv_age}d (last_verified {lv}): "
+                    f"{p.relative_to(wiki)} — re-check live sources"
+                )
             # coverage marker (deterministic replacement for the prose "set
             # coverage:/gaps: on every entity/concept page" rule). Warn only —
             # pre-existing wikis predate the field.
             if ptype in FACTUAL_TYPES:
-                coverage = (fm.get("coverage") or "").strip().strip("'\"")
+                coverage = wikifm.str_field(fm, "coverage")
                 if not coverage:
                     warnings.append(
                         f"no coverage: marker (stub/partial/comprehensive): "
@@ -593,18 +495,12 @@ def main():
             warnings.append(f"unresolved contradictions flag: {p.relative_to(wiki)}")
 
         # stale
-        try:
-            updated_str = fm.get("updated", "").strip()
-            updated_dt = datetime.fromisoformat(updated_str).replace(
-                tzinfo=timezone.utc
+        updated = wikifm.date_field(fm, "updated")
+        age_days = _days_since(updated) if updated else 0
+        if age_days > 90:
+            warnings.append(
+                f"stale ({age_days}d since update): {p.relative_to(wiki)}"
             )
-            age_days = (datetime.now(timezone.utc) - updated_dt).days
-            if age_days > 90:
-                warnings.append(
-                    f"stale ({age_days}d since update): {p.relative_to(wiki)}"
-                )
-        except Exception:
-            pass
 
     # broken links → auto-fix if possible
     for p, target in broken:
@@ -690,8 +586,8 @@ def main():
         }
         additions = defaultdict(set)
         for p in missing_in_index:
-            fm = parse_frontmatter(p.read_text()) or {}
-            t = fm.get("type", "entity").strip().strip("'\"")
+            fm, _ = wikifm.parse(p.read_text())
+            t = wikifm.str_field(fm, "type") or "entity"
             additions[section_map.get(t, "## Entities")].add(slug(p))
 
         # detect/repair section drift: bullets out of alpha order or missing

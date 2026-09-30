@@ -8,6 +8,8 @@ re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
 revised on: 2026-09-29
 Marked ISSUE-2 mitigated, now that the pre-write hook snapshots `overview.md`
 before any whole-file replacement (step 3 of the sources and references design).
+Marked PATCH-3a replaced by the `wikifm.py` frontmatter parser (step 4), and
+added a correction to `91878dc`'s commit message.
 
 revised on: 2026-08-30
 Moved into the fork from the PM wiki, where it had been kept as a wiki page.
@@ -124,6 +126,12 @@ handled inline `key: [a, b]` lists. A `sources:` (or any) field written in
 block style (`key:\n  - item\n  - item`) parsed as an empty string, silently
 losing the list. Logged 2026-08-06 as "lint.py block-style YAML tag parsing
 bug."
+
+**Status:** replaced (2026-09-29). `parse_frontmatter()` is gone: lint, the
+pre-write hook and session-start's stale scan read frontmatter through
+`scripts/wikifm.py`, which returns a block list as a list instead of joining
+it into a `[a, b]` string. Step 4 of the
+[Sources and References Design](sources-and-references-design.md).
 
 ```diff
 --- a/skills/llm-wiki-pm/scripts/lint.py
@@ -450,9 +458,10 @@ recurred) — flagged as an open question below.
 1. Diff the new version's `lint.py`/`backlinks.py`/`session-stop.sh` against
    `2.21.0`'s originals first — if the upstream author fixed any of these
    independently, that patch is now redundant, not conflicting.
-2. PATCH-3a/3b/3c, PATCH-1, and PATCH-2 are small, self-contained hunks —
+2. PATCH-3b/3c, PATCH-1, and PATCH-2 are small, self-contained hunks —
    low risk even if line numbers shifted; reapply by hand if `git apply`
-   fails on context.
+   fails on context. PATCH-3a is replaced by `wikifm.py` (see 3a); don't
+   reapply it.
 3. PATCH-3d (escaped-bracket check) and PATCH-3e (its fenced-block /
    inline-code guard) are the largest and most likely to still be needed,
    since their root cause (`wirux/mcp-markdown-vault#47`) is a separate
@@ -518,6 +527,15 @@ is the only remote to push patch commits to — a durable backup outside the
 plugin-cache directory the installer can orphan on the next version bump,
 and a clean path to open PRs for the patches flagged as candidates above
 (3a/3b/3c) if that's decided later.
+
+### Corrections to commit messages
+
+Recorded here rather than by rewriting git history, which would change the
+IDs of every later commit.
+
+- `91878dc` (lint checks R1–R5) says it adds `tests/test_lint.py` as "the
+  first test module for lint.py". `TestLint` in `tests/test_hooks.py`, added
+  upstream in v2.20.0, already tested `lint.py`.
 
 
 ----
