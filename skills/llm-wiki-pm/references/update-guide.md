@@ -118,6 +118,8 @@ superseded_by: new-slug
 ```
 
 Then:
+- Set the new page's `sources:` to what it cites, with `lint.py --cited-sources`,
+  never a copy of the old page's list (`citation-spec.md` → Page lifecycle)
 - Archive old page to `_archive/`
 - Run `lint.py --auto-fix` to rewrite inbound `[[old-slug]]` links
 - Log: `## [YYYY-MM-DD] supersede | old-slug → new-slug`

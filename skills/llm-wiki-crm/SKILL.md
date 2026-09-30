@@ -112,6 +112,7 @@ standalone fallback when research isn't available.
 ① WebSearch: person name + company + role, LinkedIn (public), recent talks/posts
 ② Extract: current role, company, background, public positions on relevant topics
 ③ Update entity page. Only public information — never infer private details.
+   Capture and cite each page you use as in company enrichment ③.
 ④ If person is `strategic` tier and no persona page exists, offer to create one.
 
 ---
