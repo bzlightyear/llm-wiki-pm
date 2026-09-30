@@ -21,6 +21,11 @@ Completed step 7. Post-validate checks what lint checks, with lint's exact link
 match. It runs the freshness gate for the two MCP writes pre-write can't judge,
 and reminds about splitting whenever a rewrite leaves a page over 200 lines. It
 measured about 0.09 s on a copy of the wiki.
+Completed step 8. The contract's Note Template holds a placeholder `sources:`
+path that R6 reports until it's filled, since an empty list passes lint. The
+scaffold also counts session-start's own `_status.md` and `.wiki-lock` as
+empty, and the `GETTING_STARTED.md` and CONTRIBUTING setup steps copy the
+contract.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -54,7 +59,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–7 done (see section 8)
+Status: **in progress**: steps 0–8 done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -839,9 +844,11 @@ to edit it. So:
   says "authoritative schema: `SCHEMA.md`; citation rules:
   `references/citation-spec.md`", lists the wiki's `type` enum, drops `status`,
   replaces the naming rule with SCHEMA's, and sets the Note Template to a valid
-  wiki page skeleton with `sources:` (empty list, 🔴 until filled, which is
-  correct).
-- `session-start.sh` scaffold copies it to `$WIKI/meta/contract.md` when absent.
+  wiki page skeleton whose `sources:` holds a placeholder path,
+  `raw/{{folder}}/{{record-id}}.md`, which R6 reports until it is replaced. An
+  empty list would pass lint silently, since `sources: []` is valid (D6; step 8).
+- `session-start.sh` scaffold copies it to `$WIKI/meta/contract.md` when absent,
+  with a copy that never overwrites.
   The MCP server writes its default at startup, concurrently with the
   SessionStart hook, and which runs first is unverified. So on a new install the
   default may win (review F10).
@@ -851,7 +858,10 @@ to edit it. So:
   scaffold (no SCHEMA, index or log). Besides `meta/`, the MCP creates
   `.markdown_vault_mcp/`, its search index, on its first index flush (60 seconds
   after start) or at shutdown, so a wiki whose first session skipped the scaffold
-  would hold both (plan review P24).
+  would hold both (plan review P24). It would also hold session-start's own
+  `_status.md`, and `.wiki-lock` if that session didn't end cleanly, since the
+  hook writes both whether or not it scaffolds. So those two count as empty too
+  (step 8).
 - Lint R11 🟡: `meta/contract.md` still carries the MCP default schema (detected
   by `generated_by: mcp-markdown-vault` plus a `status` enum line). It is the
   backstop for the startup race. The fix for the existing wiki is a one-time hand
@@ -1256,7 +1266,7 @@ P29).
 | 5 | `references/citation-spec.md` (the single spec); pointers from AGENTS.md (Source Attribution; "No raw/ mutations"; "Snapshot before destructive ops" relabeled as the rule for paths the hook can't see), the SCHEMA template (Inline Provenance; Grounding, whose primary sources become records; a block-style `sources:` example), ingest-guide ① "Current conversation" and ⑤, update-guide (the `ae33f9d` block and the `(per [[raw/…]])` example), crystallize-guide, and `prd-templates.md:91` (plan review P9, P11); llm-wiki-crm §2 company enrichment and llm-wiki-research's stub enrichment capture each source through `worker-source-fetcher` and cite its ID (plan review P10); `output-formats.md` artifact rule (markdown artifacts under `assets/`, section 5.2) and its `[[raw/…]]` sources appendix; `skills/llm-wiki-pm/scripts/capture.py`, which picks the next free suffix, with `tests/test_capture.py` (plan review P12); `lint.py --cited-sources` (section 5.8; plan review P13, P19); SKILL.md §2/§4 edits, the References and Scripts lists, the §4 snapshot sentence, and the Tool Selection line: frontmatter through the Edit tool or `wikifm.set_field`, never a YAML load-and-dump (section 5.11, item 9); split-procedure pointers in the SCHEMA.md template's split rule and `ingest-guide.md` ⑫ (review F9); templates write dates as `'YYYY-MM-DD'`; revise `ae33f9d` | 4 | minor | **Up as an issue first**: it is opinionated and changes the micro-capture contract |
 | 6 | `wikifm.citations()` and `resolve()`, moved from step 4; `--cited-sources` (step 5) switches to `citations()` from lint's old marker parser. Lint: R6, R3 exact (with R4 counting by exact `slug()` match, plan review P18), R7 grammar, R9 record and page-slug uniqueness, R10 (date-free), R11 contract, R12 profile (with the midnight-timestamp auto-fix); tiers per the section 5.15 table (🟡/🔵 initially; only R9, with no existing violations, starts at 🔴; R12 starts at 🟡 because 13 pages violate it until M4, review F3, but missing frontmatter and missing required keys stay 🔴, plan review P15); grounding on resolved entries and the dated-digest exemption (section 5.3, D6; plan review P17); `briefings/` in lint's page set, with dated digests exempt from the index check (plan review P16); the split-procedure pointer in the "> 200 lines" warning; skip `assets/` subfolders of directory pages; content auto-fixes (mechanical markers, dates) behind `--auto-fix=content`, which also runs the plain fixes (review F5, plan review P20); auto-fix snapshots and writes through `wikifm`; `--json` stops writing a report and carries R10's page list and the index-gap and missing-field lists; session-start surfaces I1–I3 counts, writes R10's list to `_status.md`, and reports a lint failure instead of zero counts (review F8, plan review P21); worker-link-validator runs `lint.py --json` instead of its own resolver, orphan call and field list (moved from step 2, plan review P1); lint-guide.md documents the new rules, flags and split pointer (plan review P27) | 4, 5 | minor | **Up** |
 | 7 | `post-validate.sh` synchronous PostToolUse (folds in post-write link check, resolving against lint's page set; split-procedure reminder when a page crosses 200 lines, review F9); registered with step 3's matchers in `~/.claude/settings.json` and `hooks.json` in place of `post-write.sh`, which stays in the repo unregistered so `TestPostWrite` keeps passing (plan review P23); tests in `tests/test_write_hooks.py`; `hooks/README.md` (plan review P27) | 3, 4, 6 | minor | **Up** |
-| 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` and `.markdown_vault_mcp/` as empty (review F10, plan review P24) | 5 | minor | **Up** |
+| 8 | Vault contract template + scaffold copy; the scaffold treats a directory holding only `meta/` and `.markdown_vault_mcp/`, plus session-start's own `_status.md` and `.wiki-lock`, as empty (review F10, plan review P24); the `GETTING_STARTED.md` scaffold snippets and CONTRIBUTING's manual setup copy the contract too | 5 | minor | **Up** |
 | 9 | Worker agents → user-level symlinks in `~/.claude/agents/`; delete the wiki repo's copy; verify `CLAUDE_SKILL_DIR` in subagents. It changes the wiki repo and user-level config, so confirm both with the user first (plan review P25) | — | — | Fork (install layout) |
 | 10a | `skills/llm-wiki-pm/scripts/migrate_sources.py`, dry-run by default, with fixture tests for every class in section 7's table, F14's rotated logs and F15's cases (plan review P26) | 4, 5, 6 | — | Fork until step 11, then **Up** with it |
 | 10b | Wiki migration M1–M8 (dry-run, review, apply, commit in the wiki repo); mark ISSUE-3 closed in the fork changelog (plan review P28) | 8, 10a | — | Fork (wiki content) |
