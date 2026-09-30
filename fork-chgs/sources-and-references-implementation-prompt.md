@@ -9,6 +9,13 @@ with the project command `/implement-step <N>`
 (`.claude/commands/implement-step.md`), or paste the text below the `---` with
 the step number filled in.
 
+revised on: 2026-09-30
+The environment note no longer lists
+TestPostWrite::test_parses_file_path_from_stdin_without_jq as a failure that
+predates this work. The test failed only when pytest ran from the repo root,
+whose `.wiki-path` pointed the hook at the private wiki. A new tests/conftest.py
+runs each test in a fresh temp directory, so the whole suite now passes.
+
 ---
 
 Implement step <N> of the implementation plan in ~/Projects/llm-wiki-pm/fork-chgs/sources-and-references-design.md (section 8).
@@ -22,7 +29,7 @@ Implement step <N> of the implementation plan in ~/Projects/llm-wiki-pm/fork-chg
 
 <environment>
 - Hooks registered in ~/.claude/settings.json point at this repo's hooks/ and run in every Claude Code session, so a broken hook affects all sessions at once. Change hook scripts only with tests covering the change. Show me any settings.json edit before making it.
-- Test on the system Python, /usr/bin/python3 (3.9), which is what the hooks run under: `python3 -m pytest -q tests`. One failure predates this work and can be left alone unless this step touches it: TestPostWrite::test_parses_file_path_from_stdin_without_jq (upstream v2.20.0 made post-write.sh silent on clean writes but kept this test). Keep code compatible with Python 3.9.
+- Test on the system Python, /usr/bin/python3 (3.9), which is what the hooks run under: `python3 -m pytest -q tests`. The whole suite passes from any directory: tests/conftest.py runs each test in a fresh temp directory, so hooks a test starts can't pick up the repo root's `.wiki-path`, which points at the private wiki. Keep code compatible with Python 3.9.
 - The private wiki is ~/Projects/pm-wiki. Only step 10 writes to it. For any measurement, or to run lint.py (which writes a report and appends to log.md), use a copy in your scratchpad.
 - The fork is public. Use no real names of people or customer companies from the wiki in code, tests, docs or commit messages; product and page-topic names are fine. Describe wiki data with counts.
 - ~/Projects/llm-wiki-pm-prerewrite-backup-2026-09-29.git holds pre-rewrite history with private names. Never push from it or copy from it.
