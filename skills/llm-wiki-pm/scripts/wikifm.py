@@ -28,12 +28,17 @@ frontmatter use them instead of a YAML library's load-and-dump. They write
 dates as 'YYYY-MM-DD', which both the wiki-search MCP's YAML library and
 PyYAML keep unchanged.
 
+slug(), citations() and resolve() apply references/citation-spec.md:
+frontmatter declares the paths of records and pages, `[source: ...]` markers
+cite IDs, and an ID is the slug() of the file it names.
+
 Stdlib only.
 """
 
 import re
 from collections import namedtuple
 from datetime import date, datetime
+from pathlib import Path
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 
@@ -517,3 +522,157 @@ def _comment(key_line):
     while key_line[at - 1] == " ":
         at -= 1
     return key_line[at:].rstrip()
+
+
+# ── Sources and citations ────────────────────────────────────────────────────
+
+# The folders that hold pages. A record is any .md file under raw/ outside
+# raw/assets/.
+PAGE_DIRS = ("entities", "concepts", "comparisons", "queries", "briefings")
+ID_RE = re.compile(r"[a-z0-9][a-z0-9._-]*")
+
+MARKER_RE = re.compile(r"\[source:", re.IGNORECASE)
+BLANK_LINE_RE = re.compile(r"\n[ \t]*\n")
+WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
+
+# How a marker can break the citation grammar (lint rule R7). The mechanical
+# ones are what lint --auto-fix=content repairs.
+PROBLEMS = ("wrapped", "nested prefix", "vs.", "path", "url", "wikilink",
+            "not an ID", "not closed")
+MECHANICAL = ("wrapped", "nested prefix", "vs.", "path")
+
+# id is what the citation names; problems are its PROBLEMS; body[start:end]
+# is the whole marker, shared by the citations in it.
+Citation = namedtuple("Citation", "id location problems start end")
+# kind is "record", "page" or None; problem is None for a valid entry.
+Resolution = namedtuple("Resolution", "kind path problem")
+
+
+def slug(path):
+    """The ID of a page or record: its filename stem, or the folder's name
+    for a directory page's README.md. The one ID function: a page is linked,
+    cited and snapshotted by it, and a sources: entry resolves by it."""
+    path = Path(path)
+    if path.name == "README.md":
+        return path.parent.name
+    return path.stem
+
+
+def citations(body):
+    """Every citation in the `[source: ...]` markers of `body`, the page text
+    after its frontmatter, in order. A marker ends at the first ']' outside
+    a [[wikilink]]; one that meets a blank line first is "not closed". The ID
+    is what a citation names once the mechanical defects are undone: a
+    path's slug, a wrapped ID joined up again, a nested "source:" dropped,
+    "a vs. b" read as two citations, a wikilink's target."""
+    found = []
+    for m in MARKER_RE.finditer(body):
+        end = _marker_end(body, m.end())
+        if end is None:
+            found.append(Citation("", "", ("not closed",), m.start(), m.end()))
+            continue
+        inner = body[m.end():end - 1]
+        wrapped = "\n" in inner
+        # a marker wrapped inside a blockquote continues after a '>'
+        inner = re.sub(r"\n[ \t]*(?:>[ \t]?)*", "\n", inner)
+        for part in inner.split(";"):
+            found.extend(_part_citations(part, wrapped, m.start(), end))
+    return found
+
+
+def _marker_end(body, i):
+    """The index just past the ']' that closes the marker whose text starts
+    at body[i], or None when a blank line or the end of `body` comes first."""
+    depth = 0  # inside a [[wikilink]]
+    while i < len(body):
+        if body.startswith("[[", i):
+            depth, i = depth + 1, i + 2
+        elif depth and body.startswith("]]", i):
+            depth, i = depth - 1, i + 2
+        elif body[i] == "]" and not depth:
+            return i + 1
+        elif body[i] == "\n" and BLANK_LINE_RE.match(body, i):
+            return None
+        else:
+            i += 1
+    return None
+
+
+def _part_citations(part, wrapped, start, end):
+    """The citations in one ';'-separated part of a marker: one, or two or
+    more joined with "vs.". The location, after the first ',', goes with the
+    last of them."""
+    problems = ["wrapped"] if wrapped else []
+    part = part.strip()
+    prefix = re.match(r"(?:source:\s*)+", part, re.IGNORECASE)
+    if prefix:
+        problems.append("nested prefix")
+        part = part[prefix.end():]
+    if "[[" in part:
+        problems.append("wikilink")
+    text, _, location = part.partition(",")
+    location = " ".join(location.split())
+    names = re.split(r"\s+vs\.?\s+", text.strip())
+    if len(names) > 1:
+        problems.append("vs.")
+    found = []
+    for n, name in enumerate(names):
+        cid, more = _cited_id(name)
+        found.append(Citation(cid, location if n == len(names) - 1 else "",
+                              tuple(problems + more), start, end))
+    return found
+
+
+def _cited_id(text):
+    """The ID a citation's text names, and what else is wrong with it."""
+    if "\n" in text:
+        joined = re.sub(r"\s*\n\s*", "", text)  # a hard-wrapped ID
+        text = joined if ID_RE.fullmatch(joined) or _is_path(joined) else " ".join(text.split())
+    link = WIKILINK_RE.fullmatch(text)
+    if link:
+        return link.group(1).strip(), []  # "wikilink" is already noted
+    if re.match(r"https?://", text):
+        return text, ["url"]
+    if _is_path(text):
+        return slug(text), ["path"]
+    return text, ([] if ID_RE.fullmatch(text) else ["not an ID"])
+
+
+def _is_path(text):
+    return (text.endswith(".md") and "/" in text and not text.startswith("/")
+            and not any(c.isspace() for c in text))
+
+
+def resolve(entry, wiki):
+    """Resolve one sources: entry. Returns Resolution(kind, path, problem):
+    kind is what the entry names, "record" for a path under raw/ and "page"
+    for a path in a page folder, whether or not the file exists, or None for
+    anything else; path is that file; problem is None when the entry is the
+    path of an existing record or page, else why it isn't (lint rule R6)."""
+    parts = entry.split("/")
+    if re.match(r"https?://", entry):
+        return Resolution(None, None, "a URL: capture it as a record")
+    if parts[:2] == ["raw", "assets"]:
+        return Resolution(None, None, "an asset: declare its record")
+    if not entry.endswith(".md"):
+        if len(parts) == 1 and ID_RE.fullmatch(entry):
+            return Resolution(None, None, "a bare name, not a path")
+        if len(parts) > 1 and not any(c.isspace() for c in entry):
+            return Resolution(None, None, "not a markdown file")
+        return Resolution(None, None, "not a path")
+    if entry.startswith("~") or any(p in ("", ".", "..") for p in parts):
+        return Resolution(None, None, "not a path inside the wiki")
+    if len(parts) == 1:
+        return Resolution(None, None, "a root file isn't a source")
+    if parts[0] == "raw":
+        kind = "record"
+    elif parts[0] in PAGE_DIRS and "assets" not in parts[2:-1]:
+        kind = "page"
+    elif parts[0] in PAGE_DIRS:
+        return Resolution(None, None, "an artifact under assets/ isn't a page")
+    elif parts[0] == "_archive":
+        return Resolution(None, None, "an archive snapshot isn't a source")
+    else:
+        return Resolution(None, None, "not in raw/ or a page folder")
+    path = Path(wiki) / entry
+    return Resolution(kind, path, None if path.is_file() else "no such file")

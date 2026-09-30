@@ -12,6 +12,12 @@ Runs at session start. Scaffolds the wiki on first run if it does not exist
 for broken links, orphan pages, stale entries (>30 days), and competitive pages
 past their confidence decay threshold (>60 days). Writes `_status.md` and
 outputs an `additionalContext` summary directly into Claude's context.
+The link and orphan counts come from `lint.py --json`, which writes nothing to
+the wiki. So do the counts of pages whose frontmatter, `sources:` or
+`[source: ...]` citations break the rules in `references/citation-spec.md`,
+and the list of pages resting only on conversation records, which `_status.md`
+shows under "Secondhand, unverified". If lint fails, the summary says "health
+unknown" rather than reporting zeros.
 
 **pre-write.sh**
 Runs before every write to the wiki, from the built-in tools (`Write`, `Edit`, `MultiEdit`) and the wiki-search MCP (`vault` create, create_from_template, update and delete, and `edit` unless `dryRun` is set; reads are ignored). Before an existing page in `entities/`, `concepts/`, `comparisons/`, `queries/` or `briefings/` changes, it copies it to `_archive/<slug>-<YYYY-MM-DD>.md`, at most once per page per day, where the slug is lint's page name (a `README.md` page is named after its folder). `overview.md` is copied only when it is replaced wholesale (`Write`, `vault` update or delete), and `index.md` never, since lint can rebuild it. Files under a directory page's `assets/` subfolder are skipped. A change to an existing `raw/` record gets a warning that records are write-once. The freshness gate reminds the agent to sweep live tools when the page, as it will be after the write, has no primary source and no inline `[source: ...]` marker; `Edit` and `MultiEdit` are applied to the disk text first, MCP `edit` operations aren't simulated, and pages marked `lifecycle: dated-digest` are exempt. The hook always exits 0 and never blocks a write.

@@ -432,6 +432,174 @@ def test_whole_wiki_agrees_with_pyyaml_or_reports(base_load):
 
 
 # ---------------------------------------------------------------------------
+# slug(), citations() and resolve(): references/citation-spec.md
+# ---------------------------------------------------------------------------
+
+
+def test_slug_is_the_stem_or_a_directory_pages_folder():
+    assert wikifm.slug("raw/articles/competitor-x-pricing-2026-01-15.md") == (
+        "competitor-x-pricing-2026-01-15"
+    )
+    assert wikifm.slug(Path("queries/pricing-deep-dive/README.md")) == "pricing-deep-dive"
+
+
+def cites(body):
+    """(id, location, problems) for each citation in `body`."""
+    return [(c.id, c.location, c.problems) for c in wikifm.citations(body)]
+
+
+def test_citations_in_the_grammar():
+    body = (
+        'Competitor X lists three tiers [source: competitor-x-pricing-2026-01-15, "Plans"].\n'
+        "The team chose usage-based billing [source: conversation-2026-01-15-pricing-tier].\n"
+        "ARR was flat [source: metric-arr-202601, query saved-query-123].\n"
+        'Two sources agree [source: vendor-y-docs-2026, "Hooks"; competitor-x-docs-2026, "Hooks"].\n'
+        "Per the digest [source: crystallize-pricing-review-2026-01-10, Decisions].\n"
+    )
+    assert cites(body) == [
+        ("competitor-x-pricing-2026-01-15", '"Plans"', ()),
+        ("conversation-2026-01-15-pricing-tier", "", ()),
+        ("metric-arr-202601", "query saved-query-123", ()),
+        ("vendor-y-docs-2026", '"Hooks"', ()),
+        ("competitor-x-docs-2026", '"Hooks"', ()),
+        ("crystallize-pricing-review-2026-01-10", "Decisions", ()),
+    ]
+
+
+def test_the_id_ends_at_the_first_comma():
+    assert cites("[source: user, conversation (planning call), 2026-01-15]") == [
+        ("user", "conversation (planning call), 2026-01-15", ())
+    ]
+
+
+# Each ID is what the citation names once the mechanical defects are undone.
+OUTSIDE_THE_GRAMMAR = {
+    "path form": (
+        "[source: raw/articles/competitor-x-pricing-2026-01-15.md]",
+        [("competitor-x-pricing-2026-01-15", "", ("path",))],
+    ),
+    "directory page path": (
+        "[source: queries/pricing-deep-dive/README.md, Findings]",
+        [("pricing-deep-dive", "Findings", ("path",))],
+    ),
+    "nested prefix": (
+        "[source: source: competitor-x-pricing-2026-01-15]",
+        [("competitor-x-pricing-2026-01-15", "", ("nested prefix",))],
+    ),
+    "ID wrapped mid-word": (
+        "[source: competitor-x-\n  pricing-2026-01-15, p.3]",
+        [("competitor-x-pricing-2026-01-15", "p.3", ("wrapped",))],
+    ),
+    "wrapped between citations": (
+        "[source: vendor-y-docs-2026, section\n  2; competitor-x-docs-2026]",
+        [("vendor-y-docs-2026", "section 2", ("wrapped",)),
+         ("competitor-x-docs-2026", "", ("wrapped",))],
+    ),
+    "wrapped inside a blockquote": (
+        "> Quoted [source: vendor-y-docs-2026;\n> source: competitor-x-docs-2026, p.2]",
+        [("vendor-y-docs-2026", "", ("wrapped",)),
+         ("competitor-x-docs-2026", "p.2", ("wrapped", "nested prefix"))],
+    ),
+    "wrapped prose isn't joined": (
+        "[source: the pricing\n  page]",
+        [("the pricing page", "", ("wrapped", "not an ID"))],
+    ),
+    "vs.": (
+        '[source: vendor-y-docs-2026 vs. competitor-x-docs-2026, "Hooks"]',
+        [("vendor-y-docs-2026", "", ("vs.",)),
+         ("competitor-x-docs-2026", '"Hooks"', ("vs.",))],
+    ),
+    "vs without a dot": (
+        "[source: vendor-y-docs-2026 vs competitor-x-docs-2026]",
+        [("vendor-y-docs-2026", "", ("vs.",)), ("competitor-x-docs-2026", "", ("vs.",))],
+    ),
+    "wikilink": (
+        "[source: [[crystallize-pricing-review-2026-01-10]]]",
+        [("crystallize-pricing-review-2026-01-10", "", ("wikilink",))],
+    ),
+    "wikilink in the location": (
+        "[source: vendor-y-docs-2026, see [[pricing-deep-dive]]]",
+        [("vendor-y-docs-2026", "see [[pricing-deep-dive]]", ("wikilink",))],
+    ),
+    "URL": (
+        "[source: https://example.com/pricing, 2026-01-15]",
+        [("https://example.com/pricing", "2026-01-15", ("url",))],
+    ),
+    "root file and prose": (
+        "[source: SCHEMA.md org chart]",
+        [("SCHEMA.md org chart", "", ("not an ID",))],
+    ),
+    "empty": ("[source: ]", [("", "", ("not an ID",))]),
+    "not closed": ("[source: vendor-y-docs-2026\n\nNext paragraph.]", [("", "", ("not closed",))]),
+}
+
+
+@pytest.mark.parametrize("name", OUTSIDE_THE_GRAMMAR)
+def test_citations_outside_the_grammar(name):
+    body, expected = OUTSIDE_THE_GRAMMAR[name]
+    assert cites(body) == expected
+
+
+def test_vs_in_a_location_is_prose():
+    assert cites("[source: vendor-y-docs-2026, pricing vs. packaging]") == [
+        ("vendor-y-docs-2026", "pricing vs. packaging", ())
+    ]
+
+
+def test_citations_share_their_markers_span():
+    body = "A [source: vendor-y-docs-2026; competitor-x-docs-2026, p.2] B [source: x-2026]"
+    found = wikifm.citations(body)
+    assert [body[c.start:c.end] for c in found] == [
+        "[source: vendor-y-docs-2026; competitor-x-docs-2026, p.2]",
+        "[source: vendor-y-docs-2026; competitor-x-docs-2026, p.2]",
+        "[source: x-2026]",
+    ]
+
+
+def test_resolve_classifies_by_what_an_entry_names(tmp_path):
+    for rel in ("raw/articles/a-2026.md", "queries/deep-dive/README.md", "briefings/2026-01-15.md"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text("x\n")
+    resolved = {e: wikifm.resolve(e, tmp_path) for e in (
+        "raw/articles/a-2026.md", "queries/deep-dive/README.md", "briefings/2026-01-15.md",
+        "raw/papers/a-2026.md", "concepts/other.md",
+    )}
+    assert {e: (r.kind, r.problem) for e, r in resolved.items()} == {
+        "raw/articles/a-2026.md": ("record", None),
+        "queries/deep-dive/README.md": ("page", None),
+        "briefings/2026-01-15.md": ("page", None),
+        # a missing file still names a record or page (grounding counts it);
+        # R6 reports that it's missing
+        "raw/papers/a-2026.md": ("record", "no such file"),
+        "concepts/other.md": ("page", "no such file"),
+    }
+    assert resolved["raw/articles/a-2026.md"].path == tmp_path / "raw/articles/a-2026.md"
+
+
+NOT_SOURCES = {
+    "user, conversation, 2026-01-15": "not a path",
+    "conversation": "a bare name, not a path",
+    "competitor-x-pricing-2026-01-15": "a bare name, not a path",
+    "SCHEMA.md": "a root file isn't a source",
+    "log.md": "a root file isn't a source",
+    "raw/assets/deck-2026-01.pdf": "an asset: declare its record",
+    "raw/assets/deck-2026-01.md": "an asset: declare its record",
+    "_archive/acme-2026-01-15.md": "an archive snapshot isn't a source",
+    "queries/deep-dive/assets/deck.md": "an artifact under assets/ isn't a page",
+    "meta/contract.md": "not in raw/ or a page folder",
+    "/home/someone/notes.md": "not a path inside the wiki",
+    "raw/../SCHEMA.md": "not a path inside the wiki",
+    "https://example.com/pricing": "a URL: capture it as a record",
+    "raw/attachments/page.html": "not a markdown file",
+}
+
+
+@pytest.mark.parametrize("entry", NOT_SOURCES)
+def test_resolve_says_why_an_entry_isnt_a_source(tmp_path, entry):
+    assert wikifm.resolve(entry, tmp_path) == (None, None, NOT_SOURCES[entry])
+
+
+# ---------------------------------------------------------------------------
 # session-start's stale scan reads through wikifm
 # ---------------------------------------------------------------------------
 
