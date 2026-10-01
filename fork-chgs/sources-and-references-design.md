@@ -50,6 +50,10 @@ Added NW6 after the step: a folder page's `README.md` resolves under `slug()`
 but not in Obsidian or the wiki-search MCP, which match links by file name, a
 gap the design and both reviews missed. Its first next step is an audit of
 every reader of the wiki's links.
+Ran that audit, with a trial of the fix on a scratch copy, in
+[NW6 Page Name Resolution Analysis](nw6-page-name-resolution-analysis.md).
+NW6 now links to it, and its counts, graph claim and reindex step are
+corrected.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -1680,8 +1684,9 @@ on the per-day report in `queries/`. Found in the design review
   backlinks calls were the tests that found this gap.
 - **Impact until fixed.** No page's content or frontmatter is changed by the
   mismatch itself. Two things can still go wrong:
-  - **Obsidian:** the links show as unresolved, the graph shows a phantom node,
-    and the `README.md`'s backlinks pane misses them. Clicking one creates an
+  - **Obsidian:** the links show as unresolved (dimmed, no hover preview), and
+    the `README.md`'s backlinks pane misses them. The graph draws none of them,
+    because this vault hides unresolved links. Clicking one creates an
     empty note named after the folder at the wiki root, Obsidian's default
     location for new notes. That happened once on 2026-09-30, and the note was
     deleted. While such a note exists, Obsidian resolves the link to it, so the
@@ -1711,7 +1716,11 @@ on the per-day report in `queries/`. Found in the design review
   page's name must resolve to the same file for every reader. `slug()` and the
   file name agree for every page except a folder's `README.md`.
 - **Next steps:**
-  1. **Audit every reader first, with a trial of the fix.** List each component
+  1. **Audit every reader first, with a trial of the fix.** Done 2026-09-30, in
+     [NW6 Page Name Resolution Analysis](nw6-page-name-resolution-analysis.md).
+     The fix resolved every link for every reader tested, and the audit
+     found five other mismatches. The analysis proposes a design and
+     implementation for all of them, with 7 open decisions. List each component
      that turns a page name or path into a file:
      - the fork's scripts, hooks and docs, including anything that treats the
        name `README.md` specially;
@@ -1731,30 +1740,37 @@ on the per-day report in `queries/`. Found in the design review
   2. **Extend I6** so a page's name resolves to the same file for every reader,
      not only to a slug, and add a lint check that keeps it true, such as a
      page's slug equalling its file stem. Otherwise each new folder page brings
-     the gap back.
+     the gap back. The analysis proposes R14 for this, and R15 to keep file
+     names unique across the vault.
   3. **Fix, recommended so far: name a folder's main page after the folder,**
      `queries/<slug>/<slug>.md`, instead of `README.md`.
      - The slug doesn't change, so no link changes, and the fork's tools keep
        working, while Obsidian and the MCP find the file by name. That removes
        both risks above, and every Obsidian link form resolves.
-     - The wiki needs 4 renames and about 5 prose lines on the sprint pages
-       that call themselves "this README". No `sources:` entry names a folder
-       page's path, and no link names `README`. Delete any stray root note
-       first, or two files would share the name. After the rename, check the
-       MCP's backlinks for each page, and reindex if it misses them.
-     - The fork needs about 10 doc lines changed: the core SKILL's Query step,
-       `output-formats.md`, `citation-spec.md`, and the research and PRD
-       sub-skills.
+     - The wiki needs 4 renames, 6 prose lines on the 3 sprint pages that call
+       themselves "this README" or give their own path, and 2 lines in its
+       `meta/contract.md`, which mirror the template. No `sources:` entry names
+       a folder page's path, and no link names `README`. Delete any stray root
+       note first, or two files would share the name. After the rename,
+       reindex every running wiki-search server or restart its session. A
+       running server doesn't see renamed or new pages until it rebuilds.
+     - The fork needs 19 doc lines changed in 9 files, among them the core
+       SKILL's Query step, `output-formats.md`, `citation-spec.md`, and the
+       research and PRD sub-skills (the analysis's section 10 lists them all).
      - Opening a page by clicking its folder in Obsidian's file explorer still
        needs the Folder notes plugin. Its default naming, `{{folder_name}}`,
        matches this one, so it would work without setup.
      - Decide whether `slug()` keeps its `README.md` rule for older wikis.
+       Without it, an un-renamed wiki loses 23 links. `backlinks.py` has its
+       own copy of the rule.
      - `<folder>/<folder>.md` is also the default naming of the Obsidian Folder
        notes plugin.
      - Upstream, this changes a convention, so it would be an issue first.
   4. **Make archive, supersede and rename name their link search:**
      `backlinks.py`, not the MCP's lookup. Point the vault contract's
-     "Incoming links" line at it too.
+     "Incoming links" line at it too. First `backlinks.py` has to read
+     `briefings/`, `index.md`, `overview.md` and the other root files. It skips
+     them today, missing 747 links to live pages.
   5. **Point Obsidian's attachments at a routed folder.** The wiki's
      `.obsidian/app.json` sets `attachmentFolderPath` to `raw/attachments`, so
      a file pasted or dropped into a note in Obsidian recreates the unrouted
