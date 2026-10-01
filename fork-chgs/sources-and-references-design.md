@@ -46,6 +46,10 @@ plugin script by absolute path left the wiki for the
 [Confidence Decay Days Brief](confidence-decay-days-brief.md), since it
 documented the plugin. Lint on the migrated wiki reports no R3, R6, R7 or R12
 findings, and section 8 records the counts.
+Added NW6 after the step: a folder page's `README.md` resolves under `slug()`
+but not in Obsidian or the wiki-search MCP, which match links by file name, a
+gap the design and both reviews missed. Its first next step is an audit of
+every reader of the wiki's links.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -532,7 +536,9 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
   directory page, `queries/<slug>/README.md`, it returns the folder name, so the
   page is linked as `[[<slug>]]`, declared by its path
   `queries/<slug>/README.md`, cited as `[source: <slug>, …]`, and snapshotted as
-  `_archive/<slug>-<date>.md`.
+  `_archive/<slug>-<date>.md`. Obsidian and the wiki-search MCP don't use
+  `slug()`: they match links by file name, so for them `[[<slug>]]` doesn't
+  reach a folder's `README.md` (NW6).
 - **Other files inside a directory page.** Any other `.md` file in the folder
   must be either a real page (full frontmatter and a slug unique across the
   wiki, like a research sprint's part pages) or an artifact stored under the
@@ -1550,8 +1556,8 @@ canonical `'YYYY-MM-DD'` form and re-exposes N6. NW2 stays deferred.
 
 ## 10. Follow-on work (after this design)
 
-Five pieces of work were deliberately left out of this design. They are recorded
-here so they aren't lost.
+Five pieces of work were deliberately left out of this design, and NW6 is a gap
+found after step 10b. They are recorded here so they aren't lost.
 
 **NW1. Orient content and `overview.md` freshness (separate design).**
 `overview.md` only ever grows (70 KB), its action items and decisions are frozen
@@ -1655,6 +1661,117 @@ on the per-day report in `queries/`. Found in the design review
     Whether the plugin should document the shared setup is left open.
 - **Related:** NW2's possible #45 fix (orphaned server processes).
 - **Found in:** a check of running servers after step 8, 2026-09-30.
+
+**NW6. Folder pages don't resolve outside the fork's own tools.**
+- **What happens:** a multi-file page is a folder whose main page is
+  `README.md` (`queries/<slug>/README.md`, section 5.2). `slug()` names that file
+  after its folder, so lint, `backlinks.py`, the post-write check, `sources:`
+  entries and citations all resolve `[[<slug>]]` to it. Obsidian and the
+  wiki-search MCP resolve a link by file name instead. No file is named
+  `<slug>.md`, so for them the link points at nothing.
+- **Measured 2026-09-30:** 32 links point at the wiki's 4 folder pages (3
+  research sprints and a PRD): 23 on 15 pages, 4 in `index.md`, 3 in `log.md`
+  and 2 in a reconstructed record that quotes the log. Lint reports no broken
+  links. For the Kiro sprint's `README.md`, the MCP's `view(action=backlinks)`
+  returns 0 links, while `backlinks.py` finds 21 on 15 pages, archives included.
+  No agent has used the MCP's lookup: across the 128 Claude Code sessions saved
+  since 2026-08-07, agents made 47 MCP read calls (31 of them semantic searches)
+  and no backlinks call, while `backlinks.py` ran in 64 sessions. The only two
+  backlinks calls were the tests that found this gap.
+- **Impact until fixed.** No page's content or frontmatter is changed by the
+  mismatch itself. Two things can still go wrong:
+  - **Obsidian:** the links show as unresolved, the graph shows a phantom node,
+    and the `README.md`'s backlinks pane misses them. Clicking one creates an
+    empty note named after the folder at the wiki root, Obsidian's default
+    location for new notes. That happened once on 2026-09-30, and the note was
+    deleted. While such a note exists, Obsidian resolves the link to it, so the
+    link opens a blank page instead of looking broken. Lint and session start
+    don't scan root files, so nothing reports it, and a `git add -A` in the
+    wiki would commit it. If Obsidian's new-note location were set to the
+    current file's folder, the note would instead share the folder page's
+    slug, and lint would report both (R9, R12).
+  - **Agents:** possible but not seen. The core skill lists the MCP's
+    backlinks action among its tools, and the vault contract (`meta/contract.md`)
+    says "Incoming links to a note → `view.backlinks`". An agent that used it
+    on a folder page would conclude nothing links there. Update ① uses
+    `backlinks.py`, but nothing says which tool archive, supersede and rename
+    use. One that archived, superseded or renamed a folder page that way would
+    leave its inbound links broken. Lint reports those as 🔴 at its next run,
+    and session start shows its counts, so the break would show within a
+    session and could be undone from `_archive/` and git.
+  - **Scope and growth:** only the 4 folder pages and their 32 links. Each new
+    research sprint or PRD adds another folder page.
+- **Until fixed:** don't click those links in Obsidian, and delete any empty
+  note a click creates at the wiki root.
+- **Why the design missed it:** section 5.2 makes `slug()` "the one ID function
+  for every reference site", and I6 requires each link to resolve to a slug.
+  The design and both reviews checked resolution only against the fork's own
+  code. Obsidian appears only as a writer (B3), and the wiki-search MCP
+  analysis covered its writes, not how it resolves links. No invariant says a
+  page's name must resolve to the same file for every reader. `slug()` and the
+  file name agree for every page except a folder's `README.md`.
+- **Next steps:**
+  1. **Audit every reader first, with a trial of the fix.** List each component
+     that turns a page name or path into a file:
+     - the fork's scripts, hooks and docs, including anything that treats the
+       name `README.md` specially;
+     - each MCP action that takes a name or path (`backlinks`, `read`, `outline`,
+       `frontmatter_get`, `bulk_read`);
+     - Obsidian: links, embeds, `[[page#heading]]` and aliased links, the graph,
+       the backlinks pane, the file explorer, search, and Dataview queries;
+     - the Orient files (`index.md`, `overview.md`).
+
+     Test each one on the live wiki, read-only, and on a scratch copy with the
+     fix in step 3 applied. Point a separate wiki-search MCP at the copy, and
+     have the user open the copy as an Obsidian vault and click a few folder
+     links. The result is a table of reader and link form, today and with the
+     fix. It decides whether the fix is enough, shows whether anything depends
+     on the name `README.md`, and may find other mismatches to fix in the same
+     change.
+  2. **Extend I6** so a page's name resolves to the same file for every reader,
+     not only to a slug, and add a lint check that keeps it true, such as a
+     page's slug equalling its file stem. Otherwise each new folder page brings
+     the gap back.
+  3. **Fix, recommended so far: name a folder's main page after the folder,**
+     `queries/<slug>/<slug>.md`, instead of `README.md`.
+     - The slug doesn't change, so no link changes, and the fork's tools keep
+       working, while Obsidian and the MCP find the file by name. That removes
+       both risks above, and every Obsidian link form resolves.
+     - The wiki needs 4 renames and about 5 prose lines on the sprint pages
+       that call themselves "this README". No `sources:` entry names a folder
+       page's path, and no link names `README`. Delete any stray root note
+       first, or two files would share the name. After the rename, check the
+       MCP's backlinks for each page, and reindex if it misses them.
+     - The fork needs about 10 doc lines changed: the core SKILL's Query step,
+       `output-formats.md`, `citation-spec.md`, and the research and PRD
+       sub-skills.
+     - Opening a page by clicking its folder in Obsidian's file explorer still
+       needs the Folder notes plugin. Its default naming, `{{folder_name}}`,
+       matches this one, so it would work without setup.
+     - Decide whether `slug()` keeps its `README.md` rule for older wikis.
+     - `<folder>/<folder>.md` is also the default naming of the Obsidian Folder
+       notes plugin.
+     - Upstream, this changes a convention, so it would be an issue first.
+  4. **Make archive, supersede and rename name their link search:**
+     `backlinks.py`, not the MCP's lookup. Point the vault contract's
+     "Incoming links" line at it too.
+  5. **Point Obsidian's attachments at a routed folder.** The wiki's
+     `.obsidian/app.json` sets `attachmentFolderPath` to `raw/attachments`, so
+     a file pasted or dropped into a note in Obsidian recreates the unrouted
+     folder the migration emptied (review F15). Set it to `raw/assets` (Settings
+     → Files and links). The file still needs a markdown record before a page
+     can cite it.
+- **Alternatives set aside:**
+  - **Links with a path,** `[[<slug>/README|<slug>]]`: lint, `backlinks.py`
+    and the post-write check would all need changing, and agents would have to
+    remember the special form.
+  - **An Obsidian folder-notes plugin:** it opens a folder's note when the
+    folder is clicked, but doesn't change how links resolve, in Obsidian or
+    the MCP.
+  - **Frontmatter `aliases:`:** Obsidian doesn't use aliases to resolve a
+    `[[name]]` link.
+- **Found in:** the user, viewing a research sprint page in Obsidian after step
+  10b, 2026-09-30.
 
 ## Provenance of this document
 
