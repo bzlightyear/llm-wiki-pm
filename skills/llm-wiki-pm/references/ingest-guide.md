@@ -8,7 +8,9 @@ and laundered secondhand claims.
 ## ① Capture raw (choose source type)
 
 - URL → `web_fetch` → save markdown to `raw/articles/<slug>.md`
-- PDF → extract text → `raw/papers/<slug>.md` (keep PDF in `raw/assets/`)
+- PDF, or another document file (HTML report, slides) → extract text →
+  `raw/papers/<slug>.md` (keep the original in `raw/assets/`, named in the
+  record's `asset:`)
 - Paste/transcript → `raw/transcripts/<slug>.md`
 - **Chat thread (any messaging tool — Slack, Teams, Discord, etc.)**: copy thread
   messages → `raw/internal/<channel>-<date>.md`. Add frontmatter:
