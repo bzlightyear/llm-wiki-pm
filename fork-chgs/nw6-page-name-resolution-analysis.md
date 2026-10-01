@@ -14,7 +14,7 @@ Replaced the proposed design, implementation and open decisions (sections
 after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
 
-Status: audit done, option 4 chosen, implementation in progress (section 10).
+Status: done. Option 4 is implemented, and NW6 steps 1-3 are closed (section 10).
 
 Companion to [Sources and References Design](sources-and-references-design.md)
 (NW6 in section 10) and
@@ -375,7 +375,7 @@ open too.
 
 ## 10. Implementation
 
-Status: planned 2026-10-01; results are added here when done.
+Status: done 2026-10-01. Results are at the end of this section.
 
 **Order.** The fork's hooks, skills and workers run straight from its working
 tree, so a code change takes effect when the file is saved. The wiki is renamed
@@ -451,6 +451,31 @@ after. Lint never sees broken links in between.
 - Push both repos, or ask for them to be pushed. Nothing is pushed by this
   plan.
 - Making the fork private is separate and not needed for this.
+
+**Results, 2026-10-01:**
+
+- **Commits.** Fork: `275dfd8` (step 2), `84aeeac` (step 5) and the commit
+  that adds these results (step 6). Wiki: `fbfb8d7` (the four renames alone,
+  so `git log --follow` traces each page back through its `README.md`
+  history) and `82c63d8` (the 8 lines, the log entry and the hook's three
+  snapshots).
+- **Tests.** 446 passed and 2 skipped before; 447 passed and 2 skipped after,
+  the extra one being the new `README.md` test. Removing the rule failed 11
+  tests, all of them `README.md` fixtures.
+- **Lint.** After the rename, `--json` was byte-identical to the baseline
+  (0 errors, 33 warnings, 20 info on 247 pages), and the full report differed
+  only in the four pages' paths. With the rule deleted, both were identical
+  to the post-rename output.
+- **Wiki-search MCP.** After the reindex, backlinks on the new paths returned
+  31, 13, 9 and 10, the counts the trial predicted. The first reindex hadn't
+  taken effect after about five minutes; a second one did. Restarting a
+  session is the surer way to refresh a running server.
+- **Departures from the plan.** None in substance. The wiki change went in as
+  two commits instead of one, because git paired each `README.md` with its
+  identical snapshot rather than with the renamed page. `updated:` was left
+  alone on the edited pages, as only file names and self-references changed.
+  `output-formats.md` gained one sentence saying not to name a folder page
+  `README.md`, and why.
 
 ## Provenance
 

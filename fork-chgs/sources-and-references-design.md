@@ -6,6 +6,12 @@ Invariant-based redesign of how the wiki writes and checks `raw/` source records
 frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
 lint rules, hooks, migration and implementation plan that enforce it.
 
+revised on: 2026-10-01
+Fixed NW6 with option 4 of its analysis: a folder page is named after its
+folder, `queries/<slug>/<slug>.md`, and `slug()` is the file stem, with no
+`README.md` rule. Section 5.2, the Bottom line and PATCH-2 and PATCH-3b's
+dispositions are updated, and NW6 steps 1-3 are done.
+
 revised on: 2026-09-30
 Completed step 5. The one-pager joins the Marp deck in a directory page's
 `assets/` folder, and `--cited-sources` reads citations with lint's existing
@@ -134,7 +140,7 @@ use other prefixes (I, RC, N, W, S, H, K, V, B, R, M, D, NW).
    file stem of a `raw/` record (or the slug of a wiki page). Frontmatter declares
    the path, inline markers cite the ID, and
    resolution is exact: `id == slug(path)` and `path` exists (`slug()` is the
-   file stem, or the folder name for a `README.md` page, section 5.2). IDs are
+   file stem, section 5.2). IDs are
    `[a-z0-9][a-z0-9._-]*`, so they cannot contain a comma, space or bracket.
    That makes YAML quoting and flow-vs-block style irrelevant, which matters
    because the wiki-search MCP rewrites both.
@@ -530,27 +536,26 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
 
 ### 5.2 Page slugs and IDs
 
-- Page slug = filename stem, or the parent directory name for `README.md`
-  (lint's existing `slug()`). Grammar as for IDs; unique across `entities/`,
+- Page slug = filename stem (`slug()`). A directory page is named after its
+  folder, `queries/<slug>/<slug>.md`. Until NW6 it was `README.md`, named after
+  its folder by a rule in `slug()` that only the fork's tools knew. Grammar as for IDs; unique across `entities/`,
   `concepts/`, `comparisons/`, `queries/`, and `briefings/` (added, section 5.11).
   R9 checks uniqueness; today lint silently keeps the last page on a collision
   (`lint.py:404`, review F11).
-- **`slug()` is the one ID function** for every reference site. For a raw record
-  it returns the filename stem (records are never named `README.md`). For a
-  directory page, `queries/<slug>/README.md`, it returns the folder name, so the
-  page is linked as `[[<slug>]]`, declared by its path
-  `queries/<slug>/README.md`, cited as `[source: <slug>, …]`, and snapshotted as
-  `_archive/<slug>-<date>.md`. Obsidian and the wiki-search MCP don't use
-  `slug()`: they match links by file name, so for them `[[<slug>]]` doesn't
-  reach a folder's `README.md` (NW6).
+- **`slug()` is the one ID function** for every reference site. It returns
+  the filename stem, for a raw record and for a page. A directory page,
+  `queries/<slug>/<slug>.md`, is linked as `[[<slug>]]`, declared by its path,
+  cited as `[source: <slug>, …]`, and snapshotted as `_archive/<slug>-<date>.md`.
+  Obsidian and the wiki-search MCP match links by file name, which is the same
+  name (NW6).
 - **Other files inside a directory page.** Any other `.md` file in the folder
   must be either a real page (full frontmatter and a slug unique across the
   wiki, like a research sprint's part pages) or an artifact stored under the
   folder's `assets/` subfolder, which lint and the hooks skip. A bare `deck.md`
-  next to `README.md`, as `output-formats.md` showed until step 5, would be scanned as a
+  next to the page, as `output-formats.md` showed until step 5, would be scanned as a
   page with no frontmatter, and two directory pages each holding one would
   collide on the slug `deck`. Non-markdown artifacts (`.py`, `.png`, `.csv`,
-  `.pdf`) may stay beside `README.md`, since lint only scans `.md` files.
+  `.pdf`) may stay beside the page, since lint only scans `.md` files.
 - A wiki page may be a source (crystallize digest, concept page, persona's
   entity page). Its ID is its slug and it is declared by path. It is a
   **secondary** source for grounding purposes.
@@ -1185,9 +1190,9 @@ exempt from both staleness warnings (section 5.9).
 | Item | Disposition |
 |---|---|
 | PATCH-1 auto-commit disabled | **Keep, fork-only** (environment-specific). |
-| PATCH-2 backlinks README self-slug | **Keep; offer upstream.** |
+| PATCH-2 backlinks README self-slug | **Removed 2026-10-01 (NW6).** A folder page is named after its folder, so `backlinks.py` compares `p.stem` again, as upstream does. |
 | PATCH-3a block-list parsing | **Replace** with `wikifm` lists-as-lists. Joining into `"[a, b]"` reintroduces comma ambiguity for `extract_tags` and makes the two parsers disagree. |
-| PATCH-3b `slug()` README | **Keep; offer upstream.** It is now also the snapshot naming function. |
+| PATCH-3b `slug()` README | **Removed 2026-10-01 (NW6).** `slug()` returns the file stem for every page. It is also the snapshot naming function. |
 | PATCH-3c overview/index link targets | **Keep; offer upstream.** Extend the same registration to `briefings/`: in step 6, `briefings/` joins lint's page set, with dated digests exempt from the index check (section 5.9, plan review P16). |
 | PATCH-3d/3e escaped-bracket check | **Keep** until wirux/mcp-markdown-vault#47 is fixed. Checked 2026-09-26: #47 is open with no maintainer response, and the repo has had no activity since 2026-06-02. A comment now links it to #49, the date bug from the same code path. Post-validate now reports escaped brackets at write time. The permission rule on the MCP `edit` tool (section 5.11, item 1) removes the cause on this install. NW2 is deferred (review F4). |
 | PATCH-4 relationship-map wiring | **Keep.** Its end-to-end verification is still pending and unrelated to this design. |
@@ -1667,6 +1672,11 @@ on the per-day report in `queries/`. Found in the design review
 - **Found in:** a check of running servers after step 8, 2026-09-30.
 
 **NW6. Folder pages don't resolve outside the fork's own tools.**
+- **Status: fixed 2026-10-01** (steps 1-3), with option 4 of the
+  [analysis](nw6-page-name-resolution-analysis.md) (section 9): the wiki's four
+  folder pages were renamed `queries/<slug>/<slug>.md` (pm-wiki `fbfb8d7`,
+  `82c63d8`), and the fork's docs and `slug()` changed with them (`84aeeac`).
+  The text below describes the gap as found. Steps 4 and 5 stay open.
 - **What happens:** a multi-file page is a folder whose main page is
   `README.md` (`queries/<slug>/README.md`, section 5.2). `slug()` names that file
   after its folder, so lint, `backlinks.py`, the post-write check, `sources:`
@@ -1719,8 +1729,9 @@ on the per-day report in `queries/`. Found in the design review
   1. **Audit every reader first, with a trial of the fix.** Done 2026-09-30, in
      [NW6 Page Name Resolution Analysis](nw6-page-name-resolution-analysis.md).
      The fix resolved every link for every reader tested, and the audit
-     found five other mismatches. The analysis proposes a design and
-     implementation for all of them, with 7 open decisions. List each component
+     found five other mismatches. Its section 9 compares four fixes and records
+     the one chosen, and leaves the other mismatches as optional follow-ups.
+     List each component
      that turns a page name or path into a file:
      - the fork's scripts, hooks and docs, including anything that treats the
        name `README.md` specially;
@@ -1740,9 +1751,10 @@ on the per-day report in `queries/`. Found in the design review
   2. **Extend I6** so a page's name resolves to the same file for every reader,
      not only to a slug, and add a lint check that keeps it true, such as a
      page's slug equalling its file stem. Otherwise each new folder page brings
-     the gap back. The analysis proposes R14 for this, and R15 to keep file
-     names unique across the vault.
-  3. **Fix, recommended so far: name a folder's main page after the folder,**
+     the gap back. Done without a new rule: `slug()` is now the file stem, so
+     lint names a page the way every other reader does, and links to a page
+     saved as `README.md` are reported as broken.
+  3. **Fix, done 2026-10-01: name a folder's main page after the folder,**
      `queries/<slug>/<slug>.md`, instead of `README.md`.
      - The slug doesn't change, so no link changes, and the fork's tools keep
        working, while Obsidian and the MCP find the file by name. That removes
@@ -1760,12 +1772,14 @@ on the per-day report in `queries/`. Found in the design review
      - Opening a page by clicking its folder in Obsidian's file explorer still
        needs the Folder notes plugin. Its default naming, `{{folder_name}}`,
        matches this one, so it would work without setup.
-     - Decide whether `slug()` keeps its `README.md` rule for older wikis.
-       Without it, an un-renamed wiki loses 23 links. `backlinks.py` has its
-       own copy of the rule.
+     - `slug()` dropped its `README.md` rule, and `backlinks.py` its copy.
+       Without it, an un-renamed wiki loses 23 links, but the fork has one
+       wiki, renamed in the same step.
      - `<folder>/<folder>.md` is also the default naming of the Obsidian Folder
        notes plugin.
-     - Upstream, this changes a convention, so it would be an issue first.
+     - Upstream's docs prescribe `README.md`, but its lint already names a
+       page by its file stem, so the convention breaks upstream's own links.
+       No upstream issue is filed for now.
   4. **Make archive, supersede and rename name their link search:**
      `backlinks.py`, not the MCP's lookup. Point the vault contract's
      "Incoming links" line at it too. First `backlinks.py` has to read

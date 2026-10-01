@@ -5,6 +5,11 @@ created: 2026-08-11
 The fork's local changes to the upstream plugin (PATCH-1 to PATCH-4), how to
 re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
 
+revised on: 2026-10-01
+Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
+folder, so neither `backlinks.py` nor `slug()` needs a `README.md` rule (NW6 in
+the sources and references design).
+
 revised on: 2026-09-30
 Marked ISSUE-3 closed. After the PM wiki's migration (step 10b of the sources
 and references design), no citation there fails to resolve, and body legends
@@ -106,6 +111,11 @@ outbound links to itself were never excluded from its own backlink scan.
 **Fix:** compute `self_slug` the same way `lint.py`'s `slug()` does — parent
 directory name for `README.md`, filename stem otherwise.
 
+**Status:** removed (2026-10-01). `backlinks.py` compares `p.stem` again, as
+upstream does. A folder page is now `queries/<slug>/<slug>.md`, so its stem is
+its slug. See NW6 in the
+[Sources and References Design](sources-and-references-design.md).
+
 ```diff
 --- a/skills/llm-wiki-pm/scripts/backlinks.py
 +++ b/skills/llm-wiki-pm/scripts/backlinks.py
@@ -180,6 +190,12 @@ it into a `[a, b]` string. Step 4 of the
 +        return path.parent.name
      return path.stem
 ```
+
+**Status:** removed (2026-10-01). `slug()`, now in `wikifm.py`, returns the
+file stem for every page. Obsidian, the wiki-search MCP and lookups by file
+name never knew the `README.md` rule, so links to a `README.md` page resolved
+for lint alone. A folder page is now named after its folder. See NW6 in the
+[Sources and References Design](sources-and-references-design.md).
 
 **3c. `overview.md`/`index.md` as valid wikilink targets.** These two
 root-level singletons live outside `WIKI_DIRS` (`entities`, `concepts`,
@@ -463,10 +479,10 @@ recurred) — flagged as an open question below.
 1. Diff the new version's `lint.py`/`backlinks.py`/`session-stop.sh` against
    `2.21.0`'s originals first — if the upstream author fixed any of these
    independently, that patch is now redundant, not conflicting.
-2. PATCH-3b/3c, PATCH-1, and PATCH-2 are small, self-contained hunks —
+2. PATCH-3c and PATCH-1 are small, self-contained hunks —
    low risk even if line numbers shifted; reapply by hand if `git apply`
-   fails on context. PATCH-3a is replaced by `wikifm.py` (see 3a); don't
-   reapply it.
+   fails on context. PATCH-3a is replaced by `wikifm.py` (see 3a), and
+   PATCH-2 and PATCH-3b are removed; don't reapply them.
 3. PATCH-3d (escaped-bracket check) and PATCH-3e (its fenced-block /
    inline-code guard) are the largest and most likely to still be needed,
    since their root cause (`wirux/mcp-markdown-vault#47`) is a separate
@@ -484,7 +500,7 @@ recurred) — flagged as an open question below.
 
 ### Open questions
 
-- Should PATCH-3a (block-style YAML), PATCH-3b/PATCH-2 (README slug), and
+- Should PATCH-3a (block-style YAML) and
   PATCH-3c (overview/index as link targets) be filed as issues or a PR
   against `github.com/anh-chu/llm-wiki-pm`? They read as genuine bugs rather
   than environment-specific preferences (unlike the `session-stop.sh`
