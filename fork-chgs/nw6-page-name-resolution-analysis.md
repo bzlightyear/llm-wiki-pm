@@ -13,6 +13,10 @@ Expanded D6 into three layers: an archive command beside `snapshot()` that
 always names the archived page `<slug>-<date>`, docs that run it instead of a
 hand move, and R15 as the safety net. Section 10 lists the code and doc
 changes this adds.
+Settled D2: R15 is always 🔴 apart from an exemption list. `--auto-fix`
+renames a clashing archived file. R14 also runs in post-validate, while R15
+and D7 run only with lint, and session start shows all three. Recorded the
+measured cost.
 
 Status: audit done, proposals awaiting decisions (section 11). Nothing in the
 fork's skills, scripts or hooks, or in the live wiki, was changed.
@@ -327,7 +331,53 @@ checks keep this true.
   - **Today:** reports M1, and M3 unless `meta/overview.md` is exempt
     (decision 3). It doesn't report M2's archived stub, which no live page
     shares a name with. D6 and D7 cover that.
-  - **Severity:** 🔴 when the other file could win the lookup (M1), else 🟡.
+  - **Severity:** always 🔴, except files on R15's exemption list: files lint
+    can't rename, such as the MCP's `meta/overview.md` (decision 3).
+    - **Why not a narrower rule:** a rule like "🔴 only when the other file
+      could win the lookup" can't be decided. The readers break ties
+      differently: the MCP by shortest path, Obsidian by the linking file's
+      folder. An agent's lookup by file name finds both files every time.
+  - **Fixing a violation:**
+    - **In `_archive/`** (M1): `lint.py --auto-fix` renames the file with
+      `archive_path()` (D6), using the date git says it entered `_archive/`, or
+      today. It refuses if that name is taken. Only the name changes, and
+      every reader then resolves the links to the live page, as `slug()`
+      already does. Without `--auto-fix`, the message prints the `git mv` to
+      run. `citation-spec.md` must say that `_archive/` is immutable except
+      for this rename.
+    - **An empty note at the wiki root** (an Obsidian click on an unresolved
+      link): the message says to delete it. Lint doesn't delete files.
+    - **Anything else**, such as a non-empty root note, a file under a folder
+      page's `assets/`, or a new file in `meta/`: a person renames it, merges
+      it into the page, or adds it to the exemption list. The message names
+      both files.
+    - **Not R15's job:** two pages sharing a name, or a page and a `raw/`
+      record sharing one, stay with R9.
+    - **Afterwards:** reindex every running wiki-search server, or restart
+      those sessions (D5).
+- **Where the checks run:**
+  - **R14:** in lint and in the post-validate hook. It looks only at the file
+    being written, so a new folder page saved as `README.md` is reported at
+    once.
+  - **R15:** in lint only: every session start, every lint run, the lint
+    workers and the maintenance loop. Clashes come from moves and renames,
+    which post-validate doesn't see when they're done with `mv`, `git mv` or
+    in Obsidian. The next session start catches them.
+  - **D7:** in lint only.
+  - **Shown at session start:** session start runs `lint.py --json` but shows
+    only the counts it picks out. Lint's `--json` output gains R14, R15 and
+    D7 counts, and `session-start.sh` shows them. Otherwise they would run
+    without anyone seeing the result.
+- **Cost, measured on a copy of the wiki:**
+  - Lint takes 0.20–0.22 s today.
+  - R15's name scan adds about 5 ms, since it lists the 838 file names and
+    opens none of them. It found the 2 expected clashes.
+  - D7 adds 0.3 ms.
+  - The scan grows in a straight line with the number of files: 1 ms at
+    1,000 archive files, 8 ms at 10,000, 95 ms at 100,000. At today's pace,
+    about 2,000 archive files a year, it stays under 10 ms for years.
+  - A large `_archive/` costs the MCP's index and Obsidian far more than it
+    costs lint.
 
 **D3. `slug()` keeps its `README.md` rule** so older wikis keep resolving; R14
 asks them to rename. `backlinks.py` calls `wikifm.slug()` instead of its own
@@ -427,18 +477,26 @@ Fork, in one step:
   - the archive command in place of a hand move (D6): core `SKILL.md`:299
     (§6 Archive), `update-guide.md`:123, `templates/SCHEMA.md`:129 and 213,
     and `citation-spec.md`:186;
-  - the core skill's Scripts list gains `--archive`.
+  - the core skill's Scripts list gains `--archive`;
+  - `citation-spec.md`: `_archive/` is immutable except for R15's auto-fix
+    rename (D2).
 - **Code:**
   - `backlinks.py` (D3, D4);
   - `lint.py`: R14, R15, the supersede rewrite's scope (D4), and D7's Orient
     files' links, code spans and wrapped links;
   - `lint.py`: `archive_path()`, used by `snapshot()`, and the `--archive`
     command (D6);
+  - `lint.py`: R15's exemption list, its `--auto-fix` rename, and `--json`
+    fields for R14, R15 and D7 (D2);
+  - `post-validate.sh`: R14 on the written file (D2);
+  - `session-start.sh`: show the R14, R15 and D7 counts (D2);
   - `wikifm.py`: the `slug()` docstring only.
 - **Tests:**
   - new fixtures use `<slug>/<slug>.md`;
   - one `README.md` fixture stays for the legacy rule and R14;
-  - add R15 cases, `backlinks.py` root-file cases, and D7's cases;
+  - add R15 cases (an archive clash, its auto-fix rename, an exempt file, an
+    empty root note), `backlinks.py` root-file cases, and D7's cases;
+  - add R14 in post-validate, and the new session-start lines;
   - add `--archive` cases: a slug that already ends in a date, a name that's
     taken, and a folder page;
   - 21 `README` uses in 5 test files are affected.
@@ -464,9 +522,10 @@ Upstream: an issue first, as NW6 says, since this changes a convention.
    health total until each folder page is renamed.
 2. **`slug()`'s `README.md` rule.** Keep it for older wikis (recommended), or
    remove it and have an upgrade step rename folder pages.
-3. **`meta/overview.md` in R15.** Exempt it (recommended), since lint, the
-   MCP and Obsidian all resolve `[[overview]]` to the root file; or have R15
-   report it. It is the MCP's own file and can't be renamed.
+3. **`meta/overview.md` on R15's exemption list.** Add it (recommended),
+   since lint, the MCP and Obsidian all resolve `[[overview]]` to the root
+   file, and it's the MCP's own file, which can't be renamed. Or leave it
+   off, and R15 reports it as 🔴 at every session start.
 4. **`backlinks.py`'s scope.** Add `briefings/` and root files except
    `log.md`, and leave out `raw/` (recommended); or read everything, as
    Obsidian does.
