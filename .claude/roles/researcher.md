@@ -24,7 +24,7 @@ surface_confidence_threshold: verified
 ## Notes
 
 - **Higher confidence bar**: `surface_confidence_threshold: verified` means only well-sourced pages surface proactively — reduces noise during deep research
-- **Output as file**: substantial syntheses go to `queries/<slug>/README.md` automatically rather than inline
+- **Output as file**: substantial syntheses go to `queries/<slug>/<slug>.md` automatically rather than inline
 - **Coverage audit is your friend**: run §12 regularly to find whitespace in the competitive landscape
 - **Comparison pages**: prioritize `comparisons/` — they're the highest-value artifact for researchers
 - After each major ingest, run §12 Coverage Audit to identify what's still missing

@@ -549,13 +549,11 @@ Resolution = namedtuple("Resolution", "kind path problem")
 
 
 def slug(path):
-    """The ID of a page or record: its filename stem, or the folder's name
-    for a directory page's README.md. The one ID function: a page is linked,
+    """The ID of a page or record: its filename stem, the name Obsidian and
+    the wiki-search MCP match links by. A folder page is named after its
+    folder, queries/<slug>/<slug>.md. The one ID function: a page is linked,
     cited and snapshotted by it, and a sources: entry resolves by it."""
-    path = Path(path)
-    if path.name == "README.md":
-        return path.parent.name
-    return path.stem
+    return Path(path).stem
 
 
 def citations(body):

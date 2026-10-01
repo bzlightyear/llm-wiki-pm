@@ -45,17 +45,18 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
 
 ## Page slugs
 
-- A page's **slug** is its filename stem, or the folder name for a directory
-  page, `queries/<slug>/README.md`. Same grammar as record IDs, and unique
-  across `entities/`, `concepts/`, `comparisons/`, `queries/` and `briefings/`.
-  A page is linked as `[[<slug>]]`, declared by its path, cited as
+- A page's **slug** is its filename stem, the name Obsidian and the
+  wiki-search MCP match links by. A directory page is named after its folder,
+  `queries/<slug>/<slug>.md`, never `README.md`. Same grammar as record IDs,
+  and unique across `entities/`, `concepts/`, `comparisons/`, `queries/` and
+  `briefings/`. A page is linked as `[[<slug>]]`, declared by its path, cited as
   `[source: <slug>, …]`, and snapshotted as `_archive/<slug>-<date>.md`.
 - **Other files in a directory page.** Another `.md` file in `queries/<slug>/`
   is either a real page (full frontmatter and a slug unique across the wiki,
   like a research sprint's part pages) or an artifact under the folder's
   `assets/` subfolder, which lint and the hooks skip (a Marp deck, a
   one-pager). Non-markdown artifacts (`.png`, `.csv`, `.py`, `.pdf`) may sit
-  beside `README.md`.
+  beside the page.
 - A page may be a source (a crystallize digest, the entity page a persona
   builds on). It is a **secondary** source; a record is a **primary** one.
 - **Not sources:** root files (`log.md`, `index.md`, `overview.md`,
@@ -67,7 +68,7 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
 ## Declarations: `sources:`
 
 A list of paths to existing files: `raw/<folder>/<id>.md` for a record,
-`<page-dir>/<slug>.md` or `queries/<slug>/README.md` for a page. List what the
+`<page-dir>/<slug>.md` or `queries/<slug>/<slug>.md` for a page. List what the
 body cites and what the page is genuinely built from. Flow and block style both
 work; templates use block style, which is what the wiki-search MCP writes.
 

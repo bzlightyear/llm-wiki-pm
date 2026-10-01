@@ -360,14 +360,14 @@ def test_r9_every_id_names_one_file(tmp_path):
     write(wiki, "raw/articles/dup-2026.md")
     write(wiki, "raw/papers/dup-2026.md")
     write(wiki, "raw/internal/deep-dive.md")
-    write(wiki, "queries/deep-dive/README.md", wiki_page(type_="query", tags="[question]"))
+    write(wiki, "queries/deep-dive/deep-dive.md", wiki_page(type_="query", tags="[question]"))
     write(wiki, "entities/acme.md", wiki_page(type_="entity", tags="[company]"))
     write(wiki, "concepts/acme.md", wiki_page())
     errors = findings(wiki)["errors"]
     assert "page slug 'acme' is not unique (R9): concepts/acme.md, entities/acme.md" in errors
     assert (
         "record ID 'deep-dive' is also a page slug (R9): "
-        "queries/deep-dive/README.md, raw/internal/deep-dive.md"
+        "queries/deep-dive/deep-dive.md, raw/internal/deep-dive.md"
     ) in errors
     assert (
         "record ID 'dup-2026' is not unique (R9): raw/articles/dup-2026.md, raw/papers/dup-2026.md"
@@ -532,9 +532,19 @@ def test_dated_digests_skip_grounding_staleness_and_the_index(tmp_path):
 
 def test_artifacts_under_a_directory_pages_assets_arent_pages(tmp_path):
     wiki = make_wiki(tmp_path)
-    write(wiki, "queries/deep-dive/README.md", wiki_page(type_="query", tags="[question]"))
+    write(wiki, "queries/deep-dive/deep-dive.md", wiki_page(type_="query", tags="[question]"))
     write(wiki, "queries/deep-dive/assets/one-pager.md", "# No frontmatter\n")
     assert "one-pager" not in report(wiki)
+
+
+def test_a_folder_page_saved_as_readme_doesnt_resolve(tmp_path):
+    # A page's name is its file name, as it is for Obsidian and the
+    # wiki-search MCP, so links to a folder page saved as README.md are
+    # reported instead of resolving for lint alone (NW6)
+    wiki = make_wiki(tmp_path)
+    write(wiki, "queries/deep-dive/README.md", wiki_page(type_="query", tags="[question]"))
+    write(wiki, "concepts/pricing.md", wiki_page(body="See [[deep-dive]].\n"))
+    assert "broken [[deep-dive]] in concepts/pricing.md" in findings(wiki)["errors"]
 
 
 def test_the_split_warning_points_at_the_split_procedure(tmp_path):
@@ -588,7 +598,7 @@ def split_wiki(tmp_path, body):
         "raw/articles/competitor-x-pricing-2026-01-15.md",
         "raw/internal/conversation-2026-01-15-pricing-tier.md",
         "queries/crystallize-pricing-review-2026-01-10.md",
-        "queries/pricing-deep-dive/README.md",
+        "queries/pricing-deep-dive/pricing-deep-dive.md",
     ):
         (wiki / rel).parent.mkdir(parents=True, exist_ok=True)
         (wiki / rel).write_text("---\ntitle: t\n---\nx\n")
@@ -612,7 +622,7 @@ def test_cited_sources_prints_paths_in_first_cited_order(tmp_path):
         "  - raw/internal/conversation-2026-01-15-pricing-tier.md\n"
         "  - raw/articles/competitor-x-pricing-2026-01-15.md\n"
         "  - queries/crystallize-pricing-review-2026-01-10.md\n"
-        "  - queries/pricing-deep-dive/README.md\n"
+        "  - queries/pricing-deep-dive/pricing-deep-dive.md\n"
     )
 
 
@@ -653,7 +663,7 @@ def test_cited_sources_resolves_what_a_malformed_citation_names(tmp_path):
         "sources:\n"
         "  - raw/articles/competitor-x-pricing-2026-01-15.md\n"
         "  - raw/internal/conversation-2026-01-15-pricing-tier.md\n"
-        "  - queries/pricing-deep-dive/README.md\n"
+        "  - queries/pricing-deep-dive/pricing-deep-dive.md\n"
     )
 
 
@@ -668,7 +678,7 @@ def test_cited_sources_lists_ids_that_match_two_files(tmp_path):
         "sources: []\n"
         "ambiguous:\n"
         "  - dup-2026: raw/articles/dup-2026.md, raw/papers/dup-2026.md\n"
-        "  - pricing-deep-dive: queries/pricing-deep-dive/README.md, "
+        "  - pricing-deep-dive: queries/pricing-deep-dive/pricing-deep-dive.md, "
         "raw/internal/pricing-deep-dive.md\n"
     )
 
@@ -684,7 +694,7 @@ def test_cited_sources_takes_an_absolute_or_wiki_relative_page(tmp_path):
     for page_arg in (wiki / "concepts" / "child.md", "concepts/child.md"):
         result = run_cited_sources(wiki, page_arg, cwd=tmp_path)
         assert result.returncode == 0, result.stderr
-        assert result.stdout == "sources:\n  - queries/pricing-deep-dive/README.md\n"
+        assert result.stdout == "sources:\n  - queries/pricing-deep-dive/pricing-deep-dive.md\n"
     result = run_cited_sources(wiki, "concepts/missing.md", cwd=tmp_path)
     assert result.returncode == 2
     assert "not a file" in result.stderr

@@ -14,7 +14,7 @@ Rich-format query answers go under `queries/<slug>/` as a directory with:
 ```
 queries/
 └── competitor-pricing-2026-q2/
-    ├── README.md          # wiki page with frontmatter + links to artifacts
+    ├── competitor-pricing-2026-q2.md  # wiki page with frontmatter + links to artifacts
     ├── assets/            # markdown artifacts; lint and the hooks skip this folder
     │   ├── deck.md        # Marp source
     │   ├── deck.pdf       # rendered (optional, for sharing)
@@ -24,11 +24,12 @@ queries/
     └── customers.csv      # structured export
 ```
 
-The `README.md` is the wiki page, shows up in index.md, has frontmatter,
-links to the artifacts. Artifacts are not standalone wiki pages. Markdown
+The page named after its folder is the wiki page, shows up in index.md, has
+frontmatter, links to the artifacts. Don't name it `README.md`: Obsidian, the
+wiki-search MCP and lint all find a page by its file name. Artifacts are not standalone wiki pages. Markdown
 artifacts go in `assets/`: anywhere else in the folder, a `.md` file is checked
 as a page, and every deck would share the slug `deck` (`citation-spec.md` →
-Page slugs). Other files can sit beside `README.md`.
+Page slugs). Other files can sit beside the page.
 
 ## Format Selection
 
@@ -182,7 +183,7 @@ customer-gamma,healthcare,mid-7,2027-Q1,high,<private>
 
 ### Always
 
-- Keep a `README.md` next to the CSV explaining columns and sources
+- Explain the CSV's columns and sources on the folder's main page
 - If any real names appear, leave the parent page unflagged (private by default);
   never add `shareable: true` to it
 - Dataview can read CSVs in Obsidian via the Dataview CSV plugin
@@ -261,10 +262,10 @@ title: Brief, <Topic> (for <audience>)
 
 When filing a valuable query answer:
 
-1. Always write the wiki page (markdown) under `queries/<slug>/README.md`
+1. Always write the wiki page (markdown) under `queries/<slug>/<slug>.md`
 2. If the answer involves numeric data → add CSV + chart
 3. If the answer is for a specific audience/meeting → add Marp deck
 4. If the answer has spatial/relational structure → consider Mermaid or Canvas
-5. Link all artifacts from the README.md
+5. Link all artifacts from that page
 
 Never skip the markdown page. Rich formats augment, they don't replace.

@@ -436,11 +436,15 @@ def test_whole_wiki_agrees_with_pyyaml_or_reports(base_load):
 # ---------------------------------------------------------------------------
 
 
-def test_slug_is_the_stem_or_a_directory_pages_folder():
+def test_slug_is_the_file_stem():
     assert wikifm.slug("raw/articles/competitor-x-pricing-2026-01-15.md") == (
         "competitor-x-pricing-2026-01-15"
     )
-    assert wikifm.slug(Path("queries/pricing-deep-dive/README.md")) == "pricing-deep-dive"
+    assert wikifm.slug(Path("queries/pricing-deep-dive/pricing-deep-dive.md")) == (
+        "pricing-deep-dive"
+    )
+    # not the folder's name: Obsidian and the wiki-search MCP wouldn't find it (NW6)
+    assert wikifm.slug(Path("queries/pricing-deep-dive/README.md")) == "README"
 
 
 def cites(body):
@@ -479,7 +483,7 @@ OUTSIDE_THE_GRAMMAR = {
         [("competitor-x-pricing-2026-01-15", "", ("path",))],
     ),
     "directory page path": (
-        "[source: queries/pricing-deep-dive/README.md, Findings]",
+        "[source: queries/pricing-deep-dive/pricing-deep-dive.md, Findings]",
         [("pricing-deep-dive", "Findings", ("path",))],
     ),
     "nested prefix": (
@@ -557,16 +561,16 @@ def test_citations_share_their_markers_span():
 
 
 def test_resolve_classifies_by_what_an_entry_names(tmp_path):
-    for rel in ("raw/articles/a-2026.md", "queries/deep-dive/README.md", "briefings/2026-01-15.md"):
+    for rel in ("raw/articles/a-2026.md", "queries/deep-dive/deep-dive.md", "briefings/2026-01-15.md"):
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).write_text("x\n")
     resolved = {e: wikifm.resolve(e, tmp_path) for e in (
-        "raw/articles/a-2026.md", "queries/deep-dive/README.md", "briefings/2026-01-15.md",
+        "raw/articles/a-2026.md", "queries/deep-dive/deep-dive.md", "briefings/2026-01-15.md",
         "raw/papers/a-2026.md", "concepts/other.md",
     )}
     assert {e: (r.kind, r.problem) for e, r in resolved.items()} == {
         "raw/articles/a-2026.md": ("record", None),
-        "queries/deep-dive/README.md": ("page", None),
+        "queries/deep-dive/deep-dive.md": ("page", None),
         "briefings/2026-01-15.md": ("page", None),
         # a missing file still names a record or page (grounding counts it);
         # R6 reports that it's missing

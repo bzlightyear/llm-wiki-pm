@@ -61,8 +61,9 @@ Output structures for all three operations live in
    (target persona, competitive context, core problem, key decisions), flag it and
    ask; never draft a fabricated section silently:
    > "Missing wiki coverage for: [X, Y, Z]. Draft with gaps flagged, or research first?"
-③ **Draft** to `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/README.md` using the
-   PRD template (`references/prd-templates.md`).
+③ **Draft** to
+   `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/prd-<feature-slug>-<YYYY-MM-DD>.md`
+   using the PRD template (`references/prd-templates.md`).
 ④ **Cite inline** — every factual claim cites its source ("Per [[page]]..."); an
    uncited claim moves to Open Questions or `gaps:`.
 ⑤ **Populate `gaps:`** with unbacked sections — this surfaces in Coverage Audit.
@@ -105,7 +106,7 @@ Output structures for all three operations live in
 
 | Artifact | Path |
 |----------|------|
-| PRD | `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/README.md` |
+| PRD | `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/prd-<feature-slug>-<YYYY-MM-DD>.md` |
 | User Stories | `$WIKI/queries/user-stories-<feature-slug>-<YYYY-MM-DD>.md` |
 | Release Notes | `$WIKI/queries/release-notes-<YYYY-MM-DD>.md` |
 

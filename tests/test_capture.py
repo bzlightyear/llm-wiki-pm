@@ -97,7 +97,7 @@ def test_skips_an_id_held_by_a_record_in_another_folder(tmp_path):
 def test_skips_an_id_held_by_a_page_slug(tmp_path):
     wiki = make_wiki(tmp_path)
     base = f"conversation-{TODAY}-pricing-tier"
-    page = wiki / "queries" / base / "README.md"  # a directory page's slug
+    page = wiki / "queries" / base / f"{base}.md"  # a directory page's slug
     page.parent.mkdir()
     page.write_text("---\ntitle: t\n---\n")
     result = run_capture(wiki, "--topic", "pricing-tier")

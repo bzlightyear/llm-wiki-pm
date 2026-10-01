@@ -20,7 +20,7 @@ llm-wiki-pm skill's `references/citation-spec.md`. Required on every page:
 - `updated`: date — written `'YYYY-MM-DD'`, single-quoted; bump on every edit
 - `type`: enum — `entity` | `concept` | `comparison` | `query` | `summary` | `persona`
 - `tags`: string[] — only tags from SCHEMA.md's Tag Taxonomy
-- `sources`: string[] — wiki-relative paths of the page's sources: `raw/` records or wiki pages. Cite each non-obvious claim inline as `[source: <id>, <location>]`, where `<id>` is the source's file name without `.md` (the folder name for a `README.md` page)
+- `sources`: string[] — wiki-relative paths of the page's sources: `raw/` records or wiki pages. Cite each non-obvious claim inline as `[source: <id>, <location>]`, where `<id>` is the source's file name without `.md`
 
 Optional fields are listed in SCHEMA.md.
 
@@ -44,7 +44,7 @@ Optional fields are listed in SCHEMA.md.
 - Files: lowercase, hyphens, no spaces. Page slugs and record IDs match `[a-z0-9][a-z0-9._-]*` and are unique across the wiki
 - Pages: `entities/`, `concepts/`, `comparisons/`, `queries/`, `briefings/`
 - Records: `raw/<folder>/<descriptor>-<YYYY-MM-DD>.md`, written once and never edited
-- Prefixes and dated names as the skill sets them, e.g. `queries/crystallize-<topic>-<date>.md`, `queries/research-<topic>-<date>/README.md`, `briefings/YYYY-MM-DD.md`
+- Prefixes and dated names as the skill sets them, e.g. `queries/crystallize-<topic>-<date>.md`, `queries/research-<topic>-<date>/research-<topic>-<date>.md`, `briefings/YYYY-MM-DD.md`
 
 ## Note Template
 

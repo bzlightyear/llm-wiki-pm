@@ -10,7 +10,7 @@ for the canonical rule.
 
 ## PRD Draft
 
-File to `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/README.md`.
+File to `$WIKI/queries/prd-<feature-slug>-<YYYY-MM-DD>/prd-<feature-slug>-<YYYY-MM-DD>.md`.
 
 ```markdown
 ---

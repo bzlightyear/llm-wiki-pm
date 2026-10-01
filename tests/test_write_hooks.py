@@ -89,9 +89,9 @@ class TestSnapshotFunction:
         assert arc == wiki / "_archive" / f"acme-{TODAY}.md"
         assert arc.read_text() == page.read_text()
 
-    def test_readme_page_named_by_folder(self, tmp_path):
+    def test_folder_page_named_by_its_slug(self, tmp_path):
         wiki = make_wiki(tmp_path)
-        page = write_page(wiki, "queries/sprint-x/README.md")
+        page = write_page(wiki, "queries/sprint-x/sprint-x.md")
         assert snapshot(page, wiki).name == f"sprint-x-{TODAY}.md"
 
     def test_keeps_first_snapshot_of_the_day(self, tmp_path):
@@ -115,14 +115,13 @@ class TestSnapshotFunction:
 
 
 class TestSnapshotScope:
-    def test_readme_pages_no_longer_collide(self, tmp_path):
+    def test_folder_pages_get_their_own_snapshots(self, tmp_path):
         wiki = make_wiki(tmp_path)
-        a = write_page(wiki, "queries/sprint-a/README.md")
-        b = write_page(wiki, "queries/sprint-b/README.md")
+        a = write_page(wiki, "queries/sprint-a/sprint-a.md")
+        b = write_page(wiki, "queries/sprint-b/sprint-b.md")
         for page in (a, b):
             pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED})
         assert snaps(wiki, "sprint-a") and snaps(wiki, "sprint-b")
-        assert not snaps(wiki, "README")
 
     def test_briefings_are_snapshotted(self, tmp_path):
         wiki = make_wiki(tmp_path)
@@ -484,7 +483,7 @@ class TestPostValidateChecks:
     def test_links_resolve_against_lints_page_set(self, tmp_path):
         wiki = valid_wiki(tmp_path)
         write_page(wiki, "briefings/brief-2026-01-01.md", DIGEST)
-        write_page(wiki, "concepts/pricing/README.md", CLEAN)
+        write_page(wiki, "concepts/pricing/pricing.md", CLEAN)
         out = write_acme(wiki, CLEAN + "[[brief-2026-01-01]] [[pricing]] [[index]] [[beta#h|b]]\n")
         assert out == ""
 
