@@ -20,7 +20,8 @@ conversation was cited as `user, conversation, <date>` (or `user, <date>`,
 - rewrites those sources: entries, including ones an unquoted flow list
   split into `conversation` and a bare date, to the record's path, and those
   citations to its ID, with any "(context)" as the location. A page that
-  cites a date declares its record;
+  cites a date declares its record. overview.md is migrated like a page,
+  though lint doesn't check it;
 - repairs mechanical citation defects and midnight timestamp dates, as
   lint --auto-fix=content does, and empties a dated digest's sources: of
   entries that name no record or page;
@@ -416,6 +417,10 @@ def make_plan(wiki, declare_cited):
     plan.pages = [Page(p.relative_to(wiki).as_posix(), p) for p in lint.wiki_pages(wiki)]
     plan.pages += [Page(new, wiki / old) for old, new in plan.moved.items()
                    if new.split("/")[0] in wikifm.PAGE_DIRS]
+    # Outside lint's page set, but it cites like a page and Orient reads it
+    # every session, so its old citations would keep being copied.
+    if (wiki / "overview.md").is_file():
+        plan.pages.append(Page("overview.md", wiki / "overview.md"))
 
     # M2: the conversations the pages cite, and what cites them
     contexts, claims, citing = defaultdict(list), defaultdict(list), defaultdict(set)

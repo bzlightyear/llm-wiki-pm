@@ -100,7 +100,8 @@ def test_the_dry_run_writes_nothing_and_counts_each_pages_findings(tmp_path):
     # R3 and R6 go from 1 to 0 on the page; R7 and R12 are clean before and after
     row = next(line for line in out.splitlines() if line.endswith("concepts/a.md"))
     assert row.split() == ["1", "→", "0", "1", "→", "0", "·", "·", "concepts/a.md"]
-    assert next(line for line in out.splitlines() if line.endswith("all 2 pages")).split()[:6] == [
+    # the page, the moved brief and make_wiki's overview.md
+    assert next(line for line in out.splitlines() if line.endswith("all 3 pages")).split()[:6] == [
         "1", "→", "0", "1", "→", "0"]
 
 
@@ -224,6 +225,24 @@ def test_the_record_quotes_the_days_log_entries_and_lists_its_claims(tmp_path):
     assert "The log has no entry for that day.\n" in text
     assert text.endswith(f"- `concepts/a.md`: Wrapped prose that ends [source: user, {D2}] "
                          "and goes on.\n")
+
+
+def test_overview_is_migrated_like_a_page(tmp_path):
+    # lint doesn't check it, but Orient reads it every session
+    wiki = make_wiki(tmp_path)
+    write(wiki, "overview.md", page(
+        f'["user, conversation, {D1}"]', f"Chose X [source: user, {D1}].\n"
+    ).replace("created: '2026-01-01'", "created: 2026-01-01T00:00:00.000Z"))
+    result = run(wiki, "--apply")
+    assert result.returncode == 0, result.stderr
+    assert sources_of(wiki, "overview.md") == [REC1]
+    assert body_of(wiki, "overview.md") == f"Chose X [source: {ID1}].\n"
+    assert "\ncreated: '2026-01-01'\n" in (wiki / "overview.md").read_text()
+    assert (wiki / REC1).read_text().endswith(
+        "- `overview.md`, in `sources:`\n"
+        f"- `overview.md`: Chose X [source: user, {D1}].\n"
+    )
+    assert (wiki / f"_archive/overview-{TODAY}.md").is_file()
 
 
 # ---------------------------------------------------------------------------
