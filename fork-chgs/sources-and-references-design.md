@@ -14,6 +14,8 @@ dispositions are updated, and NW6's next steps 1-3 are done.
 Closed NW6. Its next step 4 became NW7, together with the analysis's M1, an
 archived copy that takes a live page's backlinks in the wiki-search MCP. Its
 next step 5 is done: Obsidian's attachment folder is now `raw/assets`.
+Recorded step 0's result: it was done 2026-09-29, and the old commits are still
+reachable on GitHub by ID.
 
 revised on: 2026-09-30
 Completed step 5. The one-pager joins the Marp deck in a directory page's
@@ -1385,6 +1387,17 @@ the unpushed local commits, so there is a single force-push.
 5. **Publish.** Force-push `main`. Re-clone any other local copies, because
    old clones still hold the identifiers. GitHub keeps orphaned commits reachable
    by ID for a while; ask GitHub support to purge them if that matters.
+
+**Step 0 result (checked 2026-10-01).** Done 2026-09-29: `git filter-repo`
+rewrote 27 commits, from `4e61e6c` on, touching only `tests/test_lint.py` and
+the lint-frontmatter-checks design. It removed 4 identifiers, none of which is
+in `origin/main`'s history or in the current files. `origin/main` already held
+the rewritten history, so the 2026-10-01 push of later commits was a plain
+fast-forward. The cited fork IDs all resolve. Still open: the pre-rewrite
+commits answer by ID on GitHub (the original of `4e61e6c`, `d566e55`, was
+still reachable), and the old objects stay in this clone's `.git/filter-repo/`
+and reflog. Making the fork private removes the exposure; the alternative is
+asking GitHub support to purge them.
 
 ### Frontmatter changes and semver
 
