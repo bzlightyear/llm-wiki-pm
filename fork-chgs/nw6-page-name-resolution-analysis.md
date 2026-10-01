@@ -5,21 +5,16 @@ created: 2026-09-30
 The audit that NW6's first next step asks for: every component that turns a wiki
 page name, link or path into a file. Each was tested on the live wiki
 (read-only) and on two scratch copies, one as it is and one with the proposed
-fix applied. It ends with a proposed design and implementation for NW6 and for
-the other mismatches the audit found.
+fix applied. It ends with the options for fixing NW6, the one chosen, and its
+implementation plan.
 
 revised on: 2026-10-01
-Expanded D6 into three layers: an archive command beside `snapshot()` that
-always names the archived page `<slug>-<date>`, docs that run it instead of a
-hand move, and R15 as the safety net. Section 10 lists the code and doc
-changes this adds.
-Settled D2: R15 is always 🔴 apart from an exemption list. `--auto-fix`
-renames a clashing archived file. R14 also runs in post-validate, while R15
-and D7 run only with lint, and session start shows all three. Recorded the
-measured cost.
+Replaced the proposed design, implementation and open decisions (sections
+9–11) with the options considered, the decision (option 4: name a folder page
+after its folder and delete the `README.md` rule) and its implementation plan.
+The proposals had grown far beyond the problem.
 
-Status: audit done, proposals awaiting decisions (section 11). Nothing in the
-fork's skills, scripts or hooks, or in the live wiki, was changed.
+Status: audit done, option 4 chosen, implementation in progress (section 10).
 
 Companion to [Sources and References Design](sources-and-references-design.md)
 (NW6 in section 10) and
@@ -308,239 +303,154 @@ Results:
   sprint, no `sources:` entry or citation naming a folder page, and
   `attachmentFolderPath` still `raw/attachments` (step 5).
 
-## 9. Proposed design
+## 9. Options and decision
 
-**D1. A folder page's main file is named after the folder:**
-`queries/<slug>/<slug>.md` (NW6 step 3, confirmed by the trial).
-- The slug, links, citations and snapshot names are unchanged.
-- Section 5.2's "Page slug = filename stem, or the parent directory name for
-  `README.md`" becomes "Page slug = filename stem".
+Decided 2026-10-01. The first version of this analysis (`1ca53ef`) ended with
+a design for NW6 and for every other mismatch: two new lint rules (R14, R15),
+an archive command, a `backlinks.py` rewrite and lint checks on the Orient
+files' links. Each proposal exposed further gaps, and the whole grew far
+heavier than the problem. Two later commits expanded it further and were
+reverted. This section and section 10 replace it.
 
-**D2. Extend I6: a link's target is the same file for every reader.** Two lint
-checks keep this true.
-- **R14, page name is its file name:**
-  - **Rule:** a page's slug equals its file stem.
-  - **Today:** reports the 4 `README.md` pages.
-  - **Severity:** 🟡, with the rename as the fix. An un-migrated wiki keeps
-    working, and each of its folder pages is reported once until renamed.
-- **R15, file names unique across the vault:**
-  - **Rule:** no other `.md` file in the vault has a file name that, ignoring
-    case, matches a link target's (a page, `overview.md` or `index.md`).
-  - **Scope:** this is the only lint check that reads beyond the page
-    folders, because Obsidian and the MCP match names across every file.
-  - **Today:** reports M1, and M3 unless `meta/overview.md` is exempt
-    (decision 3). It doesn't report M2's archived stub, which no live page
-    shares a name with. D6 and D7 cover that.
-  - **Severity:** always 🔴, except files on R15's exemption list: files lint
-    can't rename, such as the MCP's `meta/overview.md` (decision 3).
-    - **Why not a narrower rule:** a rule like "🔴 only when the other file
-      could win the lookup" can't be decided. The readers break ties
-      differently: the MCP by shortest path, Obsidian by the linking file's
-      folder. An agent's lookup by file name finds both files every time.
-  - **Fixing a violation:**
-    - **In `_archive/`** (M1): `lint.py --auto-fix` renames the file with
-      `archive_path()` (D6), using the date git says it entered `_archive/`, or
-      today. It refuses if that name is taken. Only the name changes, and
-      every reader then resolves the links to the live page, as `slug()`
-      already does. Without `--auto-fix`, the message prints the `git mv` to
-      run. `citation-spec.md` must say that `_archive/` is immutable except
-      for this rename.
-    - **An empty note at the wiki root** (an Obsidian click on an unresolved
-      link): the message says to delete it. Lint doesn't delete files.
-    - **Anything else**, such as a non-empty root note, a file under a folder
-      page's `assets/`, or a new file in `meta/`: a person renames it, merges
-      it into the page, or adds it to the exemption list. The message names
-      both files.
-    - **Not R15's job:** two pages sharing a name, or a page and a `raw/`
-      record sharing one, stay with R9.
-    - **Afterwards:** reindex every running wiki-search server, or restart
-      those sessions (D5).
-- **Where the checks run:**
-  - **R14:** in lint and in the post-validate hook. It looks only at the file
-    being written, so a new folder page saved as `README.md` is reported at
-    once.
-  - **R15:** in lint only: every session start, every lint run, the lint
-    workers and the maintenance loop. Clashes come from moves and renames,
-    which post-validate doesn't see when they're done with `mv`, `git mv` or
-    in Obsidian. The next session start catches them.
-  - **D7:** in lint only.
-  - **Shown at session start:** session start runs `lint.py --json` but shows
-    only the counts it picks out. Lint's `--json` output gains R14, R15 and
-    D7 counts, and `session-start.sh` shows them. Otherwise they would run
-    without anyone seeing the result.
-- **Cost, measured on a copy of the wiki:**
-  - Lint takes 0.20–0.22 s today.
-  - R15's name scan adds about 5 ms, since it lists the 838 file names and
-    opens none of them. It found the 2 expected clashes.
-  - D7 adds 0.3 ms.
-  - The scan grows in a straight line with the number of files: 1 ms at
-    1,000 archive files, 8 ms at 10,000, 95 ms at 100,000. At today's pace,
-    about 2,000 archive files a year, it stays under 10 ms for years.
-  - A large `_archive/` costs the MCP's index and Obsidian far more than it
-    costs lint.
+**Core requirement:** a link to a folder page opens the same file in lint,
+Obsidian, the wiki-search MCP and an agent's lookup by file name, for today's
+four folder pages and for any made later.
 
-**D3. `slug()` keeps its `README.md` rule** so older wikis keep resolving; R14
-asks them to rename. `backlinks.py` calls `wikifm.slug()` instead of its own
-copy.
+Two facts checked after the audit:
 
-**D4. One link search for lifecycle operations.**
-- **`backlinks.py`** reads what lint reads plus `briefings/`, `index.md`,
-  `overview.md` and every other root `.md` except `log.md`, and leaves out
-  `raw/` (immutable).
-- **Archive, supersede and rename** name it (NW6 step 4).
-- **`lint --auto-fix`'s supersede rewrite** covers the same root files.
-- **The vault contract's "Incoming links" line** points at `backlinks.py`.
-- **The core skill's tool list** says the MCP's backlinks lags renames and new
-  pages until reindexed.
+- **The `README.md` rule exists only in the fork.** Upstream's docs say to
+  save a folder page as `README.md`, but upstream's lint names a page by its
+  file name only (`slug = path.stem`, `queries/` included). So upstream's own
+  lint can't resolve these links either. The fork added the rule to lint and
+  `backlinks.py` on 2026-08-11 (PATCH-3b and PATCH-2 in the
+  [fork changelog](llm-wiki-pm-fork-changelog.md)) and moved it into
+  `wikifm.slug()` on 2026-09-30.
+- **The fork has one user and one wiki, the PM wiki.** No other wiki needs the
+  rule kept.
 
-**D5. A rename procedure** in `citation-spec.md`'s Page lifecycle:
-1. `git mv`.
-2. Update any text that gives the old path.
-3. Search for links with `backlinks.py` (none change when the slug is kept).
-4. Reindex every running wiki-search server, or restart those sessions.
-5. Log the rename.
+**Options**, simplest first:
 
-**D6. Archived pages always get a dated name,** `_archive/<slug>-<date>.md`,
-even when the slug already ends in a date. That way an archived page can't
-capture a live page's links (M1).
-- **Why it happened:**
-  - `snapshot()` already names backups this way, but archiving doesn't use it.
-  - The docs only say "move the page to `_archive/`". SKILL §6 even says
-    "preserving path".
-  - So an agent moves the file by hand, and it keeps its name. That is how M1
-    and the date-less archived person stub in M2 came about.
-- **Layer 1, a command that does the archiving:** `lint.py --archive <page>`,
-  beside `snapshot()` in `lint.py`. The archive name is built in one place, a
-  small `archive_path(page)` function: the page's `slug()` plus today's date
-  under `_archive/`. Both `snapshot()` (copy) and the archive command (move)
-  call it, so backups and archived pages are always named the same way. The
-  command:
-  - refuses if that name is already taken;
-  - moves the page;
-  - lists the pages that still link to it, from `backlinks.py`, for the
-    caller to update (D4).
+1. **Roll back and do nothing.** Revert this analysis's commits. Nothing is
+   fixed: Obsidian and the MCP keep missing the 57 links, and an archive that
+   finds incoming links through the MCP misses the 23 on pages (lint reports
+   them as broken only afterwards). NW6 would also keep the errors section 8
+   corrects.
+2. **Rename the four pages in the wiki only.** Fixes today's links for every
+   reader, with lint's output unchanged. The skills still say `README.md`, so
+   the next research sprint or PRD brings the gap back, and lint, which knows
+   the rule, reports nothing.
+3. **Option 2 plus the fork's docs, keeping the rule.** 19 lines in 9 files.
+   New folder pages are fixed when agents follow the docs. A `README.md` page
+   made any other way still passes lint and fails in Obsidian and the MCP,
+   which is how NW6 went unnoticed for about seven weeks.
+4. **Option 3 plus deleting the rule** from `slug()` and `backlinks.py`. Lint
+   then names pages the way every other reader does, so a page saved as
+   `README.md` shows up as broken links at the next session start. No new lint
+   rule is needed.
 
-  It stays in `lint.py` because the callers (the pre-write hook, lint's
-  auto-fix, the migration) already import it. Moving all of it into
-  `wikifm.py` beside `slug()` would be slightly tidier, but it's more code
-  and tests to move.
-- **Layer 2, docs that run the command instead of describing a move:**
-  - core SKILL §6 Archive;
-  - `update-guide.md`'s Supersede steps;
-  - the SCHEMA template's Archive line and Supersession Policy step 4;
-  - `citation-spec.md`'s Page lifecycle;
-  - the D5 rename procedure, when a rename retires a page.
-- **Layer 3, R15 as the safety net** for anything still moved by hand: in
-  Obsidian, with `mv`, or by an older agent.
-  - It reports any file sharing a live page's name, which is the case that
-    breaks links.
-  - Lint can't tell from a name alone whether the date was added:
-    `foo-2026-08-10.md` could be a correct archive of `foo`, or a bare copy of
-    `foo-2026-08-10`. So the command is the real fix and R15 the backstop.
-  - A bare copy only does harm while its live namesake exists, and R15
-    catches exactly that.
+| | 1 Roll back | 2 Wiki rename | 3 + fork docs | 4 + drop rule |
+|---|---|---|---|---|
+| Fork changes | 2 docs restored | none | 9 docs (19 lines) | + 2 scripts, 4 test files |
+| Wiki changes | none | 4 renames, 8 lines, log | same as 2 | same as 2 |
+| Today's 57 links in Obsidian, MCP and file lookup | broken | fixed (after reindex) | fixed | fixed |
+| New folder pages | broken | broken | fixed if agents follow the docs | fixed |
+| Lint notices a new `README.md` folder page | no | no | no | yes |
+| Upstream | none | none | docs differ | docs differ; code matches upstream |
 
-**D7. Lint checks the links in `index.md` and `overview.md`.**
-- **Why:** Orient reads both files every session, yet nothing checks their
-  links today (M2).
-- **Code spans:** lint should skip links inside code spans and blocks, as
-  Obsidian does. Otherwise `overview.md`'s three example links in backticks
-  would be reported as broken. No page has a link in code today, so the page
-  counts don't change.
-- **Wrapped links:** lint should also report a link whose text spans a line
-  break (M6), since Obsidian doesn't show it as a link. Joining the lines
-  fixes it.
-- **Today:** this reports `overview.md`'s two links to the archived stub,
-  nothing in `index.md`, and the two wrapped links on pages.
+**Decision: option 4.** The rule is the only reason lint disagreed with the
+other readers, and the reason it reported 0 broken links while they resolved
+none of these. Deleting it makes "0 broken links" true for every reader and
+guards new folder pages without new machinery. Its one cost, broken links on
+any fork wiki not yet renamed, doesn't arise with one wiki renamed in the same
+step. It also brings the fork's code back in line with upstream. No upstream
+issue is filed.
 
-## 10. Proposed implementation
+**Left out, optional separate follow-ups:** M1, the archived copy that takes a
+live page's MCP backlinks (the only one doing damage today); dated archive
+names or an archive command; `backlinks.py` reading the root files (M4, NW6
+step 4); lint checking the links in `index.md` and `overview.md` (M2); the
+wrapped links (M6); the unused `post-write.sh`; and the MCP not seeing new
+pages until a reindex (NW5). NW6 step 5, Obsidian's attachment folder, stays
+open too.
 
-Fork, in one step:
+## 10. Implementation
 
-- **Docs (19 lines naming `README.md`):**
-  - core `SKILL.md`:255;
-  - `output-formats.md`:17, 27, 31, 185, 264, 268. Line 185 ("keep a
-    `README.md` next to the CSV") becomes "explain columns and sources on the
-    folder's main page";
-  - `citation-spec.md`:49, 58, 70;
-  - `templates/vault-contract.md`:23, 47, and its line 39 for D4;
-  - research `SKILL.md`:83, 255;
-  - PRD `SKILL.md`:64, 108;
-  - `prd-templates.md`:13;
-  - `.claude/roles/researcher.md`:27;
-  - `hooks/README.md`:28.
-- **Docs, other:**
-  - the D5 procedure;
-  - `update-guide.md`'s Supersede steps, which run the archive command (D6)
-    and name `backlinks.py` (D4);
-  - the core skill's tool list (D4);
-  - the archive command in place of a hand move (D6): core `SKILL.md`:299
-    (§6 Archive), `update-guide.md`:123, `templates/SCHEMA.md`:129 and 213,
-    and `citation-spec.md`:186;
-  - the core skill's Scripts list gains `--archive`;
-  - `citation-spec.md`: `_archive/` is immutable except for R15's auto-fix
-    rename (D2).
-- **Code:**
-  - `backlinks.py` (D3, D4);
-  - `lint.py`: R14, R15, the supersede rewrite's scope (D4), and D7's Orient
-    files' links, code spans and wrapped links;
-  - `lint.py`: `archive_path()`, used by `snapshot()`, and the `--archive`
-    command (D6);
-  - `lint.py`: R15's exemption list, its `--auto-fix` rename, and `--json`
-    fields for R14, R15 and D7 (D2);
-  - `post-validate.sh`: R14 on the written file (D2);
-  - `session-start.sh`: show the R14, R15 and D7 counts (D2);
-  - `wikifm.py`: the `slug()` docstring only.
-- **Tests:**
-  - new fixtures use `<slug>/<slug>.md`;
-  - one `README.md` fixture stays for the legacy rule and R14;
-  - add R15 cases (an archive clash, its auto-fix rename, an exempt file, an
-    empty root note), `backlinks.py` root-file cases, and D7's cases;
-  - add R14 in post-validate, and the new session-start lines;
-  - add `--archive` cases: a slug that already ends in a date, a name that's
-    taken, and a folder page;
-  - 21 `README` uses in 5 test files are affected.
-- **Design doc:** section 5.2 and the rule catalog.
+Status: planned 2026-10-01; results are added here when done.
 
-Wiki, after the fork step:
+**Order.** The fork's hooks, skills and workers run straight from its working
+tree, so a code change takes effect when the file is saved. The wiki is renamed
+first, while the old `slug()` accepts both names, and the rule is deleted
+after. Lint never sees broken links in between.
 
-- the section 6 trial's changes (4 renames, 6 prose lines, 2 contract lines,
-  log entry);
-- join the two wrapped links on pages (D7);
-- rename M1's archived file and the archived person stub to dated snapshot
-  names (D6);
-- the same two SCHEMA lines in the wiki's own `SCHEMA.md` (its Archive line
-  and Supersession Policy step 4), which mirror the template (D6);
-- decide M2's two `overview.md` links (decision 5);
-- reindex the running wiki-search servers.
+1. **Baseline.** Run the fork's test suite. Save lint's `--json` output for the
+   live wiki, and a full lint report from a scratch copy of it.
+2. **Commit A (fork):** revert `c06c6a9` and `beaf265`, which only expanded the
+   dropped proposals, and replace sections 9–11 with these two.
+3. **Wiki commit:**
+   - Read the Orient files, as AGENTS.md requires before any write.
+   - `git mv` each `queries/<slug>/README.md` to `queries/<slug>/<slug>.md`.
+     No link, `sources:` entry or citation changes.
+   - Change 8 lines with the Edit tool, so the pre-write hook snapshots each
+     page first:
 
-Upstream: an issue first, as NW6 says, since this changes a convention.
+     | File | Line now | Becomes |
+     |---|---|---|
+     | 3 research sprint pages | "(this README was over the 200-line threshold)" | "(this page was over …)" |
+     | the same 3 pages | "This synthesis page: `queries/<slug>/README.md`" | the new path |
+     | `meta/contract.md`:23 | "… (the folder name for a `README.md` page)" | the parenthetical removed |
+     | `meta/contract.md`:47 | example `queries/research-<topic>-<date>/README.md` | `…/research-<topic>-<date>.md` |
 
-## 11. Open decisions
+   - Add a `log.md` entry.
+   - **Check:** lint's output matches the baseline, apart from the four pages'
+     paths.
+   - Commit, leaving out `_status.md`.
+4. **Reindex** the session's wiki-search server. **Check:** the four pages'
+   backlinks are no longer 0 (the audit measured 31, 13, 9 and 10).
+5. **Commit B (fork), the fix:**
+   - **Code:** delete the rule from `wikifm.slug()` and update its docstring;
+     `backlinks.py`:25 goes back to upstream's `p.stem`.
+   - **Docs:** the 19 lines in 9 files that name `README.md`:
+     - core `SKILL.md`:255;
+     - `output-formats.md`:17, 27, 31, 185, 264, 268. Line 185, "Keep a
+       `README.md` next to the CSV", becomes "explain the CSV's columns and
+       sources on the folder's main page";
+     - `citation-spec.md`:49, 58, 70;
+     - `templates/vault-contract.md`:23, 47;
+     - research `SKILL.md`:83, 255;
+     - PRD `SKILL.md`:64, 108;
+     - `prd-templates.md`:13;
+     - `.claude/roles/researcher.md`:27;
+     - `hooks/README.md`:28.
+   - **Tests:** the `README.md` fixtures in `test_wikifm.py`, `test_lint.py`,
+     `test_write_hooks.py` and `test_capture.py` become `<slug>/<slug>.md`.
+     A new test checks that links to a page saved as `README.md` are reported
+     as broken. `test_migrate_sources.py`'s two uses, about old archive
+     snapshots, stay.
+   - **Checks:** the full suite passes, and lint on the live wiki with the new
+     code matches step 3's output.
+6. **Commit C (fork), the record:** the design doc (section 5.2 becomes "slug =
+   file stem", the matching Bottom line text, PATCH-2 and PATCH-3b's
+   dispositions, NW6 steps 1–3 done, a revision note), the fork changelog
+   (PATCH-2 and PATCH-3b retired), and this section's results.
 
-1. **R14 severity.** 🟡 (recommended) or 🔴. 🔴 would count in session-start's
-   health total until each folder page is renamed.
-2. **`slug()`'s `README.md` rule.** Keep it for older wikis (recommended), or
-   remove it and have an upgrade step rename folder pages.
-3. **`meta/overview.md` on R15's exemption list.** Add it (recommended),
-   since lint, the MCP and Obsidian all resolve `[[overview]]` to the root
-   file, and it's the MCP's own file, which can't be renamed. Or leave it
-   off, and R15 reports it as 🔴 at every session start.
-4. **`backlinks.py`'s scope.** Add `briefings/` and root files except
-   `log.md`, and leave out `raw/` (recommended); or read everything, as
-   Obsidian does.
-5. **`overview.md`'s two links to the archived person stub.** They describe the
-   supersession itself ("superseding the name-only … stub, now archived").
-   Unlink them to plain text (recommended), point them at the successor, or
-   leave them.
-6. **Where the work is tracked.** As a new step after 10b in the design's
-   section 8 (recommended, since it changes section 5.2 and I6), or as a
-   separate follow-on.
-7. **The minor items in M5 and M6.** Recommended:
-   - fix the worker-indexer's naming rule with D1;
-   - join the two wrapped links on pages in the wiki step;
-   - flag the dead `post-write.sh` and the old lint reports as separate
-     tasks.
+**Decided along with the plan:**
+
+- Historical text stays as it is: the wiki's `log.md`, old lint reports,
+  `_archive/`, the design doc's findings tables, and `migrate_sources.py`'s
+  handling of old `_archive/README-*.md` snapshots.
+- No version bump and no `CHANGELOG.md` entry. No fork step has bumped the
+  version since 2.21.0, and fork changes are recorded in `fork-chgs/`.
+
+**Needs the user:**
+
+- Restart any other Claude session open on the wiki after step 4. A running
+  wiki-search server only sees the renamed files after a reindex or restart.
+- Optionally, in Obsidian after step 3, hover a link to the Kiro sprint and
+  check its backlinks pane. Until the rename, clicking one of these links
+  creates an empty note at the wiki root.
+- Push both repos, or ask for them to be pushed. Nothing is pushed by this
+  plan.
+- Making the fork private is separate and not needed for this.
 
 ## Provenance
 
