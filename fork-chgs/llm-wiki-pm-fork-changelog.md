@@ -5,6 +5,11 @@ created: 2026-08-11
 The fork's local changes to the upstream plugin (PATCH-1 to PATCH-4), how to
 re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
 
+revised on: 2026-09-30
+Marked ISSUE-3 closed. After the PM wiki's migration (step 10b of the sources
+and references design), no citation there fails to resolve, and body legends
+are no longer something citations must match.
+
 revised on: 2026-09-29
 Marked ISSUE-2 mitigated, now that the pre-write hook snapshots `overview.md`
 before any whole-file replacement (step 3 of the sources and references design).
@@ -645,7 +650,14 @@ Step 3 of the [Sources and References Design](sources-and-references-design.md).
 
 ### ISSUE-3 — `[source: user, conversation, <date>]` citations aren't verified against `raw/` — and drift silently from the body Sources legend
 
-**Status:** open, no fix proposed.
+**Status:** closed (2026-09-30). Part A: every citation must now name a
+record or page in its page's `sources:`, and lint checks that it does (R3, R6,
+R7). The missing `conversation-<date>` files are now reconstructed records,
+which lint lists (R10) until their claims are re-sourced, and a new
+conversational fact gets its record from `capture.py`. Part B: a `## Sources`
+legend is optional prose that nothing checks, so it can't drift from a
+declaration. Steps 5–7 and 10b of the
+[Sources and References Design](sources-and-references-design.md).
 
 _Surfaced 2026-08-30, same session as ISSUE-1/ISSUE-2, while explaining
 `hooks/pre-write.sh`'s freshness gate to the user, who then spotted the gap

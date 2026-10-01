@@ -39,6 +39,13 @@ entries that aren't sources and makes both M7 edits, and `--declare-cited` adds
 the undeclared citations once they're reviewed. Moving the rotated briefs back
 exposes 4 🔴 findings lint never saw in `_archive/`, left to M5, and section 8
 records the dry run's counts.
+Completed step 10b. The migration also rewrites `overview.md`, which lint
+doesn't check but Orient reads every session. The hand pass saved the org chart
+three person pages cited as a user-statement record, and the page that cited a
+plugin script by absolute path left the wiki for the
+[Confidence Decay Days Brief](confidence-decay-days-brief.md), since it
+documented the plugin. Lint on the migrated wiki reports no R3, R6, R7 or R12
+findings, and section 8 records the counts.
 
 revised on: 2026-09-29
 Narrowed step 0's scrub to people and customer company names, after a scan of
@@ -72,7 +79,7 @@ Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
 
-Status: **in progress**: steps 0–9 and 10a done (see section 8)
+Status: **in progress**: steps 0–9, 10a and 10b done (see section 8)
 
 Scope: every rule that governs how wiki pages, `raw/` records, frontmatter `sources:`, inline
 `[source: ...]` citations, body `## Sources` legends and `[[wikilinks]]` are
@@ -1257,7 +1264,9 @@ the fork first (step 10a), then run on the wiki (step 10b; plan review P26):
   parenthetical context as the marker location. Each page that cites a date
   also declares its record, since many cite a date only inline. A marker with a
   citation that is neither valid nor mechanically repairable stays as it is, for
-  M5 (step 10a).
+  M5 (step 10a). `overview.md` is rewritten like a page: lint doesn't check it,
+  but Orient reads it every session, so its old citation shapes would keep
+  being copied (step 10b).
 - **M4** Auto-fix the mechanical marker classes (path form, wraps, nested
   prefix, "vs.", multi-line), and normalize timestamp-format dates to
   `'YYYY-MM-DD'` (N15), all through `wikifm` and the two functions behind
@@ -1279,7 +1288,12 @@ the fork first (step 10a), then run on the wiki (step 10b; plan review P26):
   the 2026-09-30 copy that is 4 🔴 findings: one brief lacks `created`, `type`
   and `sources:` and has a tag outside the taxonomy, and the other quotes `[[…]]`
   in inline code, which lint's link check reads as links, so reword it (step
-  10a).
+  10a). The org-chart entries became one user-statement record copying the
+  lines the user added to SCHEMA.md that day, from the wiki's git history. The
+  absolute path was on a page that documented the plugin rather than PM work,
+  so the page left the wiki for the
+  [Confidence Decay Days Brief](confidence-decay-days-brief.md). The `.html`
+  record went to `raw/papers/`, the route for document files (step 10b).
 - **M6** *Dropped (review F7).* Legends are no longer converted.
 - **M7** Replace `meta/contract.md` content with the reconciled template, and
   add the split-procedure pointer to the wiki's own SCHEMA.md split rule (a
@@ -1289,7 +1303,9 @@ the fork first (step 10a), then run on the wiki (step 10b; plan review P26):
   the edit goes to M5 (step 10a).
 - **M8** Re-run lint; the expected result, once M5 is done, is 0 R3/R6/R7/R12
   findings, with R10 listing every page resting only on reconstructed records
-  (about 4; 5 on the 2026-09-30 copy). R12 can then move to 🔴.
+  (about 4; 5 on the 2026-09-30 copy). R12 can then move to 🔴. On the wiki,
+  R10 lists 7: those 5, and the 2 person pages whose only source is the
+  org-chart record (step 10b).
 
 **What cannot be recovered.** The content of the 18 dated conversations was
 never captured. `log.md` records what the agent *did* that day, not what the
@@ -1429,6 +1445,23 @@ files and make both M7 edits:
 That leaves 65 hand-pass items, or 27 with `--declare-cited`. Lint on the
 migrated copy gave the same counts, cleared R11 and listed 5 pages under R10,
 and a second run changed nothing.
+
+**Migration at step 10b.** Run on the wiki on 2026-09-30 (247 pages in lint's
+set, plus `overview.md`), after the page that cited a plugin script by absolute
+path was deleted. With `--declare-cited`, the script wrote 17 records, changed
+117 pages, moved 3 files and made both M7 edits:
+
+- R3 went from 286 to 16, R6 from 83 to 4, R7 from 93 to 15 and R12 from 19 to
+  1, leaving 24 hand-pass items. The counts differ from step 10a's because
+  `overview.md` is now included and the deleted page isn't. `overview.md` alone
+  went from 17 R3, 2 R6, 8 R7 and 1 R12 to none.
+- The hand pass wrote 2 records, for the org chart and the `.html` report's
+  text, and fixed the 15 remaining markers. Two of them cited claims with no
+  captured source, so they became plain notes and their pages gained `gaps:`
+  entries.
+- Lint went from 0 🔴, 250 🟡, 13 🔵 to 0 🔴, 33 🟡, 20 🔵, with no R3, R6, R7
+  or R12 finding left. The 🟡 findings are 26 pages over 200 lines and 7 R4
+  ratios, and R10 lists 7 pages.
 
 ---
 
