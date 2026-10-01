@@ -11,6 +11,9 @@ Fixed NW6 with option 4 of its analysis: a folder page is named after its
 folder, `queries/<slug>/<slug>.md`, and `slug()` is the file stem, with no
 `README.md` rule. Section 5.2, the Bottom line and PATCH-2 and PATCH-3b's
 dispositions are updated, and NW6's next steps 1-3 are done.
+Closed NW6. Its next step 4 became NW7, together with the analysis's M1, an
+archived copy that takes a live page's backlinks in the wiki-search MCP. Its
+next step 5 is done: Obsidian's attachment folder is now `raw/assets`.
 
 revised on: 2026-09-30
 Completed step 5. The one-pager joins the Marp deck in a directory page's
@@ -1565,8 +1568,8 @@ canonical `'YYYY-MM-DD'` form and re-exposes N6. NW2 stays deferred.
 
 ## 10. Follow-on work (after this design)
 
-Five pieces of work were deliberately left out of this design, and NW6 is a gap
-found after step 10b. They are recorded here so they aren't lost.
+Five pieces of work were deliberately left out of this design, NW6 is a gap
+found after step 10b, and NW7 was split out of NW6. They are recorded here so they aren't lost.
 
 **NW1. Orient content and `overview.md` freshness (separate design).**
 `overview.md` only ever grows (70 KB), its action items and decisions are frozen
@@ -1676,7 +1679,8 @@ on the per-day report in `queries/`. Found in the design review
   [analysis](nw6-page-name-resolution-analysis.md) (its section 9): the wiki's four
   folder pages were renamed `queries/<slug>/<slug>.md` (pm-wiki `fbfb8d7`,
   `82c63d8`), and the fork's docs and `slug()` changed with them (`84aeeac`).
-  The text below describes the gap as found. Next steps 4 and 5 stay open.
+  The text below describes the gap as found. Next step 4 moved to NW7, and
+  next step 5 is done, so NW6 is closed.
 - **What happens:** a multi-file page is a folder whose main page is
   `README.md` (`queries/<slug>/README.md`, section 5.2). `slug()` names that file
   after its folder, so lint, `backlinks.py`, the post-write check, `sources:`
@@ -1780,12 +1784,14 @@ on the per-day report in `queries/`. Found in the design review
      - Upstream's docs prescribe `README.md`, but its lint already names a
        page by its file stem, so the convention breaks upstream's own links.
        No upstream issue is filed for now.
-  4. **Make archive, supersede and rename name their link search:**
+  4. **Moved to NW7, 2026-10-01.** **Make archive, supersede and rename name
+     their link search:**
      `backlinks.py`, not the MCP's lookup. Point the vault contract's
      "Incoming links" line at it too. First `backlinks.py` has to read
      `briefings/`, `index.md`, `overview.md` and the other root files. It skips
      them today, missing 747 links to live pages.
-  5. **Point Obsidian's attachments at a routed folder.** The wiki's
+  5. **Done 2026-10-01: the user set it to `raw/assets` in Obsidian.**
+     **Point Obsidian's attachments at a routed folder.** The wiki's
      `.obsidian/app.json` sets `attachmentFolderPath` to `raw/attachments`, so
      a file pasted or dropped into a note in Obsidian recreates the unrouted
      folder the migration emptied (review F15). Set it to `raw/assets` (Settings
@@ -1802,6 +1808,57 @@ on the per-day report in `queries/`. Found in the design review
     `[[name]]` link.
 - **Found in:** the user, viewing a research sprint page in Obsidian after step
   10b, 2026-09-30.
+
+**NW7. No link search finds every incoming link.**
+- **What happens:** archiving, superseding or renaming a page means updating
+  every link to it, but none of the ways to find those links is complete:
+  - `backlinks.py` reads `entities/`, `concepts/`, `comparisons/`, `queries/`
+    and `_archive/`. It skips `briefings/`, `index.md`, `overview.md`, the
+    action-items file and the other root files, which held 747 links to live
+    pages on 2026-09-30 (analysis M4).
+  - The wiki-search MCP's `view(action=backlinks)` reads every file, but a
+    running server misses renamed and new pages until it's reindexed or its
+    session restarts. On 2026-10-01 the first reindex after a rename didn't
+    take, and a second one did.
+  - When two files share a page's file name, the MCP can credit the page's
+    links to the wrong one (M1, below).
+  - The docs don't say which to use. Update ① names `backlinks.py`. The core
+    skill's §6 Archive, `update-guide.md`'s Supersede steps and the SCHEMA
+    template's Archive line name none, and the vault contract says "Incoming
+    links to a note → `view.backlinks`".
+- **M1, the one doing harm today:** one `_archive/` file has the exact file
+  name of a live concept page. The page's slug ends in a date, so the name
+  looks like a snapshot's. It came from a move into `_archive/` by hand on
+  2026-08-11, not from `snapshot()`.
+  - The MCP resolves the page's links to the archive copy (shortest path wins,
+    and `_archive` sorts first), so it reports 0 backlinks for the live page.
+    Rechecked 2026-10-01.
+  - `backlinks.py` finds 8 links on 6 pages, but not the one in `index.md`.
+  - A lookup by file name finds two files, and Obsidian sends the links from
+    snapshots to the archive copy.
+  - Lint doesn't read `_archive/`, so nothing reports it.
+  - **Why it happened:** the core skill's §6 Archive says to move a page to
+    `_archive/` "preserving path", so a move by hand keeps the bare name.
+    `snapshot()` names its copies `<slug>-<date>`, but archiving doesn't use
+    it.
+- **Scope of the fix,** to be written up as a complete proposal before any
+  change:
+  1. `backlinks.py` also reads `briefings/` and the root files except
+     `log.md`, which is history. `raw/` stays out, since records are
+     immutable.
+  2. The archive, supersede and rename docs name `backlinks.py` as the link
+     search. The vault contract's "Incoming links" line points at it, or says
+     that the MCP lags.
+  3. Rename M1's archive copy to a dated name. `citation-spec.md` says
+     `_archive/` is immutable, so the proposal has to say whether a rename
+     counts as a change.
+  4. Decide how archived pages are named from now on, so a bare-name copy
+     can't come back: a doc rule (`_archive/<slug>-<date>.md`, as `snapshot()`
+     names them) or a script.
+- **Not included:** lint checking the links in `index.md` and `overview.md`
+  (analysis M2), and the analysis's other optional follow-ups (its section 9).
+- **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
+  2026-10-01.
 
 ## Provenance of this document
 

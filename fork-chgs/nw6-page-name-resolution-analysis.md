@@ -15,7 +15,8 @@ after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
 
 Status: done 2026-10-01. Option 4 is implemented (section 10 below). In the
-design doc, this closes NW6's next steps 1-3; its next steps 4 and 5 stay open.
+design doc, this closes NW6's next steps 1-3. Its next step 4 became NW7 and
+step 5 is done, so NW6 is closed.
 
 Companion to [Sources and References Design](sources-and-references-design.md)
 (NW6 in section 10) and
@@ -366,13 +367,13 @@ any fork wiki not yet renamed, doesn't arise with one wiki renamed in the same
 step. It also brings the fork's code back in line with upstream. No upstream
 issue is filed.
 
-**Left out, optional separate follow-ups:** M1, the archived copy that takes a
-live page's MCP backlinks (the only one doing damage today); dated archive
-names or an archive command; `backlinks.py` reading the root files (M4, NW6
-step 4); lint checking the links in `index.md` and `overview.md` (M2); the
-wrapped links (M6); the unused `post-write.sh`; and the MCP not seeing new
-pages until a reindex (NW5). NW6's next step 5 in the design doc, Obsidian's attachment folder, stays
-open too.
+**Left out, optional separate follow-ups:** lint checking the links in
+`index.md` and `overview.md` (M2); the wrapped links (M6); the unused
+`post-write.sh`; and the MCP not seeing new pages until a reindex (NW5). M1,
+the archived copy that takes a live page's MCP backlinks, and `backlinks.py`
+reading the root files (M4) became NW7 in the design doc on 2026-10-01, with
+how archived pages are named. NW6's next step 5 in the design doc, Obsidian's
+attachment folder, was done the same day.
 
 ## 10. Implementation
 
