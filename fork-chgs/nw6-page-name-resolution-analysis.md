@@ -8,6 +8,12 @@ page name, link or path into a file. Each was tested on the live wiki
 fix applied. It ends with a proposed design and implementation for NW6 and for
 the other mismatches the audit found.
 
+revised on: 2026-10-01
+Expanded D6 into three layers: an archive command beside `snapshot()` that
+always names the archived page `<slug>-<date>`, docs that run it instead of a
+hand move, and R15 as the safety net. Section 10 lists the code and doc
+changes this adds.
+
 Status: audit done, proposals awaiting decisions (section 11). Nothing in the
 fork's skills, scripts or hooks, or in the live wiki, was changed.
 
@@ -344,9 +350,45 @@ copy.
 4. Reindex every running wiki-search server, or restart those sessions.
 5. Log the rename.
 
-**D6. Archive moves use the snapshot name** `_archive/<slug>-<date>.md`, never
-the bare file name, so an archived page can't capture a live page's links. R15
-catches any that slip through.
+**D6. Archived pages always get a dated name,** `_archive/<slug>-<date>.md`,
+even when the slug already ends in a date. That way an archived page can't
+capture a live page's links (M1).
+- **Why it happened:**
+  - `snapshot()` already names backups this way, but archiving doesn't use it.
+  - The docs only say "move the page to `_archive/`". SKILL §6 even says
+    "preserving path".
+  - So an agent moves the file by hand, and it keeps its name. That is how M1
+    and the date-less archived person stub in M2 came about.
+- **Layer 1, a command that does the archiving:** `lint.py --archive <page>`,
+  beside `snapshot()` in `lint.py`. The archive name is built in one place, a
+  small `archive_path(page)` function: the page's `slug()` plus today's date
+  under `_archive/`. Both `snapshot()` (copy) and the archive command (move)
+  call it, so backups and archived pages are always named the same way. The
+  command:
+  - refuses if that name is already taken;
+  - moves the page;
+  - lists the pages that still link to it, from `backlinks.py`, for the
+    caller to update (D4).
+
+  It stays in `lint.py` because the callers (the pre-write hook, lint's
+  auto-fix, the migration) already import it. Moving all of it into
+  `wikifm.py` beside `slug()` would be slightly tidier, but it's more code
+  and tests to move.
+- **Layer 2, docs that run the command instead of describing a move:**
+  - core SKILL §6 Archive;
+  - `update-guide.md`'s Supersede steps;
+  - the SCHEMA template's Archive line and Supersession Policy step 4;
+  - `citation-spec.md`'s Page lifecycle;
+  - the D5 rename procedure, when a rename retires a page.
+- **Layer 3, R15 as the safety net** for anything still moved by hand: in
+  Obsidian, with `mv`, or by an older agent.
+  - It reports any file sharing a live page's name, which is the case that
+    breaks links.
+  - Lint can't tell from a name alone whether the date was added:
+    `foo-2026-08-10.md` could be a correct archive of `foo`, or a bare copy of
+    `foo-2026-08-10`. So the command is the real fix and R15 the backstop.
+  - A bare copy only does harm while its live namesake exists, and R15
+    catches exactly that.
 
 **D7. Lint checks the links in `index.md` and `overview.md`.**
 - **Why:** Orient reads both files every session, yet nothing checks their
@@ -377,17 +419,28 @@ Fork, in one step:
   - `prd-templates.md`:13;
   - `.claude/roles/researcher.md`:27;
   - `hooks/README.md`:28.
-- **Docs, other:** the D5 procedure, `update-guide.md`'s Supersede steps, and
-  the core skill's tool list (D4).
+- **Docs, other:**
+  - the D5 procedure;
+  - `update-guide.md`'s Supersede steps, which run the archive command (D6)
+    and name `backlinks.py` (D4);
+  - the core skill's tool list (D4);
+  - the archive command in place of a hand move (D6): core `SKILL.md`:299
+    (§6 Archive), `update-guide.md`:123, `templates/SCHEMA.md`:129 and 213,
+    and `citation-spec.md`:186;
+  - the core skill's Scripts list gains `--archive`.
 - **Code:**
   - `backlinks.py` (D3, D4);
   - `lint.py`: R14, R15, the supersede rewrite's scope (D4), and D7's Orient
     files' links, code spans and wrapped links;
+  - `lint.py`: `archive_path()`, used by `snapshot()`, and the `--archive`
+    command (D6);
   - `wikifm.py`: the `slug()` docstring only.
 - **Tests:**
   - new fixtures use `<slug>/<slug>.md`;
   - one `README.md` fixture stays for the legacy rule and R14;
   - add R15 cases, `backlinks.py` root-file cases, and D7's cases;
+  - add `--archive` cases: a slug that already ends in a date, a name that's
+    taken, and a folder page;
   - 21 `README` uses in 5 test files are affected.
 - **Design doc:** section 5.2 and the rule catalog.
 
@@ -398,6 +451,8 @@ Wiki, after the fork step:
 - join the two wrapped links on pages (D7);
 - rename M1's archived file and the archived person stub to dated snapshot
   names (D6);
+- the same two SCHEMA lines in the wiki's own `SCHEMA.md` (its Archive line
+  and Supersession Policy step 4), which mirror the template (D6);
 - decide M2's two `overview.md` links (decision 5);
 - reindex the running wiki-search servers.
 
