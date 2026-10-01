@@ -14,7 +14,8 @@ Replaced the proposed design, implementation and open decisions (sections
 after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
 
-Status: done. Option 4 is implemented, and NW6 steps 1-3 are closed (section 10).
+Status: done 2026-10-01. Option 4 is implemented (section 10 below). In the
+design doc, this closes NW6's next steps 1-3; its next steps 4 and 5 stay open.
 
 Companion to [Sources and References Design](sources-and-references-design.md)
 (NW6 in section 10) and
@@ -49,7 +50,7 @@ never by name.
   the fixed copy, lint without the rule gives identical output. On today's
   copy, it reports 23 broken links, 4 orphans and 4 index gaps.
 - **`backlinks.py` can't serve as the link search for archive, supersede and
-  rename as it is (NW6 step 4).** It doesn't read `briefings/`, `index.md`,
+  rename as it is (NW6's next step 4 in the design doc).** It doesn't read `briefings/`, `index.md`,
   `overview.md` or the other root files, where 747 links to live pages sit
   today.
 - **Five other mismatches, and three minor ones,** turned up (section 7). The biggest: an archived
@@ -370,7 +371,7 @@ live page's MCP backlinks (the only one doing damage today); dated archive
 names or an archive command; `backlinks.py` reading the root files (M4, NW6
 step 4); lint checking the links in `index.md` and `overview.md` (M2); the
 wrapped links (M6); the unused `post-write.sh`; and the MCP not seeing new
-pages until a reindex (NW5). NW6 step 5, Obsidian's attachment folder, stays
+pages until a reindex (NW5). NW6's next step 5 in the design doc, Obsidian's attachment folder, stays
 open too.
 
 ## 10. Implementation
@@ -430,7 +431,7 @@ after. Lint never sees broken links in between.
      code matches step 3's output.
 6. **Commit C (fork), the record:** the design doc (section 5.2 becomes "slug =
    file stem", the matching Bottom line text, PATCH-2 and PATCH-3b's
-   dispositions, NW6 steps 1–3 done, a revision note), the fork changelog
+   dispositions, NW6's next steps 1–3 marked done, a revision note), the fork changelog
    (PATCH-2 and PATCH-3b retired), and this section's results.
 
 **Decided along with the plan:**

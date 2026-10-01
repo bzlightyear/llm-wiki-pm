@@ -10,7 +10,7 @@ revised on: 2026-10-01
 Fixed NW6 with option 4 of its analysis: a folder page is named after its
 folder, `queries/<slug>/<slug>.md`, and `slug()` is the file stem, with no
 `README.md` rule. Section 5.2, the Bottom line and PATCH-2 and PATCH-3b's
-dispositions are updated, and NW6 steps 1-3 are done.
+dispositions are updated, and NW6's next steps 1-3 are done.
 
 revised on: 2026-09-30
 Completed step 5. The one-pager joins the Marp deck in a directory page's
@@ -1672,11 +1672,11 @@ on the per-day report in `queries/`. Found in the design review
 - **Found in:** a check of running servers after step 8, 2026-09-30.
 
 **NW6. Folder pages don't resolve outside the fork's own tools.**
-- **Status: fixed 2026-10-01** (steps 1-3), with option 4 of the
-  [analysis](nw6-page-name-resolution-analysis.md) (section 9): the wiki's four
+- **Status: fixed 2026-10-01** (next steps 1-3 below), with option 4 of the
+  [analysis](nw6-page-name-resolution-analysis.md) (its section 9): the wiki's four
   folder pages were renamed `queries/<slug>/<slug>.md` (pm-wiki `fbfb8d7`,
   `82c63d8`), and the fork's docs and `slug()` changed with them (`84aeeac`).
-  The text below describes the gap as found. Steps 4 and 5 stay open.
+  The text below describes the gap as found. Next steps 4 and 5 stay open.
 - **What happens:** a multi-file page is a folder whose main page is
   `README.md` (`queries/<slug>/README.md`, section 5.2). `slug()` names that file
   after its folder, so lint, `backlinks.py`, the post-write check, `sources:`
