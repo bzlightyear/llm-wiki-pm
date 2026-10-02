@@ -14,6 +14,8 @@ sources and references work and NW6 are now entries. The removed patches are
 reduced to background lines. The open issues moved to the
 [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), and the plugin-cache
 re-application steps gave way to a section on merging an upstream release.
+Verified PATCH-14 against pm-wiki's September promotions and limited it to
+internal people, closing its open question.
 
 revised on: 2026-10-01
 Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
@@ -314,15 +316,26 @@ the set would go upstream with the migration script, isn't done.
 #### PATCH-14 — Entity promotion updates the relationship map
 
 - **What:** the core skill's entity-promotion scan (§2 ⑫) updates
-  `concepts/relationship-map.md` when it promotes a person: it creates the map
-  if needed, or adds the person's row and their manager's `direct_reports`
-  entry. `llm-wiki-persona` says the scan triggers it.
+  `concepts/relationship-map.md` when it promotes an internal person (a
+  colleague, not a customer or partner contact): it creates the map if needed,
+  or adds the person's row and their manager's `direct_reports` entry.
+  `llm-wiki-persona` says the scan triggers it, that the map covers people in
+  your own organization, and that only people on the map link back to it.
 - **Why:** in the source wiki, two people promoted on 2026-08-28 were missing
-  from the map until it was fixed by hand the next day.
+  from the map until it was fixed by hand the next day. The internal-only
+  scope came from the check below: no doc stated it, so an agent had to decide
+  it for itself.
 - **Where:** `skills/llm-wiki-pm/SKILL.md`, `skills/llm-wiki-persona/SKILL.md`.
-  Commit `8680b22` (first made in the plugin cache as `f7faab5`).
-- **Status:** active, not verified end to end (see Open Questions). Upstream
-  candidate, not filed.
+  Commits `8680b22` (first made in the plugin cache as `f7faab5`) and
+  `f5bd6b0` (internal people only).
+- **Verified 2026-10-02** against the three people promoted in pm-wiki since
+  the patch. A colleague promoted on 2026-09-03, in a weekly maintenance sweep,
+  got a map row, their manager and a new org branch in the same pass, and their
+  page links to the map. Two customer contacts promoted on 2026-09-14 were left
+  off on purpose, the log citing a scope no doc stated, which `f5bd6b0` now
+  writes down.
+- **Status:** active. Upstream candidate, not filed; upstream's docs don't
+  limit the map to internal people either.
 
 #### PATCH-15 — Template paths resolve outside the plugin
 
@@ -436,10 +449,6 @@ Not patches to upstream's code, and not offered upstream:
   way, and `anh-chu#11`. On 2026-10-02 a comment on `#11` withdrew its
   suggested `README.md` slug rule in favor of PATCH-13 and offered a docs-only
   pull request. It's waiting on a reply.
-- **PATCH-14 is unverified end to end.** It was written after the gap it fixes
-  was corrected by hand. pm-wiki's log shows person promotions on 2026-09-14 and
-  2026-09-22 whose entries don't mention the relationship map. Check whether
-  those were people the map should hold, and whether the scan updated it.
 
 ## Corrections to Commit Messages
 
