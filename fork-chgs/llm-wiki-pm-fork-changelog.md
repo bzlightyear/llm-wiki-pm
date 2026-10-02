@@ -2,8 +2,13 @@
 
 created: 2026-08-11
 
-The fork's local changes to the upstream plugin (PATCH-1 to PATCH-4), how to
+The fork's local changes to the upstream plugin (PATCH-1 to PATCH-5), how to
 re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
+
+revised on: 2026-10-02
+Added PATCH-5: session start no longer warns when `WIKI_PATH` supplies the
+wiki, now that it is the default wiki and `.wiki-path` only marks a project
+using another one (NW5 in the llm-wiki-pm fork backlog).
 
 revised on: 2026-10-01
 Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
@@ -474,6 +479,33 @@ manually caught and fixed 2026-08-29.
 fix landed after the earlier gap was manually corrected, not before it
 recurred) — flagged as an open question below.
 
+### PATCH-5 — `hooks/session-start.sh`: no warning when `WIKI_PATH` supplies the wiki
+
+**Problem:** in this install, `WIKI_PATH` is the default wiki for every
+project, and a project's `.wiki-path` only marks one that uses another wiki
+(NW5, [NW5 Shared Wiki-Search Analysis](nw5-shared-wiki-search-analysis.md)).
+Upstream treats `.wiki-path` as the main setting, so every session without one
+got "using global wiki path … Run /llm-wiki-pm:set-wiki-path …".
+
+**Fix:** remove that branch, committed as `2e7247c`. The warning for no wiki
+path configured at all stays. `tests/test_session_start_wiki_path.py` covers
+the default case and a `.wiki-path` overriding `WIKI_PATH`. It isn't offered
+upstream, because it reverses upstream's intent.
+
+```diff
+--- a/hooks/session-start.sh
++++ b/hooks/session-start.sh
+@@ -30,9 +30,9 @@ GLOBAL_WARNING=""
+ if [[ -z "$WIKI" ]]; then
+   WIKI="$(pwd)"
+   GLOBAL_WARNING="llm-wiki-pm: no wiki path configured. Falling back to current directory ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path to set a permanent path."
+-elif [[ -z "$FILE_WIKI" ]]; then
+-  GLOBAL_WARNING="llm-wiki-pm: using global wiki path ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path from your project directory to set a project-specific path."
+ fi
++# A wiki from WIKI_PATH (or the plugin option) is the default, not a fallback:
++# .wiki-path is only for a project that uses another wiki, so no warning.
+```
+
 ### Re-application checklist against a newer plugin version
 
 1. Diff the new version's `lint.py`/`backlinks.py`/`session-stop.sh` against
@@ -497,6 +529,8 @@ recurred) — flagged as an open question below.
    `llm-wiki-persona`) — no script logic, so `git apply` context is unlikely
    to shift much; reapply by hand if the surrounding §2 numbering changed
    upstream.
+6. PATCH-5 is a two-line removal in `session-start.sh`. If upstream changed
+   its wiki-path warnings, reapply by hand, and keep its test file.
 
 ### Open questions
 
