@@ -14,7 +14,9 @@ effect to NW2 and NW7.
 Merged the fork changelog's last open issues, ISSUE-1 (action items have no
 update mechanism) and ISSUE-2 (the indexer's overview regeneration), into NW1,
 and pointed NW4 at NW1. Added NW8, the maintain skill filing a weekly brief as
-a daily one (upstream `anh-chu#12`).
+a daily one (upstream `anh-chu#12`). Split NW1's org-chart part into NW9, org
+structure kept in three places, with measurements and the relationship map's
+creation rule.
 
 The first seven items, NW1–NW7, were recorded during the sources and references
 work and moved here word for word from section 10 of the
@@ -24,7 +26,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW9 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW10 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -38,11 +40,8 @@ Closed.
 `overview.md` only ever grows (70 KB), its action items and decisions are frozen
 copies from meeting digests, and later updates never flow back into it, so Orient
 loads stale and sometimes wrong information every session. The same design
-covers what else Orient should load. The org chart kept in SCHEMA's Domain
-section is weeks older than `concepts/relationship-map.md`, which Orient never
-reads. The proposal is a pointer from SCHEMA to the map, plus Orient reading only
-a compact org-chart section of it. Starting points: the two findings below,
-and I8's revisit mechanism.
+covers what else Orient should load, including the org chart (NW9). Starting
+points: the two findings below, and I8's revisit mechanism.
 - **Action items have no update mechanism** (the fork changelog's ISSUE-1,
   found 2026-08-30).
   - **Symptoms in `overview.md`:** bullets under Active Bets, Action Items and
@@ -215,6 +214,42 @@ on the per-day report in `queries/`. Found in the design review
 - **Upstream:** filed from this fork as `anh-chu#12` (2026-08-29), open on
   2026-10-02. Its rotation part is already fixed here.
 - **Found in:** pm-wiki, 2026-08-29.
+
+**NW9. Org structure is kept in three places.**
+- **What happens:** three copies of who reports to whom, and nothing keeps them
+  in step:
+  - **SCHEMA.md's Domain section,** an org chart written by hand when the wiki
+    was set up. Orient reads SCHEMA.md every session.
+  - **`concepts/relationship-map.md`,** kept by the persona skill and, since
+    fork changelog PATCH-14, by the entity-promotion scan. Orient never reads
+    it; only pre-meeting briefing (core skill §9) does.
+  - **Person pages' `reports_to` and `direct_reports` fields,** defined in
+    SCHEMA's person-page frontmatter.
+- **Measured in pm-wiki, 2026-10-02:** the Domain section's org chart was last
+  edited 2026-08-06, and the map's content 2026-09-04. 16 of the map's 33
+  people don't appear in the Domain section. How far the person-page fields
+  disagree with the map wasn't measured.
+- **Why it matters:** every session's Orient starts from the oldest and least
+  complete copy, and a question like "who does X report to" can get different
+  answers depending on which copy an agent reads.
+- **Proposal** (agreed 2026-09-26 as part of NW1): replace SCHEMA's org chart
+  with a pointer to the map, keeping the rest of the Domain section (role,
+  products, tools, competitors). Give the map a compact "Org chart" section at
+  the top, and have Orient read only that section, and only if the map exists.
+  Changing Orient's reading list is a CONTRIBUTING "discuss first" item, so it
+  starts fork-only or as an upstream issue.
+- **To decide:**
+  - Which copy is the source of truth: the map, or the person-page fields with
+    the map's org chart built from them.
+  - Whether lint checks that the map and the person-page fields agree.
+- **Includes the map's creation rule.** The SCHEMA template's person-page
+  section, the persona skill and the core skill's §2 ⑫ create the map once
+  "3+ person entities" exist. Since `f5bd6b0` the map covers internal people
+  only, so the rule should count internal people, or a wiki holding only
+  customer contacts would get an empty map.
+- **Related:** NW1 (what Orient loads).
+- **Found in:** a session on 2026-09-26, recorded inside NW1. Split out
+  2026-10-02.
 
 ## Closed
 
