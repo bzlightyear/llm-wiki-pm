@@ -380,8 +380,6 @@ Not patches to upstream's code, and not offered upstream:
 - `.claude/commands/implement-step.md`, the `/implement-step` command for the
   sources and references plan.
 - `.gitignore`: `.wiki-path`, `.obsidian/` and `.DS_Store`.
-- `hooks/session-stop.sh` carries a commented-out auto-commit block and no other
-  change (see Background).
 
 ## Merging an Upstream Release
 
@@ -465,8 +463,9 @@ of every later commit.
 - **Auto-commit.** `dc6bc6c` added an auto-commit at session end from the
   README's optional snippet, `eb154e1` made it run every session, and
   `dfdd98c` commented it out (old PATCH-1): SessionEnd fired per short-lived
-  backend session, producing dozens of near-duplicate wiki commits. Only the
-  commented-out block remains.
+  backend session, producing dozens of near-duplicate wiki commits.
+  `38c3757` removed the commented-out block on 2026-10-02, so
+  `session-stop.sh` matches 2.21.0 again.
 - **This document** started as a page in pm-wiki and moved here on 2026-08-30.
 - **The install** moved from the plugin to symlinks and `settings.json` hooks
   in September 2026, so the fork's code runs directly (see How the Fork Runs).
@@ -481,7 +480,7 @@ these numbers.
 
 | Old | New | Note |
 |---|---|---|
-| PATCH-1 | none | Auto-commit disabled. No behavior change remains (Background). |
+| PATCH-1 | none | Auto-commit disabled. `session-stop.sh` matches 2.21.0 since `38c3757` (Background). |
 | PATCH-2 | none | `backlinks.py` README self-slug. Removed 2026-10-01 (PATCH-13). |
 | PATCH-3a | none | Block-style list parsing. Replaced by `wikifm.py` (PATCH-6). |
 | PATCH-3b | none | `slug()` README rule. Removed 2026-10-01 (PATCH-13). |
