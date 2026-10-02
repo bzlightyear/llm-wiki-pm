@@ -15,11 +15,11 @@ after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
 
 Status: done 2026-10-01. Option 4 is implemented (section 10 below). In the
-design doc, this closes NW6's next steps 1-3. Its next step 4 became NW7 and
-step 5 is done, so NW6 is closed.
+[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), this closes NW6's next
+steps 1-3. Its next step 4 became NW7 and step 5 is done, so NW6 is closed.
 
-Companion to [Sources and References Design](sources-and-references-design.md)
-(NW6 in section 10) and
+Companion to [Sources and References Design](sources-and-references-design.md),
+the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md) (NW6) and
 [Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md).
 
 The four folder pages are named by topic: three research sprints (Kiro, IBM Bob,
@@ -51,9 +51,9 @@ never by name.
   the fixed copy, lint without the rule gives identical output. On today's
   copy, it reports 23 broken links, 4 orphans and 4 index gaps.
 - **`backlinks.py` can't serve as the link search for archive, supersede and
-  rename as it is (NW6's next step 4 in the design doc).** It doesn't read `briefings/`, `index.md`,
-  `overview.md` or the other root files, where 747 links to live pages sit
-  today.
+  rename as it is (NW6's next step 4 in the llm-wiki-pm Fork Backlog).** It
+  doesn't read `briefings/`, `index.md`, `overview.md` or the other root files,
+  where 747 links to live pages sit today.
 - **Five other mismatches, and three minor ones,** turned up (section 7). The biggest: an archived
   copy of a live page kept the page's exact file name, so the MCP credits that
   page's 10 inbound links to the archive file and reports 0 for the live page.
@@ -369,10 +369,10 @@ issue is filed.
 
 **Left out, optional separate follow-ups:** lint checking the links in
 `index.md` and `overview.md` (M2); the wrapped links (M6); the unused
-`post-write.sh`; and the MCP not seeing new pages until a reindex (NW5). M1,
-the archived copy that takes a live page's MCP backlinks, and `backlinks.py`
-reading the root files (M4) became NW7 in the design doc on 2026-10-01, with
-how archived pages are named. NW6's next step 5 in the design doc, Obsidian's
+`post-write.sh`; and the MCP not seeing new pages until a reindex (NW5). M1, the
+archived copy that takes a live page's MCP backlinks, and `backlinks.py` reading
+the root files (M4) became NW7 in the llm-wiki-pm Fork Backlog on 2026-10-01,
+with how archived pages are named. NW6's next step 5 there, Obsidian's
 attachment folder, was done the same day.
 
 ## 10. Implementation

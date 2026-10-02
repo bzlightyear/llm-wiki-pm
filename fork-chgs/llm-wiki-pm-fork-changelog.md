@@ -8,7 +8,7 @@ re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
 revised on: 2026-10-01
 Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
 folder, so neither `backlinks.py` nor `slug()` needs a `README.md` rule (NW6 in
-the sources and references design).
+the llm-wiki-pm fork backlog).
 
 revised on: 2026-09-30
 Marked ISSUE-3 closed. After the PM wiki's migration (step 10b of the sources
@@ -114,7 +114,7 @@ directory name for `README.md`, filename stem otherwise.
 **Status:** removed (2026-10-01). `backlinks.py` compares `p.stem` again, as
 upstream does. A folder page is now `queries/<slug>/<slug>.md`, so its stem is
 its slug. See NW6 in the
-[Sources and References Design](sources-and-references-design.md).
+[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 
 ```diff
 --- a/skills/llm-wiki-pm/scripts/backlinks.py
@@ -195,7 +195,7 @@ it into a `[a, b]` string. Step 4 of the
 file stem for every page. Obsidian, the wiki-search MCP and lookups by file
 name never knew the `README.md` rule, so links to a `README.md` page resolved
 for lint alone. A folder page is now named after its folder. See NW6 in the
-[Sources and References Design](sources-and-references-design.md).
+[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 
 **3c. `overview.md`/`index.md` as valid wikilink targets.** These two
 root-level singletons live outside `WIKI_DIRS` (`entities`, `concepts`,
