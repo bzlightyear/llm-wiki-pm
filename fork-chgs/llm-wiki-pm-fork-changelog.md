@@ -390,8 +390,7 @@ the set would go upstream with the migration script, isn't done.
 Not patches to upstream's code, and not offered upstream:
 
 - `fork-chgs/`: this changelog, the backlog, and the fork's designs, analyses,
-  reviews, guides and prompts.
-- `wiki-search-architecture.md`, relocated from pm-wiki on 2026-08-30.
+  reviews, guides, briefs and prompts.
 - `.claude/commands/implement-step.md`, the `/implement-step` command for the
   sources and references plan.
 - `.gitignore`: `.wiki-path`, `.obsidian/` and `.DS_Store`.

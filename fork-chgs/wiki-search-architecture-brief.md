@@ -1,9 +1,24 @@
-# Wiki Search & Retrieval Architecture
+# Wiki-Search Architecture Brief
 
-_Relocated 2026-08-30 from `pm-wiki/concepts/wiki-search-architecture.md` (a PM
+created: 2026-08-08
+
+How the wiki-search MCP (`@wirux/mcp-markdown-vault`) handles search and
+retrieval for a wiki running this plugin, and how it compares to `qmd`, the
+search tool Karpathy's LLM Wiki gist recommends for larger wikis. Written from
+an inspection of the installed package.
+
+revised on: 2026-08-30
+Moved into the fork from the PM wiki, where it had been a concept page, without
+its links to other wiki pages.
+
+Status: describes the setup on 2026-08-08, when the plugin started one MCP
+server per Claude Code session. The package is still v2.3.0 (checked
+2026-10-02), but since NW5 this install runs one shared server under launchd;
+see the [Wiki-Search Launchd Guide](wiki-search-launchd-guide.md).
+
+_Relocated from `pm-wiki/concepts/wiki-search-architecture.md` (a PM
 knowledge wiki that runs on this plugin) — tooling/meta content, not PM domain
-knowledge, so it belongs here instead. Originally created 2026-08-08, last
-updated 2026-08-11._
+knowledge, so it belongs here instead._
 
 ## Definition / framing
 
