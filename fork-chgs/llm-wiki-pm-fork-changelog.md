@@ -2,13 +2,18 @@
 
 created: 2026-08-11
 
-The fork's local changes to the upstream plugin (PATCH-1 to PATCH-5), how to
-re-apply them after an upstream update, and open issues (ISSUE-1 to ISSUE-3).
+How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
+change (PATCH-1 to PATCH-18) with its reason, files, commits and status, how
+the fork is installed, and what to check when merging an upstream release.
 
 revised on: 2026-10-02
-Added PATCH-5: session start no longer warns when `WIKI_PATH` supplies the
-wiki, now that it is the default wiki and `.wiki-path` only marks a project
-using another one (NW5 in the llm-wiki-pm fork backlog).
+Rewrote the changelog from git against the 2.21.0 baseline, for a fork that
+runs from this clone rather than as an installed plugin. Patches are renumbered
+PATCH-1 to PATCH-18 and grouped by area, with an old-to-new mapping. The
+sources and references work and NW6 are now entries. The removed patches are
+reduced to background lines. The open issues moved to the
+[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), and the plugin-cache
+re-application steps gave way to a section on merging an upstream release.
 
 revised on: 2026-10-01
 Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
@@ -36,739 +41,454 @@ revised on: 2026-08-29
 Added PATCH-4 (relationship-map wiring), captured from the diff before it was
 committed.
 
-_Relocated 2026-08-30 from `pm-wiki/concepts/llm-wiki-pm-plugin-patches.md` (a PM
-knowledge wiki that runs on this plugin): tooling/meta content, not PM domain
-knowledge, so it belongs here instead._
-
 ## About this document
 
-This file has two jobs: a durable record of locally applied patches to the
-installed `llm-wiki-pm` plugin, and a tracker for open design/workflow gaps
-that don't have a concrete fix proposed yet.
-
-**Applied patches** (below): four local, uncommitted-turned-committed patches
-to the installed `llm-wiki-pm` plugin (version 2.21.0, upstream
-`github.com/anh-chu/llm-wiki-pm`), applied directly to the cached install at
-`~/.claude/plugins/cache/anh-chu-plugins/llm-wiki-pm/2.21.0` and committed
-locally as commits `4b74c51`, `79c9f3b`, and `f7faab5` on top of the plugin's
-own `main` (`0667f75 chore(release): 2.21.0`). PATCH-3 bundles five related
-sub-fixes to the same file (3a-3e) under one patch. These commits do **not**
-survive a plugin update — see "Why this doesn't survive an update" below —
-so the diffs are captured here in full for manual re-application.
-
-**Open issues** (further below): design/workflow gaps surfaced while
-auditing the plugin's guidance and this wiki's usage of it — real problems,
-not yet fixed, each with its own status line.
-
-## Applied Patches
-
-### Why this doesn't survive an update
-
-`installed_plugins.json` pins the install to a version-specific path
-(`.../llm-wiki-pm/2.21.0`) tied to an exact `gitCommitSha`, and the plugin's
-own directory is a git repo with no local commits ahead of `origin/main`
-before this patch. All observed evidence (version number baked into the
-install path, `installedAt`/`lastUpdated` frozen since first install, the
-marketplace catalog's own `lastUpdated` moving independently) points to
-updates being fetched into a **new** version directory (e.g. `2.22.0`) rather
-than a `git pull` inside the existing one. Nothing merges the two — a commit
-made inside `2.21.0` stays inert there once Claude Code repoints at a newer
-directory. This is inference from directory/version structure, not from
-documented plugin-installer internals.
-
-### PATCH-1 — `hooks/session-stop.sh`: disable auto-commit block
-
-**Problem:** the hook's auto-commit fired once per short-lived backend
-session in this hosting environment, not once per real user conversation,
-producing dozens of near-duplicate git commits in the wiki repo.
-
-**Fix:** comment out the auto-commit block; user commits manually now.
-
-```diff
---- a/hooks/session-stop.sh
-+++ b/hooks/session-stop.sh
-@@ -18,6 +18,16 @@ LOCKFILE="$WIKI/.wiki-lock"
- # Release lock on any exit path (early returns, errors, normal completion)
- trap 'rm -f "$LOCKFILE" 2>/dev/null || true' EXIT
- 
-+# ── Auto-commit wiki changes (runs every session end, not just on rotation) ──
-+# Disabled 2026-08-07: firing far more often than intended (SessionEnd fires
-+# per short-lived backend session in this hosting environment, not once per
-+# user conversation), producing dozens of near-duplicate commits. User commits
-+# manually now.
-+# if [[ -d "$WIKI/.git" ]]; then
-+#   git -C "$WIKI" add -A >/dev/null 2>&1 || true
-+#   git -C "$WIKI" commit -m "wiki update $(date +%Y-%m-%d_%H:%M)" >/dev/null 2>&1 || true
-+# fi
-+
- LOG_FILE="$WIKI/log.md"
- 
- # ② Exit silently if log.md does not exist
-```
-
-### PATCH-2 — `skills/llm-wiki-pm/scripts/backlinks.py`: README self-link fix
-
-**Problem:** `scan()` compared a page's own slug via `p.stem`, which is
-always `"README"` for a directory-as-page (`slug()` in `lint.py` already
-special-cased this — `backlinks.py` hadn't caught up). A directory-page's own
-outbound links to itself were never excluded from its own backlink scan.
-
-**Fix:** compute `self_slug` the same way `lint.py`'s `slug()` does — parent
-directory name for `README.md`, filename stem otherwise.
-
-**Status:** removed (2026-10-01). `backlinks.py` compares `p.stem` again, as
-upstream does. A folder page is now `queries/<slug>/<slug>.md`, so its stem is
-its slug. See NW6 in the
-[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
-
-```diff
---- a/skills/llm-wiki-pm/scripts/backlinks.py
-+++ b/skills/llm-wiki-pm/scripts/backlinks.py
-@@ -22,7 +22,8 @@ def scan(wiki: Path, target: str, include_context: bool = False):
-         for p in (wiki / d).rglob("*.md"):
-             if p.name.startswith("lint-"):
-                 continue
--            if p.stem == target:
-+            self_slug = p.parent.name if p.name == "README.md" else p.stem
-+            if self_slug == target:
-                 continue  # self
-             text = p.read_text()
-             line_hits = []
-```
-
-### PATCH-3 — `skills/llm-wiki-pm/scripts/lint.py`: four bundled fixes
-
-All four landed in one commit since they touch the same file; each is
-independent and can be re-applied separately.
-
-**3a. Block-style YAML frontmatter parsing.** `parse_frontmatter()` only
-handled inline `key: [a, b]` lists. A `sources:` (or any) field written in
-block style (`key:\n  - item\n  - item`) parsed as an empty string, silently
-losing the list. Logged 2026-08-06 as "lint.py block-style YAML tag parsing
-bug."
-
-**Status:** replaced (2026-09-29). `parse_frontmatter()` is gone: lint, the
-pre-write hook and session-start's stale scan read frontmatter through
-`scripts/wikifm.py`, which returns a block list as a list instead of joining
-it into a `[a, b]` string. Step 4 of the
-[Sources and References Design](sources-and-references-design.md).
-
-```diff
---- a/skills/llm-wiki-pm/scripts/lint.py
-+++ b/skills/llm-wiki-pm/scripts/lint.py
-@@ -38,10 +62,25 @@ def parse_frontmatter(text):
-     if not m:
-         return None
-     fm = {}
--    for line in m.group(1).splitlines():
-+    lines = m.group(1).splitlines()
-+    i = 0
-+    while i < len(lines):
-+        line = lines[i]
-         if ":" in line:
-             k, _, v = line.partition(":")
--            fm[k.strip()] = v.strip()
-+            key, val = k.strip(), v.strip()
-+            if not val:
-+                # possible block-style YAML list: key: \n  - item \n  - item
-+                items = []
-+                j = i + 1
-+                while j < len(lines) and re.match(r"^[ \t]+-\s*(.*)$", lines[j]):
-+                    items.append(re.match(r"^[ \t]+-\s*(.*)$", lines[j]).group(1).strip())
-+                    j += 1
-+                if items:
-+                    val = "[" + ", ".join(items) + "]"
-+                    i = j - 1
-+            fm[key] = val
-+        i += 1
-     return fm
-```
-
-**3b. `slug()` README fix** — same fix as PATCH-2, on the `lint.py` side:
-
-```diff
-@@ -61,6 +100,8 @@ def load_taxonomy(schema_path):
- 
- 
- def slug(path):
-+    if path.name == "README.md":
-+        return path.parent.name
-     return path.stem
-```
-
-**Status:** removed (2026-10-01). `slug()`, now in `wikifm.py`, returns the
-file stem for every page. Obsidian, the wiki-search MCP and lookups by file
-name never knew the `README.md` rule, so links to a `README.md` page resolved
-for lint alone. A folder page is now named after its folder. See NW6 in the
-[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
-
-**3c. `overview.md`/`index.md` as valid wikilink targets.** These two
-root-level singletons live outside `WIKI_DIRS` (`entities`, `concepts`,
-`comparisons`, `queries`), so `[[overview]]`/`[[index]]` links to them
-false-flagged as broken. Registered them in the `slugs` map without routing
-them through the full per-page pipeline (frontmatter/tag/orphan/index
-checks — they're structural, not content pages).
-
-```diff
---- a/skills/llm-wiki-pm/scripts/lint.py
-+++ b/skills/llm-wiki-pm/scripts/lint.py
-@@ -170,6 +211,14 @@ def main():
-             pages.append(p)
- 
-     slugs = {slug(p): p for p in pages}
-+    # root-level architecture singletons (overview.md, index.md) are valid
-+    # [[wikilink]] targets but live outside WIKI_DIRS — don't run them through
-+    # the full page pipeline (frontmatter/tag/orphan/index checks), just make
-+    # links to them resolve.
-+    for root_name in ("overview.md", "index.md"):
-+        root_p = wiki / root_name
-+        if root_p.exists():
-+            slugs.setdefault(slug(root_p), root_p)
-     taxonomy = load_taxonomy(wiki / "SCHEMA.md")
-```
-
-**3d. Escaped-bracket detection + `--auto-fix`.** New check for the
-recurring `wiki-search` MCP bug (`@wirux/mcp-markdown-vault`, filed upstream
-at `wirux/mcp-markdown-vault#47`) whose `string_replace`/`frontmatter_set`
-AST round-trip re-escapes `[` → `\[` across a whole file on write — corrupting
-double-square-bracket wikilinks and `## [date]` log headers, breaking link resolution and
-backlink detection until caught by false-orphan lint warnings. This recurred
-three times in the source wiki's history (2026-08-05, then twice more on
-2026-08-11) before the check existed.
-
-Detects a stray backslash before any open-bracket in every page under
-`entities/`, `concepts/`, `comparisons/`, `queries/`, plus the root
-singletons `log.md`, `overview.md`, `index.md`, `MY-INTEGRATIONS.md`
-(these sit outside `WIKI_DIRS` so need a separate pass). Flagged 🔴 (same
-tier as broken links, since the effect is the same); `--auto-fix` repairs by
-stripping the backslash.
-
-**Known limitation (resolved by PATCH-3e):** the original fix was a global
-`\[` → `[` substitution with no way to distinguish corruption from a
-deliberate literal `\[` in prose (e.g. quoting a shell/regex command). That
-gap stopped being theoretical the moment this page existed — its own diff
-hunks quote 11 literal `\[` characters as real source being documented, and
-`--auto-fix` would have silently corrupted every one of them. See PATCH-3e,
-directly below, for the fenced-code-block and inline-code-span guard that
-fixes this properly.
-
-```diff
---- a/skills/llm-wiki-pm/scripts/lint.py
-+++ b/skills/llm-wiki-pm/scripts/lint.py
-@@ -20,6 +20,30 @@ TAG_LINE_RE = re.compile(r"tags:\s*\[(.*?)\]")
- TAXONOMY_TAG_RE = re.compile(r"^- `([a-z0-9\-]+)`", re.MULTILINE)
- INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
- 
-+# Interim workaround for the recurring wiki-search MCP bug that re-escapes
-+# `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
-+# upstream fix lands (wirux/mcp-markdown-vault#47). Global `\[` -> `[` is
-+# safe: empirically the only literal `\[` this wiki has ever contained
-+# outside this bug was one line of prose quoting a sed command describing
-+# the bug itself — everywhere else it's corruption.
-+ESCAPED_BRACKET_RE = re.compile(r"\\\[")
-+
-+
-+def find_escaped_brackets(rel_path, text, auto_fix):
-+    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None)."""
-+    count = len(ESCAPED_BRACKET_RE.findall(text))
-+    if not count:
-+        return text, None
-+    if auto_fix:
-+        return (
-+            ESCAPED_BRACKET_RE.sub("[", text),
-+            f"de-escaped {count} corrupted '\\[' -> '[' in {rel_path}",
-+        )
-+    return text, (
-+        f"{count} escaped bracket(s) (\\[ -> [ corruption): {rel_path} — "
-+        f"run lint --auto-fix"
-+    )
-+
- # Grounding / freshness (anti-self-reinforcement). A wiki that only cites its own
- # pages drifts from reality. Sources pointing back into these dirs are secondhand;
- # a knowledge page needs at least one PRIMARY source (raw/, external/, web,
-```
-
-```diff
---- a/skills/llm-wiki-pm/scripts/lint.py
-+++ b/skills/llm-wiki-pm/scripts/lint.py
-@@ -184,8 +233,29 @@ def main():
-     intentional_stubs = set()  # lifecycle: stub-intentional — exempt from orphan nag
-     shareable_pages = []  # export allowlist (private-by-default model)
- 
-+    # escaped-bracket corruption also hits root-level singletons (log.md,
-+    # overview.md, index.md, MY-INTEGRATIONS.md), which sit outside WIKI_DIRS
-+    # and never pass through the per-page loop below.
-+    for root_name in ("log.md", "overview.md", "index.md", "MY-INTEGRATIONS.md"):
-+        root_p = wiki / root_name
-+        if not root_p.exists():
-+            continue
-+        root_text = root_p.read_text()
-+        fixed_root_text, root_note = find_escaped_brackets(
-+            root_name, root_text, auto_fix
-+        )
-+        if root_note:
-+            (fixes_applied if auto_fix else errors).append(root_note)
-+            if auto_fix:
-+                root_p.write_text(fixed_root_text)
-+
-     for p in pages:
-         text = p.read_text()
-+        text, escape_note = find_escaped_brackets(p.relative_to(wiki), text, auto_fix)
-+        if escape_note:
-+            (fixes_applied if auto_fix else errors).append(escape_note)
-+            if auto_fix:
-+                p.write_text(text)
-         fm = parse_frontmatter(text)
- 
-         if fm is None:
-```
-
-**3e. fenced-block + inline-code-span guard for the escaped-bracket check**: follow-up patch to `skills/llm-wiki-pm/scripts/lint.py`, landed in its own commit (`79c9f3b`) on top of PATCH-3d rather than folded into it, so the check's history stays legible as "add check, then fix its known gap."
-
-**Problem:** raised while this page still lived in the source wiki — "what if
-`lint --auto-fix` is run, will the errors in [this] page get 'fixed' when they
-shouldn't?" PATCH-3d's own "Known limitation" note (above) predicted the
-failure mode; this page was the concrete instance of it.
-`find_escaped_brackets()` did a literal-text `\[` → `[` substitution with no
-Markdown awareness, so it flagged all 11 literal `\[` characters quoted in the
-diff hunks above as corruption. `--auto-fix` would have de-escaped them,
-silently corrupting the quoted source — defeating this page's entire
-byte-for-byte-fidelity purpose.
-
-**Fix:** add `_fenced_ranges()` (tracks ` ``` ` fence open/close line by
-line) and `_inline_code_ranges()` (single-backtick spans, skipping any
-already covered by a fenced range so fence delimiters aren't double-matched),
-then filter `ESCAPED_BRACKET_RE` matches against both before counting or
-auto-fixing.
-
-**Verification:** ran against the source wiki before and after. Escaped-bracket
-errors on this page: 11 → 0 (8 caught by the fence guard alone; the
-remaining 3 — in this page's own prose, quoting the bug in inline code
-spans — needed the inline-code guard too). The two remaining
-double-square-bracket-shaped broken-link errors on this page were a separate,
-unfenced check — left alone, since the task that produced this patch was
-scoped to the escaped-bracket check only.
-
-```diff
---- a/skills/llm-wiki-pm/scripts/lint.py
-+++ b/skills/llm-wiki-pm/scripts/lint.py
-@@ -22,21 +22,64 @@ INLINE_PROVENANCE_RE = re.compile(r"\[source:", re.IGNORECASE)
- 
- # Interim workaround for the recurring wiki-search MCP bug that re-escapes
- # `[` -> `\[` on write (wikilinks, `## [date]` log headers), until the
--# upstream fix lands (wirux/mcp-markdown-vault#47). Global `\[` -> `[` is
--# safe: empirically the only literal `\[` this wiki has ever contained
--# outside this bug was one line of prose quoting a sed command describing
--# the bug itself — everywhere else it's corruption.
-+# upstream fix lands (wirux/mcp-markdown-vault#47). Matches inside fenced
-+# ```code blocks``` are skipped (see _fenced_ranges) — those are quoted
-+# source that may legitimately contain literal `\[`, e.g. a page documenting
-+# a diff.
- ESCAPED_BRACKET_RE = re.compile(r"\\\[")
- 
-+FENCE_LINE_RE = re.compile(r"^\s*```")
-+INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
-+
-+
-+def _fenced_ranges(text):
-+    """Char-offset (start, end) ranges covering fenced ```...``` blocks
-+    (fence lines included). Content inside is quoted source, not prose."""
-+    ranges = []
-+    offset = 0
-+    fence_start = None
-+    for line in text.splitlines(keepends=True):
-+        if FENCE_LINE_RE.match(line):
-+            if fence_start is None:
-+                fence_start = offset
-+            else:
-+                ranges.append((fence_start, offset + len(line)))
-+                fence_start = None
-+        offset += len(line)
-+    return ranges
-+
-+
-+def _inline_code_ranges(text, fenced):
-+    """Char-offset ranges covering single-backtick inline code spans, e.g.
-+    `\\[`. Spans already inside a fenced block are skipped so fence
-+    delimiters aren't double-matched."""
-+    ranges = []
-+    for m in INLINE_CODE_RE.finditer(text):
-+        if any(start <= m.start() < end for start, end in fenced):
-+            continue
-+        ranges.append((m.start(), m.end()))
-+    return ranges
-+
- 
- def find_escaped_brackets(rel_path, text, auto_fix):
--    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None)."""
--    count = len(ESCAPED_BRACKET_RE.findall(text))
-+    """Detect/repair escaped-bracket corruption. Returns (text, note-or-None).
-+    Ignores matches inside fenced code blocks and inline `code spans` —
-+    quoted source may legitimately contain a literal '\\['."""
-+    fenced = _fenced_ranges(text)
-+    protected = fenced + _inline_code_ranges(text, fenced)
-+    matches = [
-+        m for m in ESCAPED_BRACKET_RE.finditer(text)
-+        if not any(start <= m.start() < end for start, end in protected)
-+    ]
-+    count = len(matches)
-     if not count:
-         return text, None
-     if auto_fix:
-+        new_text = text
-+        for m in reversed(matches):
-+            new_text = new_text[: m.start()] + "[" + new_text[m.end() :]
-         return (
--            ESCAPED_BRACKET_RE.sub("[", text),
-+            new_text,
-             f"de-escaped {count} corrupted '\\[' -> '[' in {rel_path}",
-         )
-     return text, (
-         f"{count} escaped bracket(s) (\\[ -> [ corruption): {rel_path} — "
-         f"run lint --auto-fix"
-     )
-```
-
-### PATCH-4 — `skills/llm-wiki-pm/SKILL.md` + `skills/llm-wiki-persona/SKILL.md`: wire relationship-map update into entity-promotion scan
-
-**Problem:** promoting a person to their own entity page (core skill §2⑫)
-never triggered a `concepts/relationship-map.md` update in the source wiki.
-The map's own doc (`llm-wiki-persona/SKILL.md`) said "update whenever a new
-person entity is added," but nothing actually called that out as part of the
-promotion step — it only got updated when someone was already in a
-persona-building session, or asked directly. Concretely: two direct reports
-were promoted 2026-08-28 during a coverage audit, and the map sat stale until
-manually caught and fixed 2026-08-29.
-
-**Fix:** two doc-only edits, no script logic changed.
-
-```diff
---- a/skills/llm-wiki-pm/SKILL.md
-+++ b/skills/llm-wiki-pm/SKILL.md
-@@ -232,7 +232,10 @@ In brief:
- ⑩ Report every file touched; confirm before mass-updating (10+ pages).
- ⑪ **Crystallize** transcripts/research chains into a `queries/` digest (`references/crystallize-guide.md`).
- ⑫ **Entity promotion scan** — promote people/companies/products with 3+ attributes
--   to their own page (confirm first). Offer a persona page (`llm-wiki-persona`) for any promoted person.
-+   to their own page (confirm first). Offer a persona page (`llm-wiki-persona`) for any promoted person. If the promoted entity is a person, update
-+   `concepts/relationship-map.md`: create it (per SCHEMA.md's 3+ person-entity
-+   rule) if it doesn't exist yet, or add the new person's org-chart row and
-+   reflect them under their manager's `direct_reports` cell if it does.
- 
- ### 3. Query
- ① **Search first**: `view(action=semantic_search)` → grep → file read.
-```
-
-```diff
---- a/skills/llm-wiki-persona/SKILL.md
-+++ b/skills/llm-wiki-persona/SKILL.md
-@@ -104,7 +104,9 @@ updated: YYYY-MM-DD
- | [[lead-pm]] | [[data-team]] | roadmap input | weekly |
-```
-
--Update whenever a new person entity is added. Link to it from each person entity page.
-+Update whenever a new person entity is added — this is triggered automatically
-+by the core skill's entity-promotion scan (§2⑫), not a separate manual step.
-+Link to it from each person entity page.
- 
- Interaction frequency values:
- - `daily`: regular async chat or daily syncs
-
-
-**Verification:** not yet re-tested end-to-end against a fresh promotion (the
-fix landed after the earlier gap was manually corrected, not before it
-recurred) — flagged as an open question below.
-
-### PATCH-5 — `hooks/session-start.sh`: no warning when `WIKI_PATH` supplies the wiki
-
-**Problem:** in this install, `WIKI_PATH` is the default wiki for every
-project, and a project's `.wiki-path` only marks one that uses another wiki
-(NW5, [NW5 Shared Wiki-Search Analysis](nw5-shared-wiki-search-analysis.md)).
-Upstream treats `.wiki-path` as the main setting, so every session without one
-got "using global wiki path … Run /llm-wiki-pm:set-wiki-path …".
-
-**Fix:** remove that branch, committed as `2e7247c`. The warning for no wiki
-path configured at all stays. `tests/test_session_start_wiki_path.py` covers
-the default case and a `.wiki-path` overriding `WIKI_PATH`. It isn't offered
-upstream, because it reverses upstream's intent.
-
-```diff
---- a/hooks/session-start.sh
-+++ b/hooks/session-start.sh
-@@ -30,9 +30,9 @@ GLOBAL_WARNING=""
- if [[ -z "$WIKI" ]]; then
-   WIKI="$(pwd)"
-   GLOBAL_WARNING="llm-wiki-pm: no wiki path configured. Falling back to current directory ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path to set a permanent path."
--elif [[ -z "$FILE_WIKI" ]]; then
--  GLOBAL_WARNING="llm-wiki-pm: using global wiki path ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path from your project directory to set a project-specific path."
- fi
-+# A wiki from WIKI_PATH (or the plugin option) is the default, not a fallback:
-+# .wiki-path is only for a project that uses another wiki, so no warning.
-```
-
-### Re-application checklist against a newer plugin version
-
-1. Diff the new version's `lint.py`/`backlinks.py`/`session-stop.sh` against
-   `2.21.0`'s originals first — if the upstream author fixed any of these
-   independently, that patch is now redundant, not conflicting.
-2. PATCH-3c and PATCH-1 are small, self-contained hunks —
-   low risk even if line numbers shifted; reapply by hand if `git apply`
-   fails on context. PATCH-3a is replaced by `wikifm.py` (see 3a), and
-   PATCH-2 and PATCH-3b are removed; don't reapply them.
-3. PATCH-3d (escaped-bracket check) and PATCH-3e (its fenced-block /
-   inline-code guard) are the largest and most likely to still be needed,
-   since their root cause (`wirux/mcp-markdown-vault#47`) is a separate
-   upstream project the plugin merely depends on — check that issue's status
-   before reapplying; if fixed upstream in the MCP server, both become
-   optional cleanup rather than load-bearing. Apply 3d first — 3e's hunks
-   are context-dependent on it.
-4. After reapplying, run `lint.py <wiki_path>` then `lint.py <wiki_path>
-   --auto-fix` against a representative wiki to confirm 0E 0W, same as the
-   verification done when these patches first landed.
-5. PATCH-4 is doc-only (`SKILL.md` prose in both `llm-wiki-pm` and
-   `llm-wiki-persona`) — no script logic, so `git apply` context is unlikely
-   to shift much; reapply by hand if the surrounding §2 numbering changed
-   upstream.
-6. PATCH-5 is a two-line removal in `session-start.sh`. If upstream changed
-   its wiki-path warnings, reapply by hand, and keep its test file.
-
-### Open questions
-
-- Should PATCH-3a (block-style YAML) and
-  PATCH-3c (overview/index as link targets) be filed as issues or a PR
-  against `github.com/anh-chu/llm-wiki-pm`? They read as genuine bugs rather
-  than environment-specific preferences (unlike the `session-stop.sh`
-  disable, which is specific to the source wiki's hosting environment's
-  `SessionEnd` firing behavior). PATCH-3d is an interim workaround for a bug
-  in a *different* upstream project (`wirux/mcp-markdown-vault`) and
-  wouldn't apply as-is to the `llm-wiki-pm` repo, though the underlying need
-  might be worth a mention in `llm-wiki-pm`'s own issue tracker as a "known
-  dependency bug" note.
-- No `.claude/roles/` or other environment-specific config was checked for
-  whether the `SessionEnd`-fires-per-backend-session behavior (motivating
-  PATCH-1) is specific to that hosting environment or general — unconfirmed
-  gap.
-- PATCH-4 hasn't been verified against a live re-run of the entity-promotion
-  scan — it was written and committed after manually fixing the gap it
-  targets, not proven by watching the next promotion pick it up
-  automatically. Worth confirming next time a person entity is promoted.
-- Same open question as PATCH-3a/3b/3c applies to PATCH-4: worth
-  upstreaming as a PR against `github.com/anh-chu/llm-wiki-pm`? It's a
-  small, generally useful doc fix (closes a real staleness gap, not
-  environment-specific), unlike PATCH-1.
-  <!-- Corrected 2026-08-30: previously misreferenced as "Patch 6", which
-  was never defined anywhere in this doc — description matches PATCH-4. -->
-
-### Process decisions
-
-Committed the four original patches locally (commit `4b74c51`), then the
-PATCH-3e follow-up as a separate commit (`79c9f3b`) rather than squashing
-it in, so the escaped-bracket check's history stays legible as "add check,
-then fix its known gap" — rather than leaving either as an uncommitted
-working-tree diff, on the reasoning that a commit is more durable against
-accidental loss (`git clean`, a bad checkout) even though it does not
-survive a plugin version update on its own — re-application still requires
-the checklist above. Decided not to file upstream yet; flagged as an open
-question rather than a firm no.
-
-Committed PATCH-4 locally (commit `f7faab5`) the same day it was written,
-following the established pattern rather than leaving it as a working-tree
-diff. Ported to this clone (`~/Projects/llm-wiki-pm`) as of this relocation.
-
-Forked `anh-chu/llm-wiki-pm` to `bzlightyear/llm-wiki-pm` rather than a
-plain clone: not for merge mechanics (a clone tracks `origin` fine on its
-own), but because there's no write access to the upstream repo, so a fork
-is the only remote to push patch commits to — a durable backup outside the
-plugin-cache directory the installer can orphan on the next version bump,
-and a clean path to open PRs for the patches flagged as candidates above
-(3a/3b/3c) if that's decided later.
-
-### Corrections to commit messages
-
-Recorded here rather than by rewriting git history, which would change the
-IDs of every later commit.
-
-- `91878dc` (lint checks R1–R5) says it adds `tests/test_lint.py` as "the
-  first test module for lint.py". `TestLint` in `tests/test_hooks.py`, added
-  upstream in v2.20.0, already tested `lint.py`.
-
-
-----
-## Open Issues
-
-Design/workflow gaps found while auditing the plugin's own guidance and
-this wiki's usage of it. Not plugin-code patches — see "About this
-document" above — so nothing here is applied; each entry states what's
-still blocking a fix.
-
-### ISSUE-1 — Action Items/Open Questions readability has no update mechanism
-
-**Status:** open, no fix proposed.
-
-_Surfaced 2026-08-30 auditing `llm-wiki-pm`'s crystallize/update-flow
-design, prompted by a readability complaint about `pm-wiki/overview.md`'s
-Action Items/Open Questions bullets._
-
-**Symptom — readability.** Bullets under Active Bets / Action Items / Open
-Questions in `pm-wiki/overview.md` accrete inline `**Update YYYY-MM-DD**:
-...` clauses over time with no visual separation, turning into single
-unreadable run-on paragraphs (worst examples: daily-granularity forecasting
-bullet, AI-planning-wedge bullet, CFP MCP integration bullet — each carrying
-3-4 rounds of embedded updates).
-
-**Symptom — inconsistent update-tag formatting.** The inline update markers
-vary in shape: `**Update DATE (context)**`, `**Resolved DATE**`, `**New
-DATE**`, `**Correction DATE**`, plain `**Confirmed DATE:**` — no single
-scannable pattern.
-
-**Symptom — template drift.** `skills/llm-wiki-pm/templates/overview.md`
-only defines Current State / Active Bets / Open Questions / Recent Shifts /
-Key Entities — it has no Action Items section at all. pm-wiki's actual
-`overview.md` grew a full Action Items section organically, outside the
-template. The template's own guidance for Active Bets/Open Questions ("one
-line each, link to concept page") already prescribes the compact format —
-actual usage has drifted far from it.
-
-**Root cause — this is the deepest finding, and the reason the symptoms
-above exist in the first place.**
-
-- **Crystallize pages are point-in-time by design.** `crystallize-guide.md`'s
-  workflow is entirely creation-oriented; its "update affected pages" step
-  (§⑤) lists entity/concept/roadmap pages but never the crystallize page
-  itself. `update-guide.md`'s revision/sweep discipline never targets
-  `queries/`/crystallize pages either. Architecturally they're mutable
-  (Layer 2), but no workflow step ever revisits one after creation.
-- **Decisions do have a designated living home**: the topic's concept/entity
-  page, kept current via the standard Update flow (three-way search,
-  diff-before-write, dated history, logged).
-- **Actions do not.** "Roadmap pages" is named once (`crystallize-guide.md`)
-  as a place action items should also land, but it isn't a real page type
-  in `SCHEMA.md`/`WIKI_DIRS` — no structural convention, no status-field
-  discipline. The concrete pm-wiki instance of this pattern is
-  [`../pm-wiki/concepts/cfp-q3-q4-roadmap-planning.md`](../pm-wiki/concepts/cfp-q3-q4-roadmap-planning.md) —
-  a `type: concept` page (tags: `roadmap, cfp`) that tracks the CFP
-  planning process/meta-decisions across 11 sources, exactly the informal
-  "roadmap page" role the guide gestures at without ever formalizing.
-- **Empirically verified in pm-wiki**: spot-checked 3 crystallize pages'
-  Action Items tables — all Status cells frozen at their creation-time value
-  (mostly "pending"), even for items `overview.md` itself separately marked
-  resolved weeks later. Concrete example: `crystallize-cfp-coord-sync-2026-08-05.md`
-  still shows "Post in Ask CFP / SME Slack... — Status: pending," while
-  `overview.md` (line 261-263) shows the same item `~~done 2026-08-08~~`.
-- **Consequence**: `overview.md`'s Action Items section — itself outside the
-  official template — has become the de facto action-item tracker by
-  default, because `ingest-guide.md` §⑦ is the only workflow step that
-  reliably sends anyone back to touch it. The unreadable accretion above is
-  that page compensating for a missing update mechanism elsewhere in the
-  design, not just a formatting choice that drifted for no reason.
-
-**Implication for a fix.** Naively compressing Action Items/Open Questions
-bullets to one line + "see crystallize page" would not just drop history —
-it would **regress the accuracy of the current-status signal**, since the
-crystallize page it points to is stale/frozen and `overview.md`'s inline
-text is currently the only accurate record of what's actually resolved. A
-safe fix needs one of:
-- a real status-sync step added to the update/crystallize workflow so the
-  linked page becomes trustworthy before overview.md stops carrying status
-  inline, or
-- explicitly treating overview.md's compressed line as the source of truth
-  itself (link out only for rationale/history, not current status).
-
-### ISSUE-2 — `worker-wiki-indexer`'s Overview Regeneration mode: latent, dormant risk
-
-**Status:** mitigated (2026-09-29): `pre-write.sh` snapshots `overview.md` to
-`_archive/overview-<date>.md` before any whole-file replacement (`Write`, or
-the MCP's `vault` update or delete), which is how the indexer would replace it.
-A regeneration done section by section through `Edit` would not be caught.
-Step 3 of the [Sources and References Design](sources-and-references-design.md).
-
-- If ever triggered (overview.md >7 days stale + `log.md` shows activity
-  since), it wipes everything in `overview.md` below the intro paragraph and
-  replaces it with auto-generated Theme Clusters / Coverage / Recent
-  Activity / Known Gaps / Stats sections — which bear no resemblance to the
-  hand-curated Active Bets/Action Items/Open Questions/Recent Shifts
-  structure actually in use.
-- Confirmed dormant: nothing wires this agent into any automatic trigger
-  (not `session-start.sh`, not `session-stop.sh`, not `llm-wiki-maintain`'s
-  daily loop, which only runs `lint.py` for its health check). It's a
-  manual/judgment call per `product-manager.md`'s role guidance ("use after
-  large ingests"). Grepped pm-wiki's `log.md` (327 entries) for its mandated
-  output line — zero hits. It has never once run in this wiki's history.
-- Also gated by staleness: `overview.md`'s `updated:` frontmatter stays
-  fresh via near-daily manual edits (`ingest-guide.md` §⑦), so the 7-day
-  threshold rarely trips even if someone did invoke it.
-
-### ISSUE-3 — `[source: user, conversation, <date>]` citations aren't verified against `raw/` — and drift silently from the body Sources legend
-
-**Status:** closed (2026-09-30). Part A: every citation must now name a
-record or page in its page's `sources:`, and lint checks that it does (R3, R6,
-R7). The missing `conversation-<date>` files are now reconstructed records,
-which lint lists (R10) until their claims are re-sourced, and a new
-conversational fact gets its record from `capture.py`. Part B: a `## Sources`
-legend is optional prose that nothing checks, so it can't drift from a
-declaration. Steps 5–7 and 10b of the
-[Sources and References Design](sources-and-references-design.md).
-
-_Surfaced 2026-08-30, same session as ISSUE-1/ISSUE-2, while explaining
-`hooks/pre-write.sh`'s freshness gate to the user, who then spotted the gap
-firsthand in a live page._
-
-**Problem, part A — missing raw file.** `ingest-guide.md:38-43` mandates
-that a "current conversation" source (`user says "from this conversation"`)
-gets a backing capture at `raw/internal/conversation-<YYYY-MM-DD>.md`, with
-user-stated facts attributed inline as `[source: user, conversation, <date>]`.
-In `pm-wiki/concepts/cfp-q3-q4-roadmap-planning.md`, this format is used
-twice — `"conversation, 2026-08-13"` and `"conversation, 2026-08-21"`, both
-in frontmatter `sources:` and as inline markers (lines 64, 77) — but neither
-`raw/internal/conversation-2026-08-13.md` nor `raw/internal/conversation-2026-08-21.md`
-exists, nor ever did (checked `pm-wiki`'s git history for deletions: none).
-The citation string looks grounded but resolves to nothing on disk.
-
-**Problem, part B — frontmatter/body Sources drift.** The same page's body
-`## Sources` legend lists the 2026-08-13 conversation entry but not the
-2026-08-21 one, even though both are in frontmatter and both have inline
-markers. Diffing against the hook's own pre-edit snapshot
-(`pm-wiki/_archive/cfp-q3-q4-roadmap-planning-2026-08-21.md`) shows the
-08-21 entry was never added when that day's edit introduced the citation —
-and the gap survived six subsequent edits (08-25, 08-26 ×2, 08-27 ×2, 08-28)
-untouched.
-
-**Root cause — no automated check covers either gap.** `hooks/pre-write.sh`'s
-freshness gate (lines 91-97) only checks that *some* primary source or
-inline marker exists anywhere on the page; it has no way to confirm a cited
-`raw/`-slug or `"conversation, <date>"` string actually resolves to a file.
-`lint.py`'s provenance check (~lines 210-219, 352-376) only confirms
-`sources:` exists and that at least one inline `[source:]` marker appears
-somewhere in the body — it never diffs the frontmatter list against the body
-Sources section, and never verifies a referenced raw file exists. Same
-underlying pattern as ISSUE-1: a citation, once written, has no workflow
-step that revisits or verifies it.
-
-**Not yet decided:** whether the fix belongs in `lint.py` (a new check:
-every frontmatter/inline source either resolves to a `raw/` file or is
-exempted as `user, conversation, <date>` *only if* the matching
-`raw/internal/conversation-<date>.md` exists; plus a frontmatter-vs-body-Sources
-diff check) or in `hooks/pre-write.sh` (block/warn at write-time instead of
-lint-time). Flagged here, not implemented.
-
-----
-
-## Sources
-
-_Covers Applied Patches provenance only — Open Issues evidence is cited
-inline within each ISSUE-N entry above rather than listed here._
-
-- Local git repo: `~/.claude/plugins/cache/anh-chu-plugins/llm-wiki-pm/2.21.0`,
-  commits `4b74c51c136f9b0780646b479fdc0cbde4b26a56` and
-  `79c9f3bb95a938989ceae651085895165ac1decd`, captured 2026-08-11 via
-  `git show` and `git diff`
-- Local git repo, same path, commit `f7faab5e7cb53f350fe5ad6217cc082af4457cca`
-  (PATCH-4), captured 2026-08-29 via `git diff` before committing
-- All five patches ported from the plugin-cache repo onto this source clone
-  (`~/Projects/llm-wiki-pm`, single commit, all patches bundled — unlike the
-  plugin-cache repo's two-commit split), then this clone forked to
-  `github.com/bzlightyear/llm-wiki-pm` (`gh repo fork --remote`) and pushed
-  as commit `dfdd98c` (patches) plus `1e74e9f` (`.gitignore` cleanup,
-  unrelated to the patches themselves). Verified 2🔴/1🟡 against a test wiki
-  from this clone's own copy of `lint.py`, matching the plugin-cache repo's
-  baseline; `--auto-fix` confirmed non-destructive on a throwaway copy.
+- **Baseline:** upstream `github.com/anh-chu/llm-wiki-pm` (the `upstream`
+  remote) at `0667f75 chore(release): 2.21.0`. Upstream has had no commits
+  since (checked 2026-10-02).
+- **Fork:** `github.com/bzlightyear/llm-wiki-pm` (`origin`), branch `main`.
+- **Inventory:** `git log 0667f75..main` and `git diff 0667f75 main`. Git holds
+  the diffs, so entries cite commits instead of pasting them.
+- **Numbering:** patches are grouped by area, and within the sources and
+  references group by dependency, so a reader carrying them to a newer baseline
+  can take them in order. Older docs and commit messages use the numbers in
+  [Old Patch and Issue Numbers](#old-patch-and-issue-numbers).
+- **Work not done yet** lives in the
+  [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), not here.
+
+## How the Fork Runs
+
+The fork isn't installed as the Claude Code plugin. The plugin isn't enabled,
+and `hooks/hooks.json` is kept in step with the fork for plugin installs but
+isn't read on this machine. Every wiki, pm-wiki included,
+runs this clone's code:
+
+- **Skills:** `~/.claude/skills/llm-wiki-*` and `set-wiki-path` are symlinks to
+  `skills/` in this clone.
+- **Worker agents:** `~/.claude/agents/worker-*.md` are symlinks to
+  `.claude/agents/` (step 9 of the sources and references design).
+- **Hooks:** registered in `~/.claude/settings.json` by absolute path:
+  SessionStart `session-start.sh`, PreToolUse `pre-write.sh`, PostToolUse
+  `post-validate.sh` and SessionEnd `session-stop.sh`, the write hooks with the
+  matcher `Write|Edit|MultiEdit|mcp__.*wiki-search__(vault|edit)`.
+- **Permission rules:** `~/.claude/settings.json` denies the wiki-search MCP's
+  `edit` tool and asks before its `vault` tool, under both tool-name forms
+  (PATCH-5).
+- **wiki-search MCP:** one shared server under launchd (`local.wiki-search`,
+  SSE on 127.0.0.1:3100 with a bearer token) running `hooks/wiki-search.sh`.
+  `$WIKI_PATH` is the default wiki, and a project's `.wiki-path` only marks one
+  that uses another wiki. See the
+  [Wiki-Search Launchd Guide](wiki-search-launchd-guide.md) and NW5 in the
+  backlog.
+
+So a commit on `main` takes effect at the next session, or for `wiki-search.sh`
+at the next server restart. Upstream releases arrive by merging the `upstream`
+remote (see [Merging an Upstream Release](#merging-an-upstream-release)).
+
+The fork was made because there is no write access to upstream: it is the
+remote this work is pushed to, and the place pull requests would come from.
+
+## Patches
+
+Each entry: what changes relative to 2.21.0, why, where, and its status on
+2026-10-02. "Upstream candidate" means worth offering upstream and not offered
+yet; no fork change has an upstream pull request.
+
+### Lint fixes from before the design
+
+#### PATCH-1 — `overview` and `index` are valid link targets
+
+- **What:** lint registers `overview.md` and `index.md` in its slug map, so
+  `[[overview]]` and `[[index]]` resolve, without putting the two files through
+  the page checks (frontmatter, tags, orphans, index). PATCH-8 extended lint's
+  page set to `briefings/`, and post-validate resolves links the same way.
+- **Why:** upstream lint reported every link to them as broken, because they sit
+  outside the page folders.
+- **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `main()`. Commit `dfdd98c`
+  (first made in the plugin cache as `4b74c51`).
+- **Status:** active. Upstream candidate, not filed.
+
+#### PATCH-2 — Escaped-bracket check and repair
+
+- **What:** lint reports a stray backslash before `[` as 🔴 in every page and in
+  `log.md`, `overview.md`, `index.md` and `MY-INTEGRATIONS.md`, and
+  `--auto-fix` removes it. Matches inside fenced code blocks and inline code
+  spans are skipped, since quoted source may hold a literal `\[`.
+  `post-validate.sh` (PATCH-9) runs the same check at write time.
+- **Why:** the wiki-search MCP's `string_replace` and `frontmatter_set`
+  re-serialize the whole file and escape `[[` as `\[[`
+  (`wirux/mcp-markdown-vault#47`), breaking wikilinks and `## [date]` log
+  headers. It happened three times by 2026-08-11. The deny rule on the MCP's
+  `edit` tool (PATCH-5) removes the cause on this install, so the check is now a
+  safety net for other installs and for writes the rule doesn't cover.
+- **Where:** `lint.py`: `find_escaped_brackets()`, `_fenced_ranges()`,
+  `_inline_code_ranges()`. Commit `dfdd98c` (first made as `4b74c51`, with the
+  code-span guard added in `79c9f3b`).
+- **Status:** active until `#47` is fixed. `#47` is open with one comment and no
+  maintainer reply, and the MCP repo was last pushed 2026-06-02 (checked
+  2026-10-02). Not an upstream llm-wiki-pm change by itself: the bug is in the
+  MCP.
+
+### Sources and references design (steps 1–10a)
+
+The [Sources and References Design](sources-and-references-design.md) gives a
+source one identity: a `raw/` record's file stem, declared by path in
+`sources:` and cited by ID in `[source: <id>, <location>]`, with exact
+resolution. Its section 8 orders the steps by dependency and marks each one
+"Up" or "Fork". Each step below is one patch. The design holds the detail, and
+the entries summarize. Step 11, which promotes R3, R6 and R12 to 🔴 and is when
+the set would go upstream with the migration script, isn't done.
+
+#### PATCH-3 — `wiki-search.sh` reads `.wiki-path` without a false error
+
+- **What:** the launcher reads `.wiki-path` with `cat`, not a `<` redirection,
+  and `tests/test_wiki_search.py` smoke-tests it with a stub `node`.
+- **Why:** the shell reports a failed `<` before `2>/dev/null` applies, so every
+  MCP start without `.wiki-path` logged "No such file or directory".
+- **Where:** `hooks/wiki-search.sh`. Commit `5ee7f59` (step 1, design 5.13).
+- **Status:** active. Upstream candidate.
+
+#### PATCH-4 — Doc drift fixes
+
+- **What:** README, CONTRIBUTING and GETTING_STARTED describe the
+  private-by-default model (`shareable: true`) instead of the retired
+  `private:` flag. CONTRIBUTING's required fields match lint.
+  `worker-source-fetcher` stops writing `private:` and routes records as the
+  ingest guide does. `llm-wiki-prd` calls the orient gate a checklist, not
+  "enforced". `llm-wiki-maintain` drops the 7-day brief rotation into
+  `_archive/briefings/`, which broke links to briefs, and says what plain
+  `--auto-fix` does.
+- **Where:** commit `7c41339` (step 2).
+- **Status:** active. Upstream candidate.
+
+#### PATCH-5 — Write hooks cover MCP writes and name snapshots by slug
+
+- **What:** `pre-write.sh` also runs on the wiki-search MCP's `vault` and `edit`
+  writes (both tool-name forms, with `action` and `dryRun` filters). Snapshots
+  go to `_archive/<slug>-<date>.md` through one `snapshot()` in `lint.py`, which
+  lint's auto-fix and the migration reuse. `overview.md` is snapshotted on
+  whole-file replacement, `index.md` never. `briefings/` is covered, a directory
+  page's `assets/` is skipped, and a change to a `raw/` record gets a
+  write-once warning. The README documents the permission rules that deny the
+  MCP's `edit` tool and ask before `vault`.
+- **Why:** MCP writes bypassed the snapshot and freshness gate, and the MCP's
+  `edit` tool damages pages (`#47`, `#49`).
+- **Where:** `hooks/pre-write.sh`, `hooks/hooks.json`, `hooks/README.md`,
+  `README.md`, `lint.py`, `tests/test_write_hooks.py`. Commit `eda0293` (step
+  3, design 5.11). The permission rules are in `~/.claude/settings.json`.
+- **Status:** active. Upstream candidate; the permission rules are per user.
+
+#### PATCH-6 — `wikifm.py`, the one frontmatter parser
+
+- **What:** `skills/llm-wiki-pm/scripts/wikifm.py` parses frontmatter to a
+  declared profile (block lists as lists, wrapped items, quoted dates) and has
+  text-preserving writers (`set_field`, `set_list`) that write dates as
+  `'YYYY-MM-DD'`. Lint, `pre-write.sh` and session-start's stale scan read
+  frontmatter through it, and upstream's `parse_frontmatter()` and
+  `extract_sources()` are gone. `slug()` lives here.
+- **Why:** four hand-rolled parsers disagreed on block lists, quoting and
+  dates, and silently dropped values.
+- **Where:** `wikifm.py`, `lint.py`, `hooks/pre-write.sh`,
+  `hooks/session-start.sh`, `tests/test_wikifm.py` (PyYAML oracle tests, skipped
+  without PyYAML). Commit `31a9a70` (step 4, design 5.10).
+- **Background:** it replaced two earlier lint fixes: block-style list parsing
+  in `parse_frontmatter()` (old PATCH-3a, `dfdd98c`), which joined a block list
+  into a `[a, b]` string, and quote-aware splitting of `sources:` flow lists
+  (`543766c`).
+- **Status:** active. Upstream candidate. Upstream issue `anh-chu#9` (block-style
+  tags dropped by lint) is open; this is the fork's fix for it.
+
+#### PATCH-7 — Citation spec and conversation capture
+
+- **What:** `references/citation-spec.md` is the single spec for records,
+  `sources:` and citations. A fact stated in conversation becomes a write-once
+  record `raw/internal/conversation-<date>-<topic>.md` made by `capture.py`, and
+  is cited like any other source. `lint.py --cited-sources <page>` lists what a
+  page cites, for setting `sources:`. AGENTS.md, the core SKILL.md, the ingest,
+  update, crystallize and output-format guides, the SCHEMA and persona
+  templates, the CRM, research and PRD skills point to the spec, and enrichment
+  captures and cites each page it uses.
+- **Why:** a source had no defined identity, so free text was accepted as one
+  (design section 3).
+- **Where:** commits `783e37d` (step 5) and `d3941bb` (person enrichment and
+  supersede).
+- **Background:** `ae33f9d` had told Update to cite
+  `[source: user, conversation, <date>]` when nothing was captured. This patch
+  kept its rule against coining a `raw/`-shaped ID for an uncaptured artifact
+  and replaced the conversational form with a captured record.
+- **Status:** active. Upstream: an issue first, since it changes the
+  micro-capture contract (design section 8).
+
+#### PATCH-8 — Lint checks sources and citations exactly (R1–R12)
+
+- **What:** lint's R-rules, catalogued in design 5.15: frontmatter structure and
+  profile (R1, R2, R5, R12), exact citation resolution (R3), citation coverage
+  (R4), `sources:` entries that are existing paths (R6), citation grammar (R7),
+  unique IDs and slugs (R9), pages resting only on conversation records (R10),
+  the MCP's default contract (R11). Content fixes run only under
+  `--auto-fix=content`. `--json` writes nothing. `briefings/` joins the page
+  set, with dated digests exempt from the index check. Session start reports
+  I1–I3 counts and R10's list, and says "health unknown" if lint fails.
+  `worker-link-validator` uses `lint.py --json`. `lint-guide.md` documents it
+  all.
+- **Where:** `lint.py`, `wikifm.py`, `hooks/session-start.sh`,
+  `hooks/README.md`, `references/lint-guide.md`,
+  `.claude/agents/worker-link-validator.md`, `tests/test_lint.py`. Commits
+  `91878dc` (R1–R5) and `db6dd04` (step 6).
+- **Background:** `91878dc` added R1–R5 before the design. R3 was a loose
+  substring match, rewritten as exact resolution.
+- **Status:** active, with R3, R6 and R12 at 🟡 until step 11. Upstream
+  candidate.
+
+#### PATCH-9 — `post-validate.sh` checks each written page
+
+- **What:** a synchronous PostToolUse hook re-reads each written page and
+  checks it with lint's own functions: frontmatter, `sources:`, citations,
+  escaped `\[`, and wikilinks against lint's page set. It also runs the
+  freshness gate for MCP writes `pre-write.sh` can't judge, and reminds the
+  agent of the split procedure past 200 lines. It replaces `post-write.sh` in
+  `hooks.json`; `post-write.sh` stays in the repo, unregistered, with its tests.
+- **Where:** `hooks/post-validate.sh`, `hooks/hooks.json`, `hooks/README.md`,
+  `tests/test_write_hooks.py`. Commit `dc8d87f` (step 7).
+- **Status:** active. Upstream candidate.
+
+#### PATCH-10 — Vault contract template and scaffold
+
+- **What:** `templates/vault-contract.md` is copied to `meta/contract.md` on
+  scaffold (noclobber), and a directory holding only the MCP's `meta/` and
+  `.markdown_vault_mcp/` and session-start's own `_status.md` and `.wiki-lock`
+  counts as empty. GETTING_STARTED and CONTRIBUTING copy the contract too.
+- **Why:** the MCP may start first and write its own files and a generic
+  contract, which made a new wiki look non-empty and skip the scaffold.
+- **Where:** `hooks/session-start.sh`, the template, `tests/test_scaffold.py`.
+  Commit `09dfb6f` (step 8).
+- **Status:** active. Upstream candidate.
+
+#### PATCH-11 — Lint workers find `lint.py` without `CLAUDE_SKILL_DIR`
+
+- **What:** `worker-lint` and `worker-link-validator` resolve the core skill
+  from `$CLAUDE_PLUGIN_ROOT`, else `~/.claude/skills/llm-wiki-pm`.
+- **Why:** Claude Code fills in `${CLAUDE_SKILL_DIR}` only in skill files. In a
+  subagent it was empty, so the workers ran `/scripts/lint.py`.
+- **Where:** `.claude/agents/`. Commit `3ce221e` (step 9, which also moved the
+  workers to user-level symlinks, an install change).
+- **Status:** active. Upstream candidate. Related upstream issue `anh-chu#10`
+  (the plugin ships workers in a folder Claude Code doesn't read) is open; the
+  fork sidesteps it with the symlinks.
+
+#### PATCH-12 — `migrate_sources.py`
+
+- **What:** moves a wiki onto the citation spec (design section 7, M1–M8),
+  `overview.md` included. Dry run by default.
+- **Where:** `skills/llm-wiki-pm/scripts/migrate_sources.py`,
+  `tests/test_migrate_sources.py`. Commits `c2e086b`, `0e5b578` (step 10a).
+  pm-wiki was migrated with it on 2026-09-30 (step 10b).
+- **Status:** active. Fork-only until step 11, then upstream with it.
+
+### Page names
+
+#### PATCH-13 — A folder page is named after its folder
+
+- **What:** a multi-file page is `queries/<slug>/<slug>.md`, not
+  `queries/<slug>/README.md`, and `slug()` is the file stem for every page. The
+  core SKILL's Query step, `output-formats.md`, `citation-spec.md`, the
+  research and PRD skills, the researcher role and the vault contract template
+  say so.
+- **Why:** Obsidian and the wiki-search MCP resolve a link by file name, so
+  links to a `README.md` page resolved for the fork's tools only. See NW6 in the
+  backlog and the
+  [NW6 Page Name Resolution Analysis](nw6-page-name-resolution-analysis.md).
+- **Where:** commit `84aeeac`. pm-wiki's four folder pages were renamed in its
+  own repo.
+- **Background:** earlier, `slug()` in lint (old PATCH-3b) and `backlinks.py`
+  (old PATCH-2) named a `README.md` page after its folder. Both rules were
+  removed on 2026-10-01, and `backlinks.py` now matches upstream.
+- **Status:** active. Upstream's docs still prescribe `README.md`, though its
+  lint already names a page by its file stem. Upstream issue `anh-chu#11`, filed
+  2026-08-08 from this fork, proposes the opposite fix (see Open Questions).
+
+### Skill docs
+
+#### PATCH-14 — Entity promotion updates the relationship map
+
+- **What:** the core skill's entity-promotion scan (§2 ⑫) updates
+  `concepts/relationship-map.md` when it promotes a person: it creates the map
+  if needed, or adds the person's row and their manager's `direct_reports`
+  entry. `llm-wiki-persona` says the scan triggers it.
+- **Why:** in the source wiki, two people promoted on 2026-08-28 were missing
+  from the map until it was fixed by hand the next day.
+- **Where:** `skills/llm-wiki-pm/SKILL.md`, `skills/llm-wiki-persona/SKILL.md`.
+  Commit `8680b22` (first made in the plugin cache as `f7faab5`).
+- **Status:** active, not verified end to end (see Open Questions). Upstream
+  candidate, not filed.
+
+#### PATCH-15 — Template paths resolve outside the plugin
+
+- **What:** three template references use `${CLAUDE_SKILL_DIR}`, and the
+  persona skill reaches the core skill's template through
+  `${CLAUDE_SKILL_DIR}/../llm-wiki-pm/`.
+- **Why:** `${CLAUDE_PLUGIN_ROOT}` exists only in a plugin install, and the bare
+  relative paths depended on the reader guessing the base directory.
+- **Where:** the core, CRM and persona `SKILL.md` files. Commit `11fa847`.
+- **Status:** active. Upstream candidate.
+
+#### PATCH-16 — Ingest routes HTML reports and slides like PDFs
+
+- **What:** any document file gets a markdown record in `raw/papers/`, with the
+  original in `raw/assets/` named in the record's `asset:` field.
+- **Why:** only PDFs had a route, and an HTML report landed in an unrouted
+  `raw/attachments/` folder.
+- **Where:** `references/ingest-guide.md`. Commit `74a1ad7`.
+- **Status:** active. Upstream candidate.
+
+### Install
+
+#### PATCH-17 — No session-start warning when `WIKI_PATH` supplies the wiki
+
+- **What:** `session-start.sh` no longer warns "using global wiki path … Run
+  /llm-wiki-pm:set-wiki-path …" when no `.wiki-path` is present. The warning
+  for no wiki path at all stays. `tests/test_session_start_wiki_path.py` covers
+  both.
+- **Why:** here `WIKI_PATH` is the default wiki for every project, and
+  `.wiki-path` only marks a project that uses another one (NW5), so the warning
+  fired in every session.
+- **Where:** `hooks/session-start.sh`. Commit `2e7247c`.
+- **Status:** active. Fork-only: it reverses upstream's intent, where
+  `.wiki-path` is the main setting.
+
+### Tests
+
+#### PATCH-18 — Test isolation and Python 3.9
+
+- **What:** `tests/conftest.py` runs every test from its own temp directory with
+  `WIKI_PATH` unset. `tests/test_hooks.py` gets `from __future__ import
+  annotations`.
+- **Why:** hooks started without `cwd=` read the checkout's `.wiki-path` or the
+  developer's `WIKI_PATH` and could act on a real wiki. `test_hooks.py` didn't
+  import on Python 3.9.
+- **Where:** commits `c98f84c`, `5edd090`.
+- **Status:** active. Upstream candidate. The suite passed on 2026-10-02: 449
+  passed, 2 skipped.
+
+### Repository-only files
+
+Not patches to upstream's code, and not offered upstream:
+
+- `fork-chgs/`: this changelog, the backlog, and the fork's designs, analyses,
+  reviews, guides and prompts.
+- `wiki-search-architecture.md`, relocated from pm-wiki on 2026-08-30.
+- `.claude/commands/implement-step.md`, the `/implement-step` command for the
+  sources and references plan.
+- `.gitignore`: `.wiki-path`, `.obsidian/` and `.DS_Store`.
+- `hooks/session-stop.sh` carries a commented-out auto-commit block and no other
+  change (see Background).
+
+## Merging an Upstream Release
+
+1. `git fetch upstream`, then read `git log main..upstream/main` and upstream's
+   `CHANGELOG.md` before merging.
+2. `git merge upstream/main` on a branch, so `main` keeps working while
+   conflicts are resolved.
+
+**Most likely to conflict:**
+
+- `skills/llm-wiki-pm/scripts/lint.py`. The fork rewrote much of it (PATCH-6,
+  PATCH-8): upstream's `parse_frontmatter()`, `extract_sources()` and
+  `extract_tags()` are gone. Any upstream lint change needs porting onto
+  `wikifm`, not a textual merge.
+- `hooks/session-start.sh` (lint parsing, stale scan, scaffold, the removed
+  warning), `hooks/pre-write.sh` (PATCH-5, PATCH-6) and `hooks/hooks.json`
+  (matchers, `post-validate.sh` in place of `post-write.sh`).
+- `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
+  `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
+  template (PATCH-7, PATCH-14).
+- The research and PRD skills, wherever upstream names folder pages
+  `README.md` (PATCH-13).
+- `README.md`, `hooks/README.md`, `CONTRIBUTING.md`, `GETTING_STARTED.md`.
+
+**After a merge:**
+
+- Run the suite: `python3 -m pytest tests/ -q`.
+- Run `lint.py <wiki> --json` before and after on pm-wiki and compare the
+  counts.
+- Search for new frontmatter reading outside `wikifm` (`grep -n "^---"` style
+  regexes, `yaml.safe_load`) and new `README.md` folder-page wording.
+- New docs or templates: check them against `citation-spec.md` (citations,
+  `sources:` as paths, quoted dates) and the private-by-default model.
+- If upstream changed `hooks/hooks.json`, mirror it in
+  `~/.claude/settings.json` by hand. Nothing reads `hooks.json` here, so a new
+  or changed upstream hook doesn't run until then.
+- Symlink any new skill into `~/.claude/skills/` and any new worker into
+  `~/.claude/agents/`.
+- If `hooks/wiki-search.sh` or the MCP package version changed, restart the
+  server: `launchctl kickstart -k gui/$(id -u)/local.wiki-search`.
+- If upstream fixed any patch here, drop the fork's version and update its
+  entry. Check `wirux/mcp-markdown-vault#47` too: if it's fixed, PATCH-2 is
+  optional.
+
+## Open Questions
+
+- **What to offer upstream, and when.** Section 8 of the design marks steps 1–8
+  and step 9's worker fix as upstream candidates (step 5 as an issue first), and
+  the migration script to go with step 11. PATCH-1, PATCH-14, PATCH-15 and
+  PATCH-16 aren't covered by it, and none is filed. Two issues filed from this
+  fork are open: `anh-chu#9` (block-style tags), which PATCH-6 fixes another
+  way, and `anh-chu#11`, whose suggested `README.md` slug rule is the opposite
+  of PATCH-13. Comment on `#11` with the fork's finding, or close it?
+- **PATCH-14 is unverified end to end.** It was written after the gap it fixes
+  was corrected by hand. pm-wiki's log shows person promotions on 2026-09-14 and
+  2026-09-22 whose entries don't mention the relationship map. Check whether
+  those were people the map should hold, and whether the scan updated it.
+
+## Corrections to Commit Messages
+
+Recorded here rather than by rewriting git history, which would change the IDs
+of every later commit.
+
+- `91878dc` (lint checks R1–R5) says it adds `tests/test_lint.py` as "the first
+  test module for lint.py". `TestLint` in `tests/test_hooks.py`, added upstream
+  in v2.20.0, already tested `lint.py`.
+- `dfdd98c` lists "session-stop.sh: disable auto-commit block" among patches to
+  the plugin. Upstream 2.21.0 has no auto-commit: the fork's own `dc6bc6c`
+  added it from the README's optional snippet, and `eb154e1` moved it.
+
+## Background
+
+### How the fork got here
+
+- **Plugin-cache patches, 2026-08-06 to 2026-08-29.** The first fixes were made
+  in the installed plugin's cache, `~/.claude/plugins/cache/anh-chu-plugins/
+  llm-wiki-pm/2.21.0`, as commits `4b74c51`, `79c9f3b` and `f7faab5`. That copy
+  wouldn't survive a plugin update, so they were ported to this clone (`dfdd98c`,
+  2026-08-11, all bundled in one commit, and `8680b22`, 2026-08-30). Tag
+  `plugin-cache-2.21.0` keeps the cache commits reachable.
+- **Auto-commit.** `dc6bc6c` added an auto-commit at session end from the
+  README's optional snippet, `eb154e1` made it run every session, and
+  `dfdd98c` commented it out (old PATCH-1): SessionEnd fired per short-lived
+  backend session, producing dozens of near-duplicate wiki commits. Only the
+  commented-out block remains.
+- **This document** started as a page in pm-wiki and moved here on 2026-08-30.
+- **The install** moved from the plugin to symlinks and `settings.json` hooks
+  in September 2026, so the fork's code runs directly (see How the Fork Runs).
+- **History rewrite, 2026-09-29.** `git filter-repo` replaced real names in 27
+  commits from `4e61e6c` on (step 0 of the design). Every commit ID in this
+  document was checked to exist on 2026-10-02.
+
+### Old Patch and Issue Numbers
+
+Older docs, commit messages and this changelog's older revision entries use
+these numbers.
+
+| Old | New | Note |
+|---|---|---|
+| PATCH-1 | none | Auto-commit disabled. No behavior change remains (Background). |
+| PATCH-2 | none | `backlinks.py` README self-slug. Removed 2026-10-01 (PATCH-13). |
+| PATCH-3a | none | Block-style list parsing. Replaced by `wikifm.py` (PATCH-6). |
+| PATCH-3b | none | `slug()` README rule. Removed 2026-10-01 (PATCH-13). |
+| PATCH-3c | PATCH-1 | |
+| PATCH-3d, PATCH-3e | PATCH-2 | One entry. |
+| PATCH-4 | PATCH-14 | |
+| PATCH-5 | PATCH-17 | |
+| ISSUE-1 | NW1 | Merged into NW1 in the backlog, 2026-10-02. |
+| ISSUE-2 | NW1 | Merged into NW1 in the backlog, 2026-10-02. |
+| ISSUE-3 | none | Closed 2026-09-30, by steps 5–7 and 10b of the design. |

@@ -11,6 +11,10 @@ revised on: 2026-10-02
 Closed NW5: one shared wiki-search server per wiki, under launchd, with
 `$WIKI_PATH` as the default wiki. Corrected its title, and added a line on NW5's
 effect to NW2 and NW7.
+Merged the fork changelog's last open issues, ISSUE-1 (action items have no
+update mechanism) and ISSUE-2 (the indexer's overview regeneration), into NW1,
+and pointed NW4 at NW1. Added NW8, the maintain skill filing a weekly brief as
+a daily one (upstream `anh-chu#12`).
 
 The first seven items, NW1–NW7, were recorded during the sources and references
 work and moved here word for word from section 10 of the
@@ -20,7 +24,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW8 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW9 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -37,8 +41,51 @@ loads stale and sometimes wrong information every session. The same design
 covers what else Orient should load. The org chart kept in SCHEMA's Domain
 section is weeks older than `concepts/relationship-map.md`, which Orient never
 reads. The proposal is a pointer from SCHEMA to the map, plus Orient reading only
-a compact org-chart section of it. Starting points: ISSUE-1, ISSUE-2, and I8's
-revisit mechanism.
+a compact org-chart section of it. Starting points: the two findings below,
+and I8's revisit mechanism.
+- **Action items have no update mechanism** (the fork changelog's ISSUE-1,
+  found 2026-08-30).
+  - **Symptoms in `overview.md`:** bullets under Active Bets, Action Items and
+    Open Questions accrete inline `**Update DATE**` clauses into run-on
+    paragraphs (the worst carry 3–4 rounds), the update markers vary in shape
+    (`**Update DATE (context)**`, `**Resolved DATE**`, `**New DATE**`,
+    `**Correction DATE**`, `**Confirmed DATE:**`), and the Action Items section
+    isn't in `templates/overview.md`, which also asks for one line per bet or
+    question.
+  - **Root cause:** crystallize pages are point-in-time. `crystallize-guide.md`
+    only creates them; its "update affected pages" step never names the digest
+    itself, and `update-guide.md` never targets `queries/` digests. Decisions
+    have a living home (the topic's concept or entity page), but actions
+    don't: the "roadmap pages" `crystallize-guide.md` names as a place for them
+    aren't a page type in `SCHEMA.md`. pm-wiki fills the gap with a concept page
+    tagged `roadmap`.
+  - **Measured in pm-wiki, 2026-08-30:** the Action Items tables of 3
+    crystallize pages all kept their creation-time status (mostly "pending"),
+    even for an item `overview.md` marked done on 2026-08-08. Since ingest step
+    ⑦ is the only step that reliably sends an agent back to `overview.md`, its
+    Action Items section became the de facto tracker, and its accretion is
+    compensation for the missing update step.
+  - **Constraint on a fix:** compressing an overview bullet to one line plus a
+    link to the digest would make the status signal worse, because the digest
+    is the stale copy. A fix needs either a status-sync step in the update and
+    crystallize flows, so the linked page becomes trustworthy first, or the
+    compressed overview line as the source of truth for status, linking out
+    only for rationale and history.
+- **The indexer's Overview Regeneration mode** (the fork changelog's ISSUE-2,
+  found 2026-08-30). If run (overview more than 7 days stale with log activity
+  since), `worker-wiki-indexer` replaces everything below `overview.md`'s intro
+  with generated Theme Clusters, Coverage, Recent Activity, Known Gaps and
+  Stats sections, unlike the curated structure in use.
+  - **Dormant:** no hook or skill triggers it. It's a judgment call in the
+    product-manager role ("use after large ingests"), pm-wiki's `log.md` had no
+    record of it ever running (327 entries, 2026-08-30), and near-daily edits
+    keep `updated:` inside the 7-day window.
+  - **Mitigated since 2026-09-29:** `pre-write.sh` snapshots `overview.md`
+    before a whole-file replacement (`Write`, or the MCP's `vault` update or
+    delete), so a regeneration can be undone (fork changelog PATCH-5). One done
+    section by section through `Edit` would not be snapshotted.
+  - **For this design:** whatever structure it settles on for `overview.md`, the
+    indexer's regeneration mode should produce it, or be removed.
 
 **NW2. Fork `wirux/mcp-markdown-vault`. Deferred (review F4).** The permission
 rule in D9 removes the damaging operations on this install at no cost, so the
@@ -80,9 +127,9 @@ on the per-day report in `queries/`. Found in the design review
   - It has no frontmatter, sources or links, and no skill defines when or how it
     is updated.
   - Wiki pages mention it in prose, but none link to it.
-- **Related work:** it has the same staleness problem as ISSUE-1 (action-item
-  status never updated after capture; [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) notes action
-  items have no real page type) and as NW1 (frozen action items in `overview.md`).
+- **Related work:** it has the same staleness problem as NW1: action-item
+  status is never updated after capture, action items have no real page type,
+  and `overview.md` holds frozen copies of them.
 - **Options:**
   1. **Make it a first-class page,** for example `queries/open-action-items.md`,
      with standard frontmatter, sources and links. Define in the maintain skill
@@ -91,9 +138,9 @@ on the per-day report in `queries/`. Found in the design review
   2. **Remove it and generate the list on demand** from the action items in
      meeting digests, through a brief-skill command. There is no separate file to
      go stale, but it only works once digests' action items are marked done when
-     resolved, which is ISSUE-1's open problem.
+     resolved, which is NW1's open problem.
 
-  They aren't exclusive: option 1 now, and option 2 once ISSUE-1 is solved.
+  They aren't exclusive: option 1 now, and option 2 once NW1 solves that.
 - **Found in:** the design review (F15).
 
 **NW7. No link search finds every incoming link.**
@@ -148,6 +195,26 @@ on the per-day report in `queries/`. Found in the design review
   stay stale until a reindex, which adds to the case for `backlinks.py`.
 - **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
   2026-10-01.
+
+**NW8. The maintain skill files a weekly brief as a daily one.**
+- **What happens:** `llm-wiki-maintain` step ④ routes to `llm-wiki-brief`'s
+  daily brief and files it as `briefings/YYYY-MM-DD.md`, whatever the sweep's
+  cadence. Its triggers include "maintain the wiki" and scheduled runs that
+  aren't daily, and `llm-wiki-brief` has its own weekly convention
+  (`queries/weekly-brief-YYYY-MM-DD.md`, offered for filing), which maintain
+  never routes to.
+- **Seen:** a weekly sweep on 2026-08-28 filed weekly content at a daily path,
+  left out of `index.md`, until it was moved by hand to the weekly path.
+- **Since step 2 of the sources design:** maintain no longer rotates briefs into
+  `_archive/briefings/`, so a misfiled weekly brief is no longer archived as a
+  daily one. The misfiling itself remains. Dated briefs are exempt from lint's
+  index check, so nothing reports it.
+- **Proposal:** a cadence check at step ④ (ask when unclear in interactive mode,
+  take it from the run's declared scope in autonomous mode), routing to the
+  daily or weekly brief and its filing path.
+- **Upstream:** filed from this fork as `anh-chu#12` (2026-08-29), open on
+  2026-10-02. Its rotation part is already fixed here.
+- **Found in:** pm-wiki, 2026-08-29.
 
 ## Closed
 

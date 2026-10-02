@@ -387,7 +387,7 @@ test file, runs the hook with `WIKI_PATH` set and no `.wiki-path`, and checks
 that the output names the wiki and doesn't mention set-wiki-path. The existing
 unconfigured-path test (`test_hooks.py:429-460`) keeps covering the other
 warning. This changes upstream behavior, so it's recorded in the
-[llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) as PATCH-5 and
+[llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) as PATCH-17 and
 isn't offered upstream: upstream treats `.wiki-path` as the main setting.
 
 **Removing the `.wiki-path` files (step 8).** Done after the smoke test.
@@ -434,7 +434,7 @@ so they can stay in place after a rollback.
   fork build means repointing the plist and restarting; streamable HTTP would
   go there if SSE support is dropped) and NW7 (the shared server's backlinks
   stay stale until a reindex).
-- Fork changelog: PATCH-5 (step 7).
+- Fork changelog: PATCH-17 (step 7).
 - Project memory: wiki-search is now one shared server under launchd, and
   `$WIKI_PATH` is the default wiki. Update the existing note about `WIKI_PATH`
   and pm-wiki's tracked `.wiki-path`.
@@ -468,7 +468,7 @@ Implemented 2026-10-02, following section 11.
   session's next read worked, with no reconnect by hand.
 - **Step 7.** The session-start change was committed as `2e7247c`, with
   `tests/test_session_start_wiki_path.py`. The new test fails without the
-  change. The full suite passed: 449 passed, 2 skipped. Recorded as PATCH-5 in
+  change. The full suite passed: 449 passed, 2 skipped. Recorded as PATCH-17 in
   the [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md).
 - **Step 8.** Nothing scheduled depends on `.wiki-path`: no scheduled tasks,
   no crontab, and no other LaunchAgents. All 14 `.wiki-path` files were
