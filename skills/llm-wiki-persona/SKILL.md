@@ -104,9 +104,12 @@ updated: 'YYYY-MM-DD'
 | [[lead-pm]] | [[data-team]] | roadmap input | weekly |
 ```
 
-Update whenever a new person entity is added — this is triggered automatically
-by the core skill's entity-promotion scan (§2⑫), not a separate manual step.
-Link to it from each person entity page.
+The map covers people in your own organization. Customer and partner contacts
+stay off it; their entity pages name their company instead.
+
+Update whenever a new internal person entity is added — this is triggered
+automatically by the core skill's entity-promotion scan (§2⑫), not a separate
+manual step. Link to it from each person entity page on the map.
 
 Interaction frequency values:
 - `daily`: regular async chat or daily syncs
