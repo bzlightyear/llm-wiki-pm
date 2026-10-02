@@ -30,9 +30,9 @@ GLOBAL_WARNING=""
 if [[ -z "$WIKI" ]]; then
   WIKI="$(pwd)"
   GLOBAL_WARNING="llm-wiki-pm: no wiki path configured. Falling back to current directory ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path to set a permanent path."
-elif [[ -z "$FILE_WIKI" ]]; then
-  GLOBAL_WARNING="llm-wiki-pm: using global wiki path ($WIKI). Run /llm-wiki-pm:set-wiki-path ~/your-path from your project directory to set a project-specific path."
 fi
+# A wiki from WIKI_PATH (or the plugin option) is the default, not a fallback:
+# .wiki-path is only for a project that uses another wiki, so no warning.
 
 # ①b Ensure wiki-search package is in npx cache (background, non-blocking)
 # First session after install will use npx (slow); this ensures the cache
