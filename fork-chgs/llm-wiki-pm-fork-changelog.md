@@ -305,7 +305,9 @@ the set would go upstream with the migration script, isn't done.
   removed on 2026-10-01, and `backlinks.py` now matches upstream.
 - **Status:** active. Upstream's docs still prescribe `README.md`, though its
   lint already names a page by its file stem. Upstream issue `anh-chu#11`, filed
-  2026-08-08 from this fork, proposes the opposite fix (see Open Questions).
+  2026-08-08 from this fork, proposed the opposite fix. A comment on 2026-10-02
+  withdrew it, described this patch, and offered a pull request with only the
+  upstream doc changes (see Open Questions).
 
 ### Skill docs
 
@@ -431,8 +433,9 @@ Not patches to upstream's code, and not offered upstream:
   the migration script to go with step 11. PATCH-1, PATCH-14, PATCH-15 and
   PATCH-16 aren't covered by it, and none is filed. Two issues filed from this
   fork are open: `anh-chu#9` (block-style tags), which PATCH-6 fixes another
-  way, and `anh-chu#11`, whose suggested `README.md` slug rule is the opposite
-  of PATCH-13. Comment on `#11` with the fork's finding, or close it?
+  way, and `anh-chu#11`. On 2026-10-02 a comment on `#11` withdrew its
+  suggested `README.md` slug rule in favor of PATCH-13 and offered a docs-only
+  pull request. It's waiting on a reply.
 - **PATCH-14 is unverified end to end.** It was written after the gap it fixes
   was corrected by hand. pm-wiki's log shows person promotions on 2026-09-14 and
   2026-09-22 whose entries don't mention the relationship map. Check whether
