@@ -16,7 +16,16 @@ update mechanism) and ISSUE-2 (the indexer's overview regeneration), into NW1,
 and pointed NW4 at NW1. Added NW8, the maintain skill filing a weekly brief as
 a daily one (upstream `anh-chu#12`). Split NW1's org-chart part into NW9, org
 structure kept in three places, with measurements and the relationship map's
-creation rule.
+creation rule. Added to NW9:
+- How far the person-page org fields disagree with the map, and with each
+  other (a reciprocity check).
+- A fourth copy, in page bodies.
+- An ingest that missed a reverse update.
+- A lean toward the fields as the source of truth, with a lint rule.
+Added NW10, script writes to pages getting no snapshot, with a session-start
+checkpoint commit and a git-based snapshot fill as the proposal. Added NW11,
+skills citing an `AGENTS.md` that wiki sessions never load, with a new Orient
+step that reads it as the proposal.
 
 The first seven items, NW1–NW7, were recorded during the sources and references
 work and moved here word for word from section 10 of the
@@ -26,7 +35,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW10 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW12 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -227,8 +236,42 @@ on the per-day report in `queries/`. Found in the design review
     SCHEMA's person-page frontmatter.
 - **Measured in pm-wiki, 2026-10-02:** the Domain section's org chart was last
   edited 2026-08-06, and the map's content 2026-09-04. 16 of the map's 33
-  people don't appear in the Domain section. How far the person-page fields
-  disagree with the map wasn't measured.
+  people don't appear in the Domain section. Later the same day, the
+  person-page fields were measured too (below).
+- **The person-page fields disagree with the map, and with each other**
+  (measured in pm-wiki later on 2026-10-02):
+  - **Map vs. fields:** all 55 person pages carry `reports_to`,
+    `direct_reports` and `peers`. 34 of them have a row in the map's Org
+    Chart table, and 21 don't. Comparing the 34, 11 people disagree
+    between the map and their own page:
+    - In 7 the page is more complete: a newer report, or a manager the map
+      still lists as "unknown."
+    - In 4 the map has a link the page lacks. 3 of those 4 are history
+      written into a map cell ("moved from X," "formerly X," "temporary
+      matrix"), which reads as a current relationship to anything parsing
+      the links.
+    - So neither copy is reliably the newer one.
+  - **Fields vs. fields:** 18 links have no reverse on the other person's
+    page. That's 14 non-mutual `peers`, 3 where A's `reports_to` names B
+    but B's `direct_reports` lacks A, and 1 the other way. Nothing checks
+    reciprocity.
+  - **A fourth copy:** 38 of the 55 person pages repeat `reports_to` and
+    `direct_reports` as bullets in a body Relationships section, so one
+    page can disagree with itself.
+  - **"Unknown" has two spellings:** the map writes `unknown`, and person
+    pages write `null`.
+- **Seen happening, 2026-10-02:** a daily-maintenance ingest created a person
+  page from a user statement of who the person reports to. It added the map
+  row and a body line on the manager's page. It did not set the new page's
+  own `reports_to` and `peers` fields, or add the person to the manager's
+  `direct_reports` or the new peer's `peers`. The user caught it. Two
+  reasons it was easy to miss:
+  - Core skill §2 ⑫ names only the map ("add the new person's org-chart
+    row ... under their manager's `direct_reports` cell"). The person-page
+    fields aren't mentioned, and that step's "`direct_reports` cell" is the
+    map's.
+  - Lint reads none of these fields, so the check the run ends with was
+    clean.
 - **Why it matters:** every session's Orient starts from the oldest and least
   complete copy, and a question like "who does X report to" can get different
   answers depending on which copy an agent reads.
@@ -240,8 +283,30 @@ on the per-day report in `queries/`. Found in the design review
   starts fork-only or as an upstream issue.
 - **To decide:**
   - Which copy is the source of truth: the map, or the person-page fields with
-    the map's org chart built from them.
+    the map's org chart built from them. The 2026-10-02 measurements point to
+    the fields:
+    - Every person page already has them.
+    - They're one value per page, so they can be checked mechanically.
+    - The map's cells mix current relationships with history prose.
+    - Generating the map's Org Chart from the fields would remove a copy
+      instead of adding a check between two.
   - Whether lint checks that the map and the person-page fields agree.
+    Whatever the source of truth, lint should check the fields themselves (a
+    🟡 warning):
+    - `reports_to` and `direct_reports` are each other's reverse, and
+      `peers` is mutual.
+    - It must allow more than one `reports_to`, because matrix reporting
+      exists in pm-wiki.
+    - `unknown` and `null` count as the same value.
+    - `--auto-fix` could fill in a missing `direct_reports` or `peers`
+      reverse. It should not fill in `reports_to`, since a wrong guess there
+      states the wrong manager.
+  - Whether to drop the body Relationships bullets that repeat the fields,
+    or have them generated.
+  - Wording for §2 ⑫, the persona skill and the SCHEMA template: changing
+    someone's org placement means updating the person's fields, the other
+    side's fields, and the map in the same edit. This only matters until the
+    map is generated.
 - **Includes the map's creation rule.** The SCHEMA template's person-page
   section, the persona skill and the core skill's §2 ⑫ create the map once
   "3+ person entities" exist. Since `f5bd6b0` the map covers internal people
@@ -249,7 +314,172 @@ on the per-day report in `queries/`. Found in the design review
   customer contacts would get an empty map.
 - **Related:** NW1 (what Orient loads).
 - **Found in:** a session on 2026-09-26, recorded inside NW1. Split out
-  2026-10-02.
+  2026-10-02. Field disagreement measured, and a missed reverse update seen
+  during an ingest, also 2026-10-02.
+
+**NW10. Script writes to pages get no snapshot.**
+- **What happens:** the pre-write hook snapshots a page only when the Write,
+  Edit, MultiEdit or MCP `vault`/`edit` tools change it. A page changed by a
+  Bash command (a `python3 - <<'EOF'` heredoc, or a helper script run through
+  Bash) gets no `_archive/<slug>-<date>.md`. The design accepts this: I7's
+  guarantee excludes "Bash, script, Obsidian or git writes", with git as the
+  undo and a behavioral rule ("snapshot by hand before a script edit") for
+  agents.
+- **Seen happening, 2026-10-02:** the first big daily-maintenance sweep after
+  the sources and references work changed 9 concept pages with Edit and 11
+  pages with Bash heredocs (10 person pages and `concepts/relationship-map.md`).
+  `_archive/` got the 9 concept snapshots, each identical to git HEAD, and none
+  of the 11.
+- **Why the rule was missed:** distance from the decision, not absence. The
+  sweep's transcript shows the agent read the rule ("by hand before a script
+  edit") at entry 29 of 1,198, when the core skill loaded. Its first script
+  write to a page came at entry 646, and the context was never compacted. So
+  the rule was in context the whole time, about 600 to 800 steps before the
+  writes, while the agent worked through 18 large meeting notes.
+  - In the skills, agents see the rule only as a parenthetical in core skill
+    §4 Update and in the split procedure (`citation-spec.md` "Page
+    lifecycle"). Its full statement, `AGENTS.md`'s "Snapshot before
+    destructive ops", isn't loaded in pm-wiki sessions (see NW11).
+  - The two places that point agents to scripts, and that an agent rereads
+    when it decides to script, say nothing about snapshots: core `SKILL.md`
+    "Edit frontmatter with the Edit tool (in a script,
+    `wikifm.set_field`/`set_list`)", and `citation-spec.md`'s "Editing
+    frontmatter" snippet.
+  - Bulk person and org-chart updates make script writes routine, not the
+    rare case I7 assumed.
+  - Reading the full contract every session (NW11's Orient step) would not
+    have prevented this miss, since the rule was already in context.
+- **Why it matters (low to moderate):** nothing reads `_archive/` snapshots
+  automatically. They exist only so a bad change can be rolled back, and the
+  user hasn't used that so far. The exposure is content added since the last
+  commit and then damaged by a later script write. Git still has everything
+  in the last commit. The user commits rarely, often not for many sessions,
+  so that window is wide.
+- **Options ruled out:**
+  - **Auto-commit at session end** (the fork's `dc6bc6c`, backed out in
+    `dfdd98c`, changelog Background): SessionEnd fires per short-lived backend
+    session. Since the move to user-level `settings.json` hooks and NW5's
+    `$WIKI_PATH` default, `session-stop.sh` also runs at the end of every
+    Claude Code session on the machine, in any project, and targets pm-wiki.
+    An auto-commit there would commit a pm-wiki sweep's partial work whenever
+    any other session ends. A likely cause of the old flood, not verified:
+    `session-start.sh` rewrites `_status.md` every session, and the old
+    snippet ran `git add -A`, so almost every session end had a change.
+  - **Filling missing snapshots from git HEAD at session end alone:** with
+    rare commits, HEAD can be many sessions old. A page script-edited on two
+    days in a row would get the old HEAD version both times, and the first
+    day's version could not be restored.
+- **Proposal:** a session-start checkpoint plus a git-based snapshot fill.
+  - **Checkpoint:** when a session starts with pm-wiki as its working folder
+    (from the hook input's `cwd`, not `$WIKI_PATH`), commit any leftover
+    changes, excluding `_status.md`, before work begins. No changes, no
+    commit. Skip it when another session holds `.wiki-lock`, so one session
+    never commits another's work in progress. Expected rate: about one commit
+    per sweep.
+  - **Snapshot fill:** at session end, and in `lint.py --auto-fix` as a second
+    chance, for each changed file in a page directory with no
+    `_archive/<slug>-<today>.md`, write one from `git show HEAD:<path>`
+    through `lint.py`'s `snapshot()`. Never overwrite a snapshot the hook
+    already made. The checkpoint makes HEAD the state at session start, so
+    the fill saves the right pre-image whatever the user's commit habit.
+  - **Docs:** put the snapshot sentence next to both pieces of script advice
+    (core `SKILL.md` and `citation-spec.md`), where an agent reads it at the
+    moment it decides to script. Update I7's guarantee text,
+    `hooks/README.md`, and the changelog.
+- **Alternatives if checkpoint commits are unwanted:**
+  - **Session-start copy:** `session-start.sh` copies the page directories
+    (303 files, 2.3 MB in pm-wiki on 2026-10-02) to a per-session scratch
+    folder. `session-stop.sh` snapshots every changed page from that copy and
+    deletes it. The next session start processes a copy left by a session
+    that ended without its stop hook. This needs no commits but more
+    machinery.
+  - **One write helper:** a `wikifm.write_page()` that calls `snapshot()`
+    first, plus a pre-write warning when a Bash command writes into a page
+    directory. This is cheaper, but it still depends on agent behavior and
+    misses ad-hoc `open().write()` heredocs like the 2026-10-02 ones.
+- **To decide:**
+  - Whether unreviewed checkpoint commits are acceptable. They can be
+    tidied or undone later.
+  - Measure how often SessionEnd fires (a day of logging in the hook) before
+    choosing between the checkpoint and the session-start copy.
+- **Related:** I7 (design section 1), changelog PATCH-5 and Background
+  ("Auto-commit"), NW5 (`$WIKI_PATH` default), NW11 (`AGENTS.md` not loaded
+  in a wiki).
+- **Found in:** a pm-wiki maintenance session on 2026-10-02 (the agent's own
+  report), analyzed in an llm-wiki-pm session the same day.
+
+**NW11. Skills cite an `AGENTS.md` that wiki sessions never load.**
+- **What happens:** `AGENTS.md` is the plugin repo's behavioral contract. It
+  loads only in sessions whose working folder is the plugin repo. Setup copies
+  only the files in `skills/llm-wiki-pm/templates/` into a new wiki, and none
+  of them is an `AGENTS.md` or `CLAUDE.md`. pm-wiki has neither. Yet several
+  skills defer to it:
+  - `llm-wiki-research`: "Orient per AGENTS.md before any writes".
+  - `llm-wiki-brief`: "Full orient (AGENTS.md 4-step protocol)", and
+    "Behavioral Constraints (per AGENTS.md)".
+  - `llm-wiki-persona`: "Behavioral Constraints (per AGENTS.md)".
+  - `llm-wiki-prd`: "Per AGENTS.md, orient before any write", and "Inherited
+    from AGENTS.md".
+  - `citation-spec.md` names AGENTS.md among the files that point to it.
+  In a pm-wiki session these references lead nowhere. Rules stated only in
+  `AGENTS.md`, such as the full "Snapshot before destructive ops", never
+  reach the agent.
+- **Likely cause:** upstream wrote `AGENTS.md` as a portable contract for
+  porting the plugin to other agents (README: "the portable reference if you
+  want to port to another agent"). It expected Claude Code to get the rules
+  from the skills and hooks. The "per AGENTS.md" lines were probably written
+  in the plugin repo, where the file does load.
+- **Why it matters:** the skills' references resolve to nothing, and the
+  contract isn't in context in wiki sessions.
+  It would not have prevented NW10's missed snapshots, since that rule was in
+  context from the core skill.
+- **Proposal: read the contract during Orient.**
+  - Add a step to core skill "Orient Every Session" that reads the fork's
+    `AGENTS.md`. The skill finds it relative to its own folder
+    (`${CLAUDE_SKILL_DIR}/../../AGENTS.md`), which holds for the symlinked
+    install and for a plugin install, since both carry the whole repo. Orient
+    already reads `$WIKI/SCHEMA.md` and the other root files by path, so the
+    step works whichever project the session starts in.
+  - The "per AGENTS.md" references in the sub-skills then point at something
+    the agent has read. They can stay as they are.
+  - There's one copy, so nothing can drift, and nothing has to be added to
+    pm-wiki or to setup.
+  - Clean up `AGENTS.md` first, since every Orient would read it (about 718
+    words):
+    - Its Wiki Path Resolution still reads `.wiki-path`, which NW5 removed.
+    - Model Routing, Skill Architecture and Agent Surfaces are about the
+      plugin, not wiki work. Move them to a plugin-side file or trim them.
+    - The plugin repo's own development sessions load the same file as
+      their project instructions, so keep a version that suits wiki
+      sessions.
+  - Like the rest of Orient, it's read once per session, so it can still be
+    lost to compaction in a long session.
+  - **Read only the Behavioral Constraints section.** Measured in pm-wiki on
+    2026-10-02, Orient already loads about 15,400 words: core `SKILL.md`
+    3,441, `overview.md` 8,626, `SCHEMA.md` 2,555, `index.md` 591, and the
+    last 30 lines of `log.md` 171. The whole `AGENTS.md` (718 words) would
+    add about 5%, and about 3% after the cleanup above. Most of what's left
+    after the cleanup (the Orient protocol and source attribution) repeats
+    the core skill. Behavioral Constraints (245 words) is the part the
+    skills don't carry, so reading only that section adds about 1.5%.
+    Trimming `overview.md` under NW1 would save far more than this costs.
+- **Ruled out: a pm-wiki `CLAUDE.md`** importing `AGENTS.md`. It loads only
+  in sessions started inside pm-wiki. The wiki is used from other projects
+  (`$WIKI_PATH` since NW5), and Claude Code doesn't load a `CLAUDE.md` from
+  an unrelated folder when a file there is read. That was tested on
+  2026-10-02: reading a page in a scratch folder outside the session's
+  working folder didn't load that folder's `CLAUDE.md`. Reads through Bash or
+  the wiki-search MCP don't trigger loading at all. It could still be added
+  for sessions started in pm-wiki, but it isn't the fix.
+- **Ruled out: folding the rules into core `SKILL.md`** and dropping the
+  "per AGENTS.md" references. That's simpler, but it duplicates rules and
+  gives up `AGENTS.md` as the single contract.
+- **Upstream:** changing Orient's reading list is a "discuss first" item in
+  upstream's CONTRIBUTING (as in NW9). It doesn't block the fork.
+- **Related:** NW10 (the snapshot rule lives in `AGENTS.md`), NW1 and NW9
+  (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
+  from any project).
+- **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
 ## Closed
 
