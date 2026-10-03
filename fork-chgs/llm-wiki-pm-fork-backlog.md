@@ -7,7 +7,10 @@ improve, and performance to tune. Each item records what is known when it's
 captured. An item big enough to need one gets its own design, analysis or
 proposal doc when the work starts.
 
-revised on: 2026-10-02
+revised on: 2026-10-03
+Added to NW7: the wiki-search server updates its index from file events, with
+no periodic reindex. New files are confirmed to index live, and renames remain
+the open case.
 Closed NW5: one shared wiki-search server per wiki, under launchd, with
 `$WIKI_PATH` as the default wiki. Corrected its title, and added a line on NW5's
 effect to NW2 and NW7.
@@ -201,6 +204,27 @@ on the per-day report in `queries/`. Found in the design review
   (analysis M2), and the analysis's other optional follow-ups (its section 9).
 - **Since NW5:** the one shared server can run for weeks, and its backlinks
   stay stale until a reindex, which adds to the case for `backlinks.py`.
+- **How the server's index updates** (read from `mcp-markdown-vault` 2.3.0's
+  `dist/use-cases/vault-indexer.js`, 2026-10-03):
+  - **No periodic reindex.** Updates are driven by file events, with no timer
+    for a full rescan.
+  - At startup it watches the whole vault (chokidar) for `add`, `change` and
+    `unlink` events.
+  - An added or changed `.md` file is queued for indexing after a 500 ms
+    per-file debounce. A deleted `.md` file is queued right away and leaves the
+    index.
+  - The `system` tool's `status` action reports `watcherState: active` while
+    the watcher runs.
+- **New files index live (confirmed 2026-10-03).** A server started before an
+  ingest found the ingest's new pages through `semantic_search` the next day,
+  with no reindex.
+- **Renames are the open case.** A rename should arrive as a delete and an
+  add, which the watcher handles. The failed first reindex on 2026-10-01
+  points somewhere else. Two candidates, neither verified:
+  - backlinks resolve against a cache that file events don't refresh
+  - on macOS, chokidar reports some renames as a pair of `change` events,
+    leaving the old path in the index
+  Testing a rename before and after a reindex would show which.
 - **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
   2026-10-01.
 
