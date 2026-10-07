@@ -174,14 +174,21 @@ EOF
 - **Split** (a page over 200 lines, entity promotion, a history split):
   1. Snapshot the parent (automatic for Write/Edit and MCP `vault` writes; by
      hand before a script edits it).
-  2. Set each child's `sources:` to the paths
+  2. In each child and in what stays in the parent, turn every source named
+     in prose ("Source: raw/…", a meeting and its date, a link to a digest)
+     into a marker on the claims it backs, after checking the record says
+     so. `--cited-sources` reads only markers, so a source named in prose
+     would drop out of `sources:`. A claim no record backs stays uncited
+     and goes into `gaps:`.
+  3. Set each child's `sources:` to the paths
      `python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" "$WIKI" --cited-sources <child>`
      prints. It resolves every ID the child cites against all records and
      pages, lists IDs that resolve to nothing, and writes nothing.
-  3. Run it on the parent too, and trim the parent's `sources:` to what it
+  4. Run it on the parent too, and trim the parent's `sources:` to what it
      still cites.
-  4. Link parent and children to each other.
-  5. Rewrite `[[parent#heading]]` links whose section moved to a child.
+  5. Link parent and children to each other.
+  6. Rewrite `[[parent#heading]]` and `#heading` links whose section moved
+     to a child.
 - **Supersede:** fields and archive as in `update-guide.md`. The new page's
   `sources:` is what it cites, never a copy of the old page's list.
 - **Archive:** `_archive/` is immutable, never a source, and exempt from these
