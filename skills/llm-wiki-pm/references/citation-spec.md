@@ -190,7 +190,8 @@ EOF
   6. Rewrite `[[parent#heading]]` and `#heading` links whose section moved
      to a child.
 - **Supersede:** fields and archive as in `update-guide.md`. The new page's
-  `sources:` is what it cites, never a copy of the old page's list.
+  `sources:` is what it cites, never a copy of the old page's list. Text
+  carried over from the old page gets markers first, as in step 2 of Split.
 - **Archive:** `_archive/` is immutable, never a source, and exempt from these
   rules.
 
