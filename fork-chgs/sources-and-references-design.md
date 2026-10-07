@@ -6,6 +6,12 @@ Invariant-based redesign of how the wiki writes and checks `raw/` source records
 frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
 lint rules, hooks, migration and implementation plan that enforce it.
 
+revised on: 2026-10-06
+Added a step to the split procedure (section 5.8): before `--cited-sources`
+sets a page's `sources:`, sources named in prose become markers, since the
+flag reads only markers. Step 6 now also covers in-page `#heading` links.
+Both came from pm-wiki's 2026-10-06 history splits.
+
 revised on: 2026-10-01
 Fixed NW6 with option 4 of its analysis: a folder page is named after its
 folder, `queries/<slug>/<slug>.md`, and `slug()` is the file stem, with no
@@ -732,16 +738,29 @@ applies to micro-capture, Update, Learn and CRM alike.
   errors multiply, since a split copies whatever is wrong on the parent onto
   every child.
   1. Snapshot the parent (automatic for tool writes).
-  2. Set each child's `sources:` to the paths of exactly the IDs its body cites,
+  2. In each child and in what stays in the parent, turn every source named
+     in prose into a marker on the claims it backs, after checking the
+     record says so; a claim no record backs stays uncited and goes into
+     `gaps:`. `--cited-sources` reads only markers, so without this step a
+     source named in prose drops out of `sources:`. Added 2026-10-06, after
+     five history pages split from pm-wiki that day had no markers at all:
+     their text, written 2026-08-28 to 2026-09-22, named its sources in
+     prose ("Source: raw/…" lines, meeting names, digest links), which lint's
+     page-level marker check couldn't see while the text shared a page with
+     marked sections. The agent filled each child's `sources:` by hand from
+     the prose instead, and lint flagged all five, plus a sixth for R4.
+  3. Set each child's `sources:` to the paths of exactly the IDs its body cites,
      computed with `lint.py --cited-sources <page>`. The new flag prints the
      canonical path of each ID the page cites, resolved against every record and
      page with `slug()` (a new child declares nothing yet, so page-local
      resolution would find nothing), lists IDs that resolve to nothing, and
      writes nothing: no report and no `log.md` entry (plan review P19).
-  3. Run `--cited-sources` on the parent too, and trim its `sources:` to what it
+  4. Run `--cited-sources` on the parent too, and trim its `sources:` to what it
      still cites (review F9: the procedure missed this step).
-  4. Link parent and children to each other.
-  5. Rewrite `[[parent#heading]]` anchors that point at moved sections.
+  5. Link parent and children to each other.
+  6. Rewrite `[[parent#heading]]` anchors that point at moved sections, and
+     in-page `#heading` links, which break when the section leaves the page
+     (one did in the same 2026-10-06 splits).
 
   **Where agents find it (review F9).** The 200-line rule lives in SCHEMA.md and
   lint's warning, not in SKILL.md, and agents read this spec only on demand. So

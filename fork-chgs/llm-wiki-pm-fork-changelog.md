@@ -6,6 +6,11 @@ How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
 change (PATCH-1 to PATCH-18) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
+revised on: 2026-10-06
+Added to PATCH-7: the split procedure now turns sources named in prose into
+markers before `--cited-sources` sets `sources:`, after pm-wiki's 2026-10-06
+history splits left five pages with no markers.
+
 revised on: 2026-10-02
 Rewrote the changelog from git against the 2.21.0 baseline, for a fork that
 runs from this clone rather than as an installed plugin. Patches are renumbered
@@ -206,14 +211,16 @@ the set would go upstream with the migration script, isn't done.
   `sources:` and citations. A fact stated in conversation becomes a write-once
   record `raw/internal/conversation-<date>-<topic>.md` made by `capture.py`, and
   is cited like any other source. `lint.py --cited-sources <page>` lists what a
-  page cites, for setting `sources:`. AGENTS.md, the core SKILL.md, the ingest,
+  page cites, for setting `sources:`. Its split procedure turns sources named
+  in prose into markers before running `--cited-sources`, which reads only
+  markers. AGENTS.md, the core SKILL.md, the ingest,
   update, crystallize and output-format guides, the SCHEMA and persona
   templates, the CRM, research and PRD skills point to the spec, and enrichment
   captures and cites each page it uses.
 - **Why:** a source had no defined identity, so free text was accepted as one
   (design section 3).
-- **Where:** commits `783e37d` (step 5) and `d3941bb` (person enrichment and
-  supersede).
+- **Where:** commits `783e37d` (step 5), `d3941bb` (person enrichment and
+  supersede) and `c10d2ed` (prose-named sources in the split procedure).
 - **Background:** `ae33f9d` had told Update to cite
   `[source: user, conversation, <date>]` when nothing was captured. This patch
   kept its rule against coining a `raw/`-shaped ID for an uncaptured artifact
