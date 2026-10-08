@@ -7,6 +7,13 @@ improve, and performance to tune. Each item records what is known when it's
 captured. An item big enough to need one gets its own design, analysis or
 proposal doc when the work starts.
 
+revised on: 2026-10-08
+Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
+wiki-search, `grep -r` and `backlinks.py` results, with moving snapshots out of
+the wiki folder as the proposal. Corrected NW10's claim that nothing reads
+snapshots automatically. Added a line to NW2 on server-side exclusion, and to
+NW7 a second same-name `_archive/` file and `backlinks.py` dropping `_archive`.
+
 revised on: 2026-10-03
 Added to NW7: the wiki-search server updates its index from file events, with
 no periodic reindex. New files are confirmed to index live, and renames remain
@@ -38,7 +45,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW12 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW13 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -117,6 +124,10 @@ the fork's #49 fix must keep string dates quoted (review F2).
 Since NW5, the MCP runs as one shared server under launchd: a fork build means
 repointing that LaunchAgent and restarting it, and streamable HTTP would go in
 the fork if Claude Code drops SSE.
+NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
+`directory` filter can't exclude a folder. An ignore list would be fork code,
+but NW12 proposes moving snapshots out of the wiki instead, so it isn't a
+reason to fork.
 
 **NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
@@ -225,6 +236,16 @@ on the per-day report in `queries/`. Found in the design review
   - on macOS, chokidar reports some renames as a pair of `change` events,
     leaving the old path in the index
   Testing a rename before and after a reindex would show which.
+- **A second same-name file (found 2026-10-08, NW12):**
+  `_archive/cfp-mcp-ai-insights-history-2026-09-30.md` is a snapshot of the
+  then-live `cfp-mcp-ai-insights-history`, taken by the migration on
+  2026-09-30. A history split on 2026-10-06 gave a new live page the same
+  name. A snapshot's name equals a split page's name whenever a slug ends in
+  `-history`. NW12's move takes this one out of the wiki. M1 itself is an
+  archived page and stays for step 3.
+- **`backlinks.py` should also drop `_archive`** from its folder list in step
+  1. Snapshots were 35 of 57, 88 of 133 and 63 of 102 linking files for three
+  busy pages on 2026-10-08 (NW12).
 - **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
   2026-10-01.
 
@@ -373,12 +394,14 @@ on the per-day report in `queries/`. Found in the design review
     rare case I7 assumed.
   - Reading the full contract every session (NW11's Orient step) would not
     have prevented this miss, since the rule was already in context.
-- **Why it matters (low to moderate):** nothing reads `_archive/` snapshots
-  automatically. They exist only so a bad change can be rolled back, and the
-  user hasn't used that so far. The exposure is content added since the last
-  commit and then damaged by a later script write. Git still has everything
-  in the last commit. The user commits rarely, often not for many sessions,
-  so that window is wide.
+- **Why it matters (low to moderate):** snapshots exist only so a bad change
+  can be rolled back, and the user hasn't used that so far. They are read
+  automatically, though not for rollback: the wiki-search MCP indexes them,
+  and `grep -r` and `backlinks.py` read them (NW12, 2026-10-08). That hurts
+  queries, not this item's exposure. The exposure is content added since the
+  last commit and then damaged by a later script write. Git still has
+  everything in the last commit. The user commits rarely, often not for many
+  sessions, so that window is wide.
 - **Options ruled out:**
   - **Auto-commit at session end** (the fork's `dc6bc6c`, backed out in
     `dfdd98c`, changelog Background): SessionEnd fires per short-lived backend
@@ -504,6 +527,49 @@ on the per-day report in `queries/`. Found in the design review
   (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
+
+**NW12. `_archive/` snapshots crowd live pages out of search.**
+- **What happens:** pre-write snapshots live in `_archive/` inside the wiki
+  folder, and three readers treat them as pages:
+  - **The wiki-search MCP** indexes every `.md` file under the wiki
+    (`listNotes()` skips nothing). A `semantic_search` on 2026-10-08 returned
+    6 `_archive/` snapshots in its top 10, including the top hit. The live
+    history page with the same text ranked third, and the current page wasn't
+    in the 10.
+  - **`grep -r "$WIKI"`,** which several skills use, reads `_archive/`.
+  - **`backlinks.py`** scans `_archive/` on purpose. Snapshots were about 60%
+    of the linking files for three busy pages.
+  - **Obsidian** already hides `_archive/`.
+  - **No skill** tells agents to skip `_archive/` hits, although
+    `citation-spec.md` says `_archive/` is never a source.
+- **Why it matters:** agents can quote stale, uncited snapshot text, and the
+  current page can drop out of the results an agent reads. `_archive/` holds
+  435 of the wiki's 1,002 `.md` files: 429 snapshots, 5 superseded entity
+  pages and NW7's M1 page. No `_archive/` file was ever changed after it was
+  created, so the harm is to reading, not writing.
+- **Options weighed:** a query rule alone (depends on agent behavior and can't
+  undo the crowding), server-side exclusion (the `directory` filter is an
+  include-only prefix applied after retrieval, so a real exclusion needs
+  NW2's fork), and moving snapshots out of the wiki folder.
+- **Proposal:** `snapshot()` in `lint.py` writes to a sibling folder,
+  `~/Projects/pm-wiki-snapshots/`, so every reader stops seeing snapshots at
+  once. `_archive/` keeps archived and superseded pages, and the query and
+  update steps gain one sentence: a hit under `_archive/` is a retired page,
+  not current. `backlinks.py` drops `_archive` (with NW7 step 1). A one-time
+  move of the 429 snapshots out of pm-wiki, committed on its own, and an
+  update to `overview.md`'s pointer to `_archive/overview-2026-10-06.md`.
+  Snapshots then leave pm-wiki's git and GitHub, which loses little.
+- **To decide:** the folder (sibling or a hidden state folder), and where
+  `overview.md`'s pointer goes.
+- **Upstream:** upstream snapshots into `_archive/` too, with the same server.
+  Its CONTRIBUTING counts a directory layout change as a major version, so
+  this goes up as an issue with the measurements.
+- **Full analysis:** [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
+- **Related:** NW7 (same-name `_archive/` copies, `backlinks.py`'s folder
+  list), NW2 (where a server-side exclusion would live), NW10 (its snapshot
+  fill goes through `snapshot()`, so it follows the new folder).
+- **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
+  in pm-wiki.
 
 ## Closed
 
