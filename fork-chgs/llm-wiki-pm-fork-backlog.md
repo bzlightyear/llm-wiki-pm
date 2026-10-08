@@ -127,7 +127,8 @@ the fork if Claude Code drops SSE.
 NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 `directory` filter can't exclude a folder. An ignore list would be fork code,
 but NW12 proposes moving snapshots out of the wiki instead, so it isn't a
-reason to fork.
+reason to fork. If the fork happens anyway, NW12's brief weighs the
+exclusion against the move (its option 4).
 
 **NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
@@ -550,7 +551,9 @@ on the per-day report in `queries/`. Found in the design review
 - **Options weighed:** a query rule alone (depends on agent behavior and can't
   undo the crowding), server-side exclusion (the `directory` filter is an
   include-only prefix applied after retrieval, so a real exclusion needs
-  NW2's fork), and moving snapshots out of the wiki folder.
+  NW2's fork), and moving snapshots out of the wiki folder. If NW2 goes ahead
+  anyway, its exclusion plus a `_snapshots/` folder inside the wiki becomes
+  the alternative: snapshots stay in git, but grep still needs a rule.
 - **Proposal:** `snapshot()` in `lint.py` writes to a sibling folder,
   `~/Projects/pm-wiki-snapshots/`, so every reader stops seeing snapshots at
   once. `_archive/` keeps archived and superseded pages, and the query and

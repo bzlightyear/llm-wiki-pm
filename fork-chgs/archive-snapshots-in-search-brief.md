@@ -26,7 +26,8 @@ deferred fork of the MCP server), NW10 (script writes get no snapshot).
 3. **Drop `_archive` from `backlinks.py`'s folder list,** as part of NW7's
    step 1.
 4. **Leave server-side exclusion to NW2.** It's not needed once snapshots are
-   outside the folder.
+   outside the folder. If NW2 goes ahead anyway, compare option 3 with NW2
+   plus a `_snapshots/` folder inside the wiki (option 4).
 
 ## What happens
 
@@ -192,10 +193,24 @@ Archived and superseded pages stay in `_archive/`.
   reader. The 6 archived pages that stay are retired on purpose, carry
   `superseded_by:` (5 of them), and may be wanted, so a rule that labels them
   fits better than a filter that hides them.
-- **1 with 2:** fixes the MCP and greps, but costs NW2's build and still
-  depends on the rule for `backlinks.py` and agents.
-- **2 on top of 3:** redundant. If NW2 happens anyway, an ignore list could be
-  added there as a safety net, not as the fix.
+- **2 with 1, snapshots left in `_archive/`:** the server excludes all of
+  `_archive/`, which fixes the MCP's search and backlinks. Grep still needs
+  `--exclude-dir=_archive` in the skills' commands and a rule for agents' own
+  greps, so it depends on agent behavior where option 3 doesn't. The 6
+  archived pages become unsearchable through the MCP, which is probably
+  acceptable, since they can still be read by path. Snapshots stay in
+  pm-wiki's git. It costs NW2's build.
+- **2 with 1, snapshots split into `_snapshots/` inside the wiki:** the same,
+  except the server excludes only `_snapshots/`, so the archived pages stay
+  searchable. The split is still a move, but inside the wiki, and snapshots
+  stay in git. This is the strongest combination if NW2 goes ahead for its
+  own reasons (#47, #49), since the exclusion then costs only a patch and a
+  test.
+- **2 on top of 3:** redundant. With snapshots outside the wiki, an ignore list
+  adds nothing.
+
+In every option, `backlinks.py` dropping `_archive` is a code change, not a
+rule.
 
 ## The recommended change
 
