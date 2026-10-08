@@ -9,10 +9,13 @@ proposal doc when the work starts.
 
 revised on: 2026-10-08
 Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
-wiki-search, `grep -r` and `backlinks.py` results, with moving snapshots out of
-the wiki folder as the proposal. Corrected NW10's claim that nothing reads
-snapshots automatically. Added a line to NW2 on server-side exclusion, and to
-NW7 a second same-name `_archive/` file and `backlinks.py` dropping `_archive`.
+wiki-search, `grep -r` and `backlinks.py` results. Its proposal keeps snapshots
+in a `_snapshots/` folder inside the wiki that the server ignores through an
+ignore list added under NW2, since moving them outside the wiki would take them
+out of the wiki's Claude project. Corrected NW10's claim that nothing reads
+snapshots automatically. Added to NW2 the ignore list as a reason to fork, and
+to NW7 a second same-name `_archive/` file and `backlinks.py` dropping
+`_archive`.
 
 revised on: 2026-10-03
 Added to NW7: the wiki-search server updates its index from file events, with
@@ -124,11 +127,11 @@ the fork's #49 fix must keep string dates quoted (review F2).
 Since NW5, the MCP runs as one shared server under launchd: a fork build means
 repointing that LaunchAgent and restarting it, and streamable HTTP would go in
 the fork if Claude Code drops SSE.
-NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
-`directory` filter can't exclude a folder. An ignore list would be fork code,
-but NW12 proposes moving snapshots out of the wiki instead, so it isn't a
-reason to fork. If the fork happens anyway, NW12's brief weighs the
-exclusion against the move (its option 4).
+NW12 (2026-10-08) adds a reason to fork: the server indexes `_archive/`
+snapshots, and its `directory` filter can't exclude a folder. NW12 proposes an
+ignore list, read from an environment variable, as the fork's first fix, so
+snapshots can stay inside the wiki in a folder the server skips. Without the
+fork, NW12 falls back to moving snapshots outside the wiki.
 
 **NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
@@ -242,8 +245,10 @@ on the per-day report in `queries/`. Found in the design review
   then-live `cfp-mcp-ai-insights-history`, taken by the migration on
   2026-09-30. A history split on 2026-10-06 gave a new live page the same
   name. A snapshot's name equals a split page's name whenever a slug ends in
-  `-history`. NW12's move takes this one out of the wiki. M1 itself is an
-  archived page and stays for step 3.
+  `-history`. NW12's proposal moves it to `_snapshots/`, which the server
+  would ignore. Other readers that find pages by name could still see two
+  files, unless snapshots get a name no page can have (NW12's naming
+  question). M1 itself is an archived page and stays for step 3.
 - **`backlinks.py` should also drop `_archive`** from its folder list in step
   1. Snapshots were 35 of 57, 88 of 133 and 63 of 102 linking files for three
   busy pages on 2026-10-08 (NW12).
@@ -551,26 +556,39 @@ on the per-day report in `queries/`. Found in the design review
 - **Options weighed:** a query rule alone (depends on agent behavior and can't
   undo the crowding), server-side exclusion (the `directory` filter is an
   include-only prefix applied after retrieval, so a real exclusion needs
-  NW2's fork), and moving snapshots out of the wiki folder. If NW2 goes ahead
-  anyway, its exclusion plus a `_snapshots/` folder inside the wiki becomes
-  the alternative: snapshots stay in git, but grep still needs a rule.
-- **Proposal:** `snapshot()` in `lint.py` writes to a sibling folder,
-  `~/Projects/pm-wiki-snapshots/`, so every reader stops seeing snapshots at
-  once. `_archive/` keeps archived and superseded pages, and the query and
-  update steps gain one sentence: a hit under `_archive/` is a retired page,
-  not current. `backlinks.py` drops `_archive` (with NW7 step 1). A one-time
-  move of the 429 snapshots out of pm-wiki, committed on its own, and an
-  update to `overview.md`'s pointer to `_archive/overview-2026-10-06.md`.
-  Snapshots then leave pm-wiki's git and GitHub, which loses little.
-- **To decide:** the folder (sibling or a hidden state folder), and where
-  `overview.md`'s pointer goes.
+  NW2's fork), and moving snapshots outside the wiki folder. Moving them
+  outside fixes every reader with no server code, but takes them out of the
+  wiki's Claude project: reading one back to undo a change needs a permission
+  approval or a settings entry, and the desktop app won't open them from a
+  wiki session.
+- **Proposal,** in three steps:
+  1. **Now:** `backlinks.py` drops `_archive` (with NW7 step 1), and the
+     query and update steps gain a rule: skip snapshot hits, and treat an
+     `_archive/` hit as a retired page. Whole-wiki greps in the skills gain
+     `--exclude-dir`.
+  2. **NW2, with an ignore list as its first fix:** the server fork skips
+     folders named in an environment variable, which `wiki-search.sh` sets
+     to `_snapshots/`.
+  3. **`_snapshots/` inside pm-wiki:** `snapshot()` writes there, and a
+     one-time `git mv` moves the 429 snapshots in, committed on its own.
+     `_archive/` keeps the 6 retired pages, still searchable. Obsidian's
+     filter gains `_snapshots/`, and `overview.md`'s pointer to
+     `_archive/overview-2026-10-06.md` follows the move.
+  Grep depends on the rule, which is acceptable because grep returns every
+  match and can't crowd a page out.
+- **Fallback if NW2 stays deferred:** `snapshot()` writes to a sibling folder,
+  `~/Projects/pm-wiki-snapshots/`, added to pm-wiki's Claude settings
+  (`permissions.additionalDirectories`).
+- **To decide:** whether NW2 goes ahead (the recommendation or the fallback),
+  snapshot names (`<slug>-<date>.md`, or `<slug>@<date>.md`, which no page
+  name can equal), and where `overview.md`'s pointer goes.
 - **Upstream:** upstream snapshots into `_archive/` too, with the same server.
   Its CONTRIBUTING counts a directory layout change as a major version, so
   this goes up as an issue with the measurements.
 - **Full analysis:** [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
 - **Related:** NW7 (same-name `_archive/` copies, `backlinks.py`'s folder
-  list), NW2 (where a server-side exclusion would live), NW10 (its snapshot
-  fill goes through `snapshot()`, so it follows the new folder).
+  list), NW2 (the ignore list is its first fix in the proposal), NW10 (its
+  snapshot fill goes through `snapshot()`, so it follows the new folder).
 - **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
   in pm-wiki.
 
