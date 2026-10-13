@@ -7,6 +7,15 @@ improve, and performance to tune. Each item records what is known when it's
 captured. An item big enough to need one gets its own design, analysis or
 proposal doc when the work starts.
 
+revised on: 2026-10-13
+Reworked NW12's proposal: drop pre-write snapshots and rely on git, with a
+checkpoint commit before a session's first write to the wiki. Merged NW10 into
+it and moved NW10 to Closed, since the checkpoint covers script writes and its
+snapshot fill is no longer needed. NW10's check of `.wiki-lock` is dropped:
+every session in any project writes and clears that lock. NW12's earlier
+proposal, `_snapshots/` with NW2's ignore list, is now its alternative, and NW2
+and NW7 follow.
+
 revised on: 2026-10-08
 Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
 wiki-search, `grep -r` and `backlinks.py` results. Its proposal keeps snapshots
@@ -127,11 +136,10 @@ the fork's #49 fix must keep string dates quoted (review F2).
 Since NW5, the MCP runs as one shared server under launchd: a fork build means
 repointing that LaunchAgent and restarting it, and streamable HTTP would go in
 the fork if Claude Code drops SSE.
-NW12 (2026-10-08) adds a reason to fork: the server indexes `_archive/`
-snapshots, and its `directory` filter can't exclude a folder. NW12 proposes an
-ignore list, read from an environment variable, as the fork's first fix, so
-snapshots can stay inside the wiki in a folder the server skips. Without the
-fork, NW12 falls back to moving snapshots outside the wiki.
+NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
+`directory` filter can't exclude a folder. Since 2026-10-13 NW12 proposes
+dropping snapshots, which needs no fork. An ignore list in the fork is only
+NW12's alternative, if snapshots are kept.
 
 **NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
@@ -245,10 +253,8 @@ on the per-day report in `queries/`. Found in the design review
   then-live `cfp-mcp-ai-insights-history`, taken by the migration on
   2026-09-30. A history split on 2026-10-06 gave a new live page the same
   name. A snapshot's name equals a split page's name whenever a slug ends in
-  `-history`. NW12's proposal moves it to `_snapshots/`, which the server
-  would ignore. Other readers that find pages by name could still see two
-  files, unless snapshots get a name no page can have (NW12's naming
-  question). M1 itself is an archived page and stays for step 3.
+  `-history`. NW12's proposal deletes snapshots, this one included. M1
+  itself is an archived page and stays for step 3.
 - **`backlinks.py` should also drop `_archive`** from its folder list in step
   1. Snapshots were 35 of 57, 88 of 133 and 63 of 102 linking files for three
   busy pages on 2026-10-08 (NW12).
@@ -368,99 +374,6 @@ on the per-day report in `queries/`. Found in the design review
   2026-10-02. Field disagreement measured, and a missed reverse update seen
   during an ingest, also 2026-10-02.
 
-**NW10. Script writes to pages get no snapshot.**
-- **What happens:** the pre-write hook snapshots a page only when the Write,
-  Edit, MultiEdit or MCP `vault`/`edit` tools change it. A page changed by a
-  Bash command (a `python3 - <<'EOF'` heredoc, or a helper script run through
-  Bash) gets no `_archive/<slug>-<date>.md`. The design accepts this: I7's
-  guarantee excludes "Bash, script, Obsidian or git writes", with git as the
-  undo and a behavioral rule ("snapshot by hand before a script edit") for
-  agents.
-- **Seen happening, 2026-10-02:** the first big daily-maintenance sweep after
-  the sources and references work changed 9 concept pages with Edit and 11
-  pages with Bash heredocs (10 person pages and `concepts/relationship-map.md`).
-  `_archive/` got the 9 concept snapshots, each identical to git HEAD, and none
-  of the 11.
-- **Why the rule was missed:** distance from the decision, not absence. The
-  sweep's transcript shows the agent read the rule ("by hand before a script
-  edit") at entry 29 of 1,198, when the core skill loaded. Its first script
-  write to a page came at entry 646, and the context was never compacted. So
-  the rule was in context the whole time, about 600 to 800 steps before the
-  writes, while the agent worked through 18 large meeting notes.
-  - In the skills, agents see the rule only as a parenthetical in core skill
-    §4 Update and in the split procedure (`citation-spec.md` "Page
-    lifecycle"). Its full statement, `AGENTS.md`'s "Snapshot before
-    destructive ops", isn't loaded in pm-wiki sessions (see NW11).
-  - The two places that point agents to scripts, and that an agent rereads
-    when it decides to script, say nothing about snapshots: core `SKILL.md`
-    "Edit frontmatter with the Edit tool (in a script,
-    `wikifm.set_field`/`set_list`)", and `citation-spec.md`'s "Editing
-    frontmatter" snippet.
-  - Bulk person and org-chart updates make script writes routine, not the
-    rare case I7 assumed.
-  - Reading the full contract every session (NW11's Orient step) would not
-    have prevented this miss, since the rule was already in context.
-- **Why it matters (low to moderate):** snapshots exist only so a bad change
-  can be rolled back, and the user hasn't used that so far. They are read
-  automatically, though not for rollback: the wiki-search MCP indexes them,
-  and `grep -r` and `backlinks.py` read them (NW12, 2026-10-08). That hurts
-  queries, not this item's exposure. The exposure is content added since the
-  last commit and then damaged by a later script write. Git still has
-  everything in the last commit. The user commits rarely, often not for many
-  sessions, so that window is wide.
-- **Options ruled out:**
-  - **Auto-commit at session end** (the fork's `dc6bc6c`, backed out in
-    `dfdd98c`, changelog Background): SessionEnd fires per short-lived backend
-    session. Since the move to user-level `settings.json` hooks and NW5's
-    `$WIKI_PATH` default, `session-stop.sh` also runs at the end of every
-    Claude Code session on the machine, in any project, and targets pm-wiki.
-    An auto-commit there would commit a pm-wiki sweep's partial work whenever
-    any other session ends. A likely cause of the old flood, not verified:
-    `session-start.sh` rewrites `_status.md` every session, and the old
-    snippet ran `git add -A`, so almost every session end had a change.
-  - **Filling missing snapshots from git HEAD at session end alone:** with
-    rare commits, HEAD can be many sessions old. A page script-edited on two
-    days in a row would get the old HEAD version both times, and the first
-    day's version could not be restored.
-- **Proposal:** a session-start checkpoint plus a git-based snapshot fill.
-  - **Checkpoint:** when a session starts with pm-wiki as its working folder
-    (from the hook input's `cwd`, not `$WIKI_PATH`), commit any leftover
-    changes, excluding `_status.md`, before work begins. No changes, no
-    commit. Skip it when another session holds `.wiki-lock`, so one session
-    never commits another's work in progress. Expected rate: about one commit
-    per sweep.
-  - **Snapshot fill:** at session end, and in `lint.py --auto-fix` as a second
-    chance, for each changed file in a page directory with no
-    `_archive/<slug>-<today>.md`, write one from `git show HEAD:<path>`
-    through `lint.py`'s `snapshot()`. Never overwrite a snapshot the hook
-    already made. The checkpoint makes HEAD the state at session start, so
-    the fill saves the right pre-image whatever the user's commit habit.
-  - **Docs:** put the snapshot sentence next to both pieces of script advice
-    (core `SKILL.md` and `citation-spec.md`), where an agent reads it at the
-    moment it decides to script. Update I7's guarantee text,
-    `hooks/README.md`, and the changelog.
-- **Alternatives if checkpoint commits are unwanted:**
-  - **Session-start copy:** `session-start.sh` copies the page directories
-    (303 files, 2.3 MB in pm-wiki on 2026-10-02) to a per-session scratch
-    folder. `session-stop.sh` snapshots every changed page from that copy and
-    deletes it. The next session start processes a copy left by a session
-    that ended without its stop hook. This needs no commits but more
-    machinery.
-  - **One write helper:** a `wikifm.write_page()` that calls `snapshot()`
-    first, plus a pre-write warning when a Bash command writes into a page
-    directory. This is cheaper, but it still depends on agent behavior and
-    misses ad-hoc `open().write()` heredocs like the 2026-10-02 ones.
-- **To decide:**
-  - Whether unreviewed checkpoint commits are acceptable. They can be
-    tidied or undone later.
-  - Measure how often SessionEnd fires (a day of logging in the hook) before
-    choosing between the checkpoint and the session-start copy.
-- **Related:** I7 (design section 1), changelog PATCH-5 and Background
-  ("Auto-commit"), NW5 (`$WIKI_PATH` default), NW11 (`AGENTS.md` not loaded
-  in a wiki).
-- **Found in:** a pm-wiki maintenance session on 2026-10-02 (the agent's own
-  report), analyzed in an llm-wiki-pm session the same day.
-
 **NW11. Skills cite an `AGENTS.md` that wiki sessions never load.**
 - **What happens:** `AGENTS.md` is the plugin repo's behavioral contract. It
   loads only in sessions whose working folder is the plugin repo. Setup copies
@@ -549,46 +462,62 @@ on the per-day report in `queries/`. Found in the design review
   - **No skill** tells agents to skip `_archive/` hits, although
     `citation-spec.md` says `_archive/` is never a source.
 - **Why it matters:** agents can quote stale, uncited snapshot text, and the
-  current page can drop out of the results an agent reads. `_archive/` holds
-  435 of the wiki's 1,002 `.md` files: 429 snapshots, 5 superseded entity
-  pages and NW7's M1 page. No `_archive/` file was ever changed after it was
+  current page can drop out of the results an agent reads. On 2026-10-13
+  `_archive/` held 447 files: 441 snapshots, 5 superseded entity pages and
+  NW7's M1 page. No `_archive/` file was ever changed after it was
   created, so the harm is to reading, not writing.
 - **Options weighed:** a query rule alone (depends on agent behavior and can't
   undo the crowding), server-side exclusion (the `directory` filter is an
   include-only prefix applied after retrieval, so a real exclusion needs
-  NW2's fork), and moving snapshots outside the wiki folder. Moving them
-  outside fixes every reader with no server code, but takes them out of the
-  wiki's Claude project: reading one back to undo a change needs a permission
-  approval or a settings entry, and the desktop app won't open them from a
-  wiki session.
-- **Proposal,** in three steps:
+  NW2's fork), moving snapshots outside the wiki folder (takes them out of the
+  wiki's Claude project), combinations that keep snapshots, and dropping
+  snapshots for git.
+- **Snapshots in use:** never used for an undo (NW10). The one log entry
+  calling them a backstop (2026-09-22) was restored from the agent's context;
+  no snapshot of that page existed that day. 310 of the 441 are identical to a
+  committed version of a live file, and git holds all 441 as `_archive/`
+  files.
+- **Proposal: drop snapshots, checkpoint into git** (merges NW10):
   1. **Now:** `backlinks.py` drops `_archive` (with NW7 step 1), and the
-     query and update steps gain a rule: skip snapshot hits, and treat an
-     `_archive/` hit as a retired page. Whole-wiki greps in the skills gain
-     `--exclude-dir`.
-  2. **NW2, with an ignore list as its first fix:** the server fork skips
-     folders named in an environment variable, which `wiki-search.sh` sets
-     to `_snapshots/`.
-  3. **`_snapshots/` inside pm-wiki:** `snapshot()` writes there, and a
-     one-time `git mv` moves the 429 snapshots in, committed on its own.
-     `_archive/` keeps the 6 retired pages, still searchable. Obsidian's
-     filter gains `_snapshots/`, and `overview.md`'s pointer to
-     `_archive/overview-2026-10-06.md` follows the move.
-  Grep depends on the rule, which is acceptable because grep returns every
-  match and can't crowd a page out.
-- **Fallback if NW2 stays deferred:** `snapshot()` writes to a sibling folder,
-  `~/Projects/pm-wiki-snapshots/`, added to pm-wiki's Claude settings
-  (`permissions.additionalDirectories`).
-- **To decide:** whether NW2 goes ahead (the recommendation or the fallback),
-  snapshot names (`<slug>-<date>.md`, or `<slug>@<date>.md`, which no page
-  name can equal), and where `overview.md`'s pointer goes.
+     query and update steps gain a rule: an `_archive/` hit is a retired page,
+     not current.
+  2. **`checkpoint()` replaces `snapshot()`** in `lint.py`: when the wiki has
+     uncommitted changes (other than `_status.md`) and no merge or rebase is
+     in progress, it commits them with a `checkpoint:` message, best-effort.
+     `pre-write.sh` calls it before a session's first wiki write from any
+     project, `session-start.sh` when a session starts in the wiki folder,
+     and `--auto-fix` and `migrate_sources.py` before they write. No caller
+     checks `.wiki-lock`, which every session in any project writes and
+     clears. "Undo that" becomes a git restore the agent runs, and the
+     by-hand snapshot rule for script edits goes.
+  3. **Delete the 441 snapshots** in one pm-wiki commit, with the user's OK,
+     and point `overview.md`'s "Pre-2026-10-06 text" at `7db03cd:overview.md`.
+  It covers more than snapshots do (a second session the same day, and Bash
+  or script writes after a session's first write or in a session started in
+  pm-wiki), and fixes search without NW2. Not covered, as now: script-only
+  writes from another project's session, and text written and then damaged in
+  the same session.
+- **Costs:** automatic commits in pm-wiki's history (at most one per writing
+  session that starts with uncommitted changes, plus `--auto-fix` runs), which
+  can include an overlapping session's half-done edits. Undo goes through
+  git. About 40 code lines, about 60 test lines rewritten (temporary wikis
+  need `git init`), about 14 doc edits including `AGENTS.md`, I7 and NW1's
+  overview mitigation line. More divergence from upstream.
+- **Alternative if automatic commits are unwanted:** keep snapshots in a
+  `_snapshots/` folder inside pm-wiki that the server ignores, through an
+  ignore list as NW2's first fix, plus a grep rule. That needs NW2's Node
+  build, and leaves NW10's script gap open. Moving snapshots outside the wiki
+  instead avoids NW2 but takes them out of the wiki's Claude project.
+- **To decide:** automatic `checkpoint:` commits, deleting the 441 snapshots,
+  and step 1 now.
 - **Upstream:** upstream snapshots into `_archive/` too, with the same server.
-  Its CONTRIBUTING counts a directory layout change as a major version, so
-  this goes up as an issue with the measurements.
+  The search problem goes up as an issue with the measurements and this
+  approach. Upstream would need an answer for wikis that aren't git repos.
 - **Full analysis:** [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
-- **Related:** NW7 (same-name `_archive/` copies, `backlinks.py`'s folder
-  list), NW2 (the ignore list is its first fix in the proposal), NW10 (its
-  snapshot fill goes through `snapshot()`, so it follows the new folder).
+- **Related:** NW10 (merged into this item), NW7 (same-name `_archive/`
+  copies, `backlinks.py`'s folder list), NW2 (the ignore list, only for the
+  alternative), NW11 (`AGENTS.md` holds the snapshot rule), NW1 (its overview
+  mitigation is a pre-write snapshot).
 - **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
   in pm-wiki.
 
@@ -776,3 +705,105 @@ on the per-day report in `queries/`. Found in the design review
     `[[name]]` link.
 - **Found in:** the user, viewing a research sprint page in Obsidian after step
   10b, 2026-09-30.
+
+**NW10. Script writes to pages get no snapshot.**
+- **Status: merged into NW12 on 2026-10-13.** NW12 now proposes dropping
+  snapshots and relying on git, with this item's checkpoint commit made before
+  a session's first write to the wiki. That covers script writes, so the
+  snapshot fill below isn't needed. The checkpoint doesn't check `.wiki-lock`:
+  `session-start.sh` writes that lock at the start of every session in any
+  project, and `session-stop.sh` clears it at the end of any session, so the
+  check below would skip most checkpoints. The user's commits, called rare
+  below, have come every 1 to 5 days since 2026-09-30. The text below
+  describes the problem as found.
+- **What happens:** the pre-write hook snapshots a page only when the Write,
+  Edit, MultiEdit or MCP `vault`/`edit` tools change it. A page changed by a
+  Bash command (a `python3 - <<'EOF'` heredoc, or a helper script run through
+  Bash) gets no `_archive/<slug>-<date>.md`. The design accepts this: I7's
+  guarantee excludes "Bash, script, Obsidian or git writes", with git as the
+  undo and a behavioral rule ("snapshot by hand before a script edit") for
+  agents.
+- **Seen happening, 2026-10-02:** the first big daily-maintenance sweep after
+  the sources and references work changed 9 concept pages with Edit and 11
+  pages with Bash heredocs (10 person pages and `concepts/relationship-map.md`).
+  `_archive/` got the 9 concept snapshots, each identical to git HEAD, and none
+  of the 11.
+- **Why the rule was missed:** distance from the decision, not absence. The
+  sweep's transcript shows the agent read the rule ("by hand before a script
+  edit") at entry 29 of 1,198, when the core skill loaded. Its first script
+  write to a page came at entry 646, and the context was never compacted. So
+  the rule was in context the whole time, about 600 to 800 steps before the
+  writes, while the agent worked through 18 large meeting notes.
+  - In the skills, agents see the rule only as a parenthetical in core skill
+    §4 Update and in the split procedure (`citation-spec.md` "Page
+    lifecycle"). Its full statement, `AGENTS.md`'s "Snapshot before
+    destructive ops", isn't loaded in pm-wiki sessions (see NW11).
+  - The two places that point agents to scripts, and that an agent rereads
+    when it decides to script, say nothing about snapshots: core `SKILL.md`
+    "Edit frontmatter with the Edit tool (in a script,
+    `wikifm.set_field`/`set_list`)", and `citation-spec.md`'s "Editing
+    frontmatter" snippet.
+  - Bulk person and org-chart updates make script writes routine, not the
+    rare case I7 assumed.
+  - Reading the full contract every session (NW11's Orient step) would not
+    have prevented this miss, since the rule was already in context.
+- **Why it matters (low to moderate):** snapshots exist only so a bad change
+  can be rolled back, and the user hasn't used that so far. They are read
+  automatically, though not for rollback: the wiki-search MCP indexes them,
+  and `grep -r` and `backlinks.py` read them (NW12, 2026-10-08). That hurts
+  queries, not this item's exposure. The exposure is content added since the
+  last commit and then damaged by a later script write. Git still has
+  everything in the last commit. The user commits rarely, often not for many
+  sessions, so that window is wide.
+- **Options ruled out:**
+  - **Auto-commit at session end** (the fork's `dc6bc6c`, backed out in
+    `dfdd98c`, changelog Background): SessionEnd fires per short-lived backend
+    session. Since the move to user-level `settings.json` hooks and NW5's
+    `$WIKI_PATH` default, `session-stop.sh` also runs at the end of every
+    Claude Code session on the machine, in any project, and targets pm-wiki.
+    An auto-commit there would commit a pm-wiki sweep's partial work whenever
+    any other session ends. A likely cause of the old flood, not verified:
+    `session-start.sh` rewrites `_status.md` every session, and the old
+    snippet ran `git add -A`, so almost every session end had a change.
+  - **Filling missing snapshots from git HEAD at session end alone:** with
+    rare commits, HEAD can be many sessions old. A page script-edited on two
+    days in a row would get the old HEAD version both times, and the first
+    day's version could not be restored.
+- **Proposal:** a session-start checkpoint plus a git-based snapshot fill.
+  - **Checkpoint:** when a session starts with pm-wiki as its working folder
+    (from the hook input's `cwd`, not `$WIKI_PATH`), commit any leftover
+    changes, excluding `_status.md`, before work begins. No changes, no
+    commit. Skip it when another session holds `.wiki-lock`, so one session
+    never commits another's work in progress. Expected rate: about one commit
+    per sweep.
+  - **Snapshot fill:** at session end, and in `lint.py --auto-fix` as a second
+    chance, for each changed file in a page directory with no
+    `_archive/<slug>-<today>.md`, write one from `git show HEAD:<path>`
+    through `lint.py`'s `snapshot()`. Never overwrite a snapshot the hook
+    already made. The checkpoint makes HEAD the state at session start, so
+    the fill saves the right pre-image whatever the user's commit habit.
+  - **Docs:** put the snapshot sentence next to both pieces of script advice
+    (core `SKILL.md` and `citation-spec.md`), where an agent reads it at the
+    moment it decides to script. Update I7's guarantee text,
+    `hooks/README.md`, and the changelog.
+- **Alternatives if checkpoint commits are unwanted:**
+  - **Session-start copy:** `session-start.sh` copies the page directories
+    (303 files, 2.3 MB in pm-wiki on 2026-10-02) to a per-session scratch
+    folder. `session-stop.sh` snapshots every changed page from that copy and
+    deletes it. The next session start processes a copy left by a session
+    that ended without its stop hook. This needs no commits but more
+    machinery.
+  - **One write helper:** a `wikifm.write_page()` that calls `snapshot()`
+    first, plus a pre-write warning when a Bash command writes into a page
+    directory. This is cheaper, but it still depends on agent behavior and
+    misses ad-hoc `open().write()` heredocs like the 2026-10-02 ones.
+- **To decide:**
+  - Whether unreviewed checkpoint commits are acceptable. They can be
+    tidied or undone later.
+  - Measure how often SessionEnd fires (a day of logging in the hook) before
+    choosing between the checkpoint and the session-start copy.
+- **Related:** I7 (design section 1), changelog PATCH-5 and Background
+  ("Auto-commit"), NW5 (`$WIKI_PATH` default), NW11 (`AGENTS.md` not loaded
+  in a wiki).
+- **Found in:** a pm-wiki maintenance session on 2026-10-02 (the agent's own
+  report), analyzed in an llm-wiki-pm session the same day.
