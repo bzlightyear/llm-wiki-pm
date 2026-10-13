@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-WIKI_DIRS = ["entities", "concepts", "comparisons", "queries", "_archive"]
+WIKI_DIRS = ["entities", "concepts", "comparisons", "queries"]  # not _archive/: retired pages
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
 
 

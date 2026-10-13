@@ -34,7 +34,8 @@ grep -r "claim keyword" "$WIKI" --include="*.md"
 ```
 
 Use all three. Backlinks catches structural references, wiki-search catches
-paraphrases, grep catches literals. Miss any and you leave stale variants.
+paraphrases, grep catches literals. Miss any and you leave stale variants. A
+hit under `_archive/` is a retired page: leave it as it is.
 
 Don't update one page and leave stale variants. If the claim appears in:
 - `entities/competitor-x.md`

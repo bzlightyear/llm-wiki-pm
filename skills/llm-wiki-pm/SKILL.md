@@ -155,7 +155,7 @@ Inventory every connected MCP tool at session start and use them eagerly.
 `concepts/`, `comparisons/`, `queries/` (Layer 2, agent-owned pages) governed by
 `SCHEMA.md` (Layer 3, taxonomy). Plus `index.md` (catalog), `overview.md`
 (synthesis), `log.md` (append-only action log), `_status.md` (session-start health),
-`_archive/` (snapshots + superseded). Full directory layout and `raw/` sub-routing:
+`_archive/` (retired and superseded pages). Full directory layout and `raw/` sub-routing:
 `references/ingest-guide.md` and `references/schema-guide.md`.
 
 ## Pre-Flight Check
@@ -244,7 +244,9 @@ In brief:
    reflect them under their manager's `direct_reports` cell if it does.
 
 ### 3. Query
-① **Search first**: `view(action=semantic_search)` → grep → file read.
+① **Search first**: `view(action=semantic_search)` → grep → file read. A hit
+   under `_archive/` is a retired page, not current: prefer the live page it
+   names, and say so if you use it.
 ② Read `index.md` to confirm the catalog for top hits.
 ③ Read relevant pages (only after search identified them).
 ④ Synthesize; cite pages: "Per [[competitor-x]] and [[test-automation-mq]]...". **For
@@ -263,14 +265,18 @@ In brief:
 ### 4. Update (revise existing pages)
 
 Separate discipline from ingest — triggered when new info conflicts with or refines
-existing content. **Pre-update snapshot is automatic:** the `pre-write.sh` hook
-copies the current page to `_archive/<slug>-<date>.md` before a Write, Edit or MCP
-`vault` write (idempotent, once/day; by hand before a script edit), so "undo that
-last change" stays trivial.
+existing content. **Pre-update checkpoint is automatic:** before a session's first
+Write, Edit or MCP write, and when a session starts inside the wiki, the hooks
+commit the wiki's uncommitted changes (`checkpoint:` commits). "Undo that last
+change" is a git restore: find the commit with `git -C "$WIKI" log -- <path>`,
+show the diff, then `git -C "$WIKI" restore --source=<commit> -- <path>`. A
+session outside the wiki folder that changes it only through scripts gets no
+checkpoint: commit the wiki first.
 
 ① **Identify all affected pages** — three-way search: `backlinks.py` (structural),
    `view(action=semantic_search)` (paraphrases), `grep -r` (exact tokens). Don't
-   fix one page and leave three with the stale claim.
+   fix one page and leave three with the stale claim. Leave `_archive/` hits
+   alone: they're retired pages.
 ② **Show diff BEFORE writing**: old text, new text, reason. Confirm for any claim
    touching 5+ pages or changing stated strategy.
 ③ **Cite source**: every update names the raw source justifying it, in the body and log.

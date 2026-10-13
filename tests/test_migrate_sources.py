@@ -15,6 +15,7 @@ from datetime import date
 import pytest
 
 from test_hooks import REPO_ROOT, TEMPLATES_DIR, make_wiki
+from test_write_hooks import git, git_init
 
 SCRIPTS = REPO_ROOT / "skills" / "llm-wiki-pm" / "scripts"
 MIGRATE = SCRIPTS / "migrate_sources.py"
@@ -61,8 +62,9 @@ def run(wiki, *args):
 
 
 def tree(wiki):
-    """Every file under the wiki, with its content."""
-    return {p.relative_to(wiki).as_posix(): p.read_bytes() for p in wiki.rglob("*") if p.is_file()}
+    """Every file under the wiki, with its content, outside .git/."""
+    return {p.relative_to(wiki).as_posix(): p.read_bytes() for p in wiki.rglob("*")
+            if p.is_file() and ".git" not in p.relative_to(wiki).parts}
 
 
 def sources_of(wiki, rel):
@@ -229,10 +231,11 @@ def test_the_record_quotes_the_days_log_entries_and_lists_its_claims(tmp_path):
 
 def test_overview_is_migrated_like_a_page(tmp_path):
     # lint doesn't check it, but Orient reads it every session
-    wiki = make_wiki(tmp_path)
-    write(wiki, "overview.md", page(
+    wiki = git_init(make_wiki(tmp_path))
+    original = page(
         f'["user, conversation, {D1}"]', f"Chose X [source: user, {D1}].\n"
-    ).replace("created: '2026-01-01'", "created: 2026-01-01T00:00:00.000Z"))
+    ).replace("created: '2026-01-01'", "created: 2026-01-01T00:00:00.000Z")
+    write(wiki, "overview.md", original)
     result = run(wiki, "--apply")
     assert result.returncode == 0, result.stderr
     assert sources_of(wiki, "overview.md") == [REC1]
@@ -242,7 +245,7 @@ def test_overview_is_migrated_like_a_page(tmp_path):
         "- `overview.md`, in `sources:`\n"
         f"- `overview.md`: Chose X [source: user, {D1}].\n"
     )
-    assert (wiki / f"_archive/overview-{TODAY}.md").is_file()
+    assert git(wiki, "show", "HEAD:overview.md") == original  # the checkpoint
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +432,7 @@ DEFAULT_CONTRACT = (
 
 
 def test_the_default_contract_and_the_old_split_rule_are_replaced(tmp_path):
-    wiki = make_wiki(tmp_path)
+    wiki = git_init(make_wiki(tmp_path))
     write(wiki, "meta/contract.md", DEFAULT_CONTRACT)
     schema = (wiki / "SCHEMA.md").read_text()
     rule = migrate_sources.SPLIT_RULE_RE.search(schema).group(0)
@@ -440,8 +443,8 @@ def test_the_default_contract_and_the_old_split_rule_are_replaced(tmp_path):
     assert (wiki / "SCHEMA.md").read_text() == schema
     contract = (TEMPLATES_DIR / "vault-contract.md").read_text()
     assert (wiki / "meta/contract.md").read_text() == contract
-    assert (wiki / f"_archive/SCHEMA-{TODAY}.md").read_text() == old_schema
-    assert (wiki / f"_archive/contract-{TODAY}.md").read_text() == DEFAULT_CONTRACT
+    assert git(wiki, "show", "HEAD:SCHEMA.md") == old_schema
+    assert git(wiki, "show", "HEAD:meta/contract.md") == DEFAULT_CONTRACT
     assert lint.check_contract(wiki) is None
 
 
@@ -461,22 +464,23 @@ def test_a_split_rule_edited_by_hand_is_left_for_the_hand_pass(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Applying: snapshots, the log, a second run, conflicts, and lint afterwards
+# Applying: the checkpoint, the log, a second run, conflicts, and lint afterwards
 # ---------------------------------------------------------------------------
 
 
-def test_apply_snapshots_first_logs_once_and_a_second_run_changes_nothing(tmp_path):
-    wiki = make_wiki(tmp_path)
+def test_apply_checkpoints_first_logs_once_and_a_second_run_changes_nothing(tmp_path):
+    wiki = git_init(make_wiki(tmp_path))
     original = page(f'["user, conversation, {D1}"]', f"A [source: user, {D1}].\n")
     write(wiki, "concepts/a.md", original)
     result = run(wiki, "--apply")
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("Applied.")
-    assert (wiki / f"_archive/a-{TODAY}.md").read_text() == original  # M1
+    assert git(wiki, "show", "HEAD:concepts/a.md") == original  # M1
     log = (wiki / "log.md").read_text()
     assert log.count("] migrate |") == 1
     assert "- 1 reconstructed conversation record(s) in raw/internal/\n" in log
-    assert "- 1 page(s) changed, each snapshotted to _archive/ first\n" in log
+    commit = git(wiki, "rev-parse", "--short", "HEAD").strip()
+    assert f"- 1 page(s) changed, after checkpoint {commit}\n" in log
 
     first = tree(wiki)
     again = run(wiki, "--apply")

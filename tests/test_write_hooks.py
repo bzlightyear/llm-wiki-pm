@@ -1,9 +1,9 @@
 """
 Tests for the write hooks' coverage of every write path: wiki-search MCP
-payloads (both tool-name forms), slug-named snapshots, the overview.md rule,
-briefings/, directory-page assets/, the raw write-once warning, the
-freshness gate judged on the post-edit text, and post-validate.sh's checks of
-the page as written.
+payloads (both tool-name forms), the checkpoint commit before a session's
+first write (lint.checkpoint(), pre-write.sh and session-start.sh),
+directory-page assets/, the raw write-once warning, the freshness gate judged
+on the post-edit text, and post-validate.sh's checks of the page as written.
 
 Kept apart from test_hooks.py (upstream-owned) to keep merges simple.
 
@@ -20,12 +20,13 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from test_hooks import PRE_WRITE, REPO_ROOT, make_entity, make_wiki, run_hook
+from test_hooks import (PRE_WRITE, REPO_ROOT, SESSION_START, make_entity, make_wiki,
+                        run_hook, session_start_payload)
 
 POST_VALIDATE = REPO_ROOT / "hooks" / "post-validate.sh"
 
 sys.path.insert(0, str(REPO_ROOT / "skills" / "llm-wiki-pm" / "scripts"))
-from lint import snapshot  # noqa: E402
+from lint import checkpoint  # noqa: E402
 
 TODAY = date.today().isoformat()
 MCP_NAMES = ["mcp__wiki-search", "mcp__plugin_llm-wiki-pm_wiki-search"]
@@ -46,15 +47,17 @@ DIGEST = (
 )
 
 
-def pre(wiki: Path, tool: str, tool_input: dict):
+def pre(wiki: Path, tool: str, tool_input: dict, session: str = "test-session-123"):
     payload = {
-        "session_id": "test-session-123",
+        "session_id": session,
         "hook_event_name": "PreToolUse",
         "tool_name": tool,
         "tool_input": tool_input,
         "cwd": "/tmp",
     }
-    r = run_hook(PRE_WRITE, payload, {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+    # The checkpoint's per-session marker goes in TMPDIR: one per test.
+    r = run_hook(PRE_WRITE, payload, {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki),
+                                      "TMPDIR": str(wiki.parent)})
     assert r.returncode == 0, r.stderr
     return r.stdout
 
@@ -65,8 +68,37 @@ def context(stdout: str) -> str:
     return json.loads(stdout)["hookSpecificOutput"]["additionalContext"]
 
 
-def snaps(wiki: Path, name: str):
-    return list((wiki / "_archive").glob(f"{name}-*.md"))
+def git(wiki: Path, *args) -> str:
+    return subprocess.run(["git", "-C", str(wiki), *args], capture_output=True,
+                          text=True, check=True).stdout
+
+
+def git_init(wiki: Path) -> Path:
+    """Make the wiki a git repo with everything committed."""
+    git(wiki, "init", "-q")
+    git(wiki, "config", "user.name", "Test")
+    git(wiki, "config", "user.email", "test@example.com")
+    git(wiki, "config", "commit.gpgsign", "false")
+    git(wiki, "add", "-A")
+    git(wiki, "commit", "-q", "-m", "base")
+    return wiki
+
+
+def checkpoints(wiki: Path) -> list:
+    """The subjects of the wiki's checkpoint commits, newest first."""
+    if not (wiki / ".git").exists():
+        return []
+    log = git(wiki, "log", "--format=%s", "--grep=^checkpoint:")
+    return [line for line in log.splitlines() if line]
+
+
+def dirty_wiki(tmp_path: Path) -> Path:
+    """A git wiki with one committed page, changed since the last commit."""
+    wiki = make_wiki(tmp_path)
+    make_entity(wiki, "acme", updated=date.today())
+    git_init(wiki)
+    (wiki / "entities" / "acme.md").write_text(GROUNDED)
+    return wiki
 
 
 def write_page(wiki: Path, rel: str, text: str = GROUNDED) -> Path:
@@ -77,80 +109,109 @@ def write_page(wiki: Path, rel: str, text: str = GROUNDED) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# lint.snapshot()
+# lint.checkpoint()
 # ---------------------------------------------------------------------------
 
 
-class TestSnapshotFunction:
-    def test_names_by_slug_and_copies(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        page = make_entity(wiki, "acme", updated=date.today())
-        arc = snapshot(page, wiki)
-        assert arc == wiki / "_archive" / f"acme-{TODAY}.md"
-        assert arc.read_text() == page.read_text()
+class TestCheckpointFunction:
+    def test_commits_uncommitted_changes_but_not_status(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        (wiki / "_status.md").write_text("health\n")
+        commit = checkpoint(wiki, "before x")
+        assert commit and checkpoints(wiki) == ["checkpoint: before x"]
+        assert git(wiki, "show", "HEAD:entities/acme.md") == GROUNDED
+        assert git(wiki, "status", "--porcelain") == "?? _status.md\n"
 
-    def test_folder_page_named_by_its_slug(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        page = write_page(wiki, "queries/sprint-x/sprint-x.md")
-        assert snapshot(page, wiki).name == f"sprint-x-{TODAY}.md"
+    def test_clean_wiki_makes_no_commit(self, tmp_path):
+        wiki = git_init(make_wiki(tmp_path))
+        (wiki / "_status.md").write_text("health\n")
+        assert checkpoint(wiki, "x") is None
+        assert checkpoints(wiki) == []
 
-    def test_keeps_first_snapshot_of_the_day(self, tmp_path):
+    def test_wiki_that_isnt_a_git_repo_is_left_alone(self, tmp_path):
         wiki = make_wiki(tmp_path)
-        page = make_entity(wiki, "acme", updated=date.today())
-        first = page.read_text()
-        snapshot(page, wiki)
-        page.write_text("changed")
-        assert snapshot(page, wiki).read_text() == first
+        assert checkpoint(wiki, "x") is None
+        assert not (wiki / ".git").exists()
 
-    def test_creates_archive_dir(self, tmp_path):
+    def test_wiki_inside_a_larger_repo_is_left_alone(self, tmp_path):
         wiki = make_wiki(tmp_path)
-        (wiki / "_archive").rmdir()
-        page = make_entity(wiki, "acme", updated=date.today())
-        assert snapshot(page, wiki).exists()
+        git_init(tmp_path)
+        make_entity(wiki, "acme", updated=date.today())
+        assert checkpoint(wiki, "x") is None
+        assert checkpoints(tmp_path) == []
+
+    def test_no_commit_during_a_merge(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        (wiki / ".git" / "MERGE_HEAD").write_text(git(wiki, "rev-parse", "HEAD"))
+        assert checkpoint(wiki, "x") is None
+        assert checkpoints(wiki) == []
+
+    def test_a_held_index_lock_skips_without_raising(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        (wiki / ".git" / "index.lock").write_text("")
+        assert checkpoint(wiki, "x") is None
+        assert checkpoints(wiki) == []
 
 
 # ---------------------------------------------------------------------------
-# Snapshot naming and scope
+# The checkpoint in the hooks
 # ---------------------------------------------------------------------------
 
 
-class TestSnapshotScope:
-    def test_folder_pages_get_their_own_snapshots(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        a = write_page(wiki, "queries/sprint-a/sprint-a.md")
-        b = write_page(wiki, "queries/sprint-b/sprint-b.md")
-        for page in (a, b):
-            pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED})
-        assert snaps(wiki, "sprint-a") and snaps(wiki, "sprint-b")
+class TestCheckpointHooks:
+    def test_first_write_of_a_session_commits_once(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        page = wiki / "entities" / "acme.md"
+        out = pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED})
+        assert checkpoints(wiki) == ["checkpoint: before session test-ses writes"]
+        assert "restore --source=" in context(out)
+        page.write_text(GROUNDED + "more\n")
+        pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED})
+        assert len(checkpoints(wiki)) == 1, "once per session"
+        pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED}, session="other-session")
+        assert len(checkpoints(wiki)) == 2, "a new session commits again"
 
-    def test_briefings_are_snapshotted(self, tmp_path):
+    def test_clean_wiki_is_silent(self, tmp_path):
         wiki = make_wiki(tmp_path)
-        brief = write_page(wiki, "briefings/2026-01-15.md", DIGEST)
-        pre(wiki, "Edit", {"file_path": str(brief), "old_string": "Today", "new_string": "Now"})
-        assert snaps(wiki, "2026-01-15")
+        page = make_entity(wiki, "acme", updated=date.today())
+        git_init(wiki)
+        out = pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED})
+        assert out.strip() == "" and checkpoints(wiki) == []
 
+    def test_write_outside_the_wiki_makes_no_checkpoint(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        pre(wiki, "Write", {"file_path": str(tmp_path / "notes.md"), "content": "x"})
+        assert checkpoints(wiki) == []
+
+    def test_nothing_is_written_to_archive(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        pre(wiki, "Write", {"file_path": str(wiki / "entities" / "acme.md"),
+                            "content": GROUNDED})
+        pre(wiki, "Write", {"file_path": str(wiki / "overview.md"), "content": "new"})
+        assert list((wiki / "_archive").iterdir()) == []
+
+    def test_session_start_inside_the_wiki_commits(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        r = run_hook(SESSION_START, session_start_payload(),
+                     {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki), "_CWD": str(wiki)})
+        assert r.returncode == 0, r.stderr
+        assert checkpoints(wiki) == ["checkpoint: session start"]
+        assert "Checkpoint " in json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+
+    def test_session_start_elsewhere_doesnt_commit(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
+        r = run_hook(SESSION_START, session_start_payload(),
+                     {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+        assert r.returncode == 0, r.stderr
+        assert checkpoints(wiki) == []
+
+
+class TestAssets:
     def test_assets_subfolder_is_skipped(self, tmp_path):
         wiki = make_wiki(tmp_path)
         deck = write_page(wiki, "queries/sprint-a/assets/deck.md", UNGROUNDED)
         out = pre(wiki, "Write", {"file_path": str(deck), "content": UNGROUNDED})
         assert out.strip() == ""
-        assert not snaps(wiki, "deck")
-
-    def test_overview_snapshotted_on_write(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        pre(wiki, "Write", {"file_path": str(wiki / "overview.md"), "content": "new"})
-        assert snaps(wiki, "overview")
-
-    def test_overview_not_snapshotted_on_edit(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        pre(wiki, "Edit", {"file_path": str(wiki / "overview.md"),
-                           "old_string": "Overview", "new_string": "Summary"})
-        assert not snaps(wiki, "overview")
-
-    def test_index_never_snapshotted(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        pre(wiki, "Write", {"file_path": str(wiki / "index.md"), "content": "new"})
-        assert not snaps(wiki, "index")
 
 
 # ---------------------------------------------------------------------------
@@ -159,14 +220,13 @@ class TestSnapshotScope:
 
 
 class TestMcpVault:
-    def test_update_snapshots_under_both_tool_names(self, tmp_path):
+    def test_update_checkpoints_under_both_tool_names(self, tmp_path):
         for prefix in MCP_NAMES:
             (tmp_path / prefix).mkdir()
-            wiki = make_wiki(tmp_path / prefix)
-            make_entity(wiki, "acme", updated=date.today())
+            wiki = dirty_wiki(tmp_path / prefix)
             pre(wiki, f"{prefix}__vault",
                 {"action": "update", "path": "entities/acme.md", "content": GROUNDED})
-            assert snaps(wiki, "acme"), prefix
+            assert len(checkpoints(wiki)) == 1, prefix
 
     def test_update_judged_from_content(self, tmp_path):
         wiki = make_wiki(tmp_path)
@@ -180,7 +240,6 @@ class TestMcpVault:
         out = pre(wiki, "mcp__wiki-search__vault",
                   {"action": "create", "path": "entities/new.md", "content": UNGROUNDED})
         assert "Freshness gate" in context(out)
-        assert not snaps(wiki, "new")
 
     def test_create_grounded_is_silent(self, tmp_path):
         wiki = make_wiki(tmp_path)
@@ -188,13 +247,12 @@ class TestMcpVault:
                   {"action": "create", "path": "entities/new.md", "content": GROUNDED})
         assert out.strip() == ""
 
-    def test_delete_snapshots(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        make_entity(wiki, "acme", updated=date.today())
+    def test_delete_checkpoints_without_gate(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
         out = pre(wiki, "mcp__wiki-search__vault",
                   {"action": "delete", "path": "entities/acme.md"})
-        assert snaps(wiki, "acme")
-        assert out.strip() == ""
+        assert len(checkpoints(wiki)) == 1
+        assert "Freshness gate" not in context(out)
 
     def test_create_from_template_is_silent(self, tmp_path):
         wiki = make_wiki(tmp_path)
@@ -204,13 +262,12 @@ class TestMcpVault:
         assert out.strip() == ""
 
     def test_reads_are_ignored(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        make_entity(wiki, "acme", updated=date.today())
+        wiki = dirty_wiki(tmp_path)
         for action in ("read", "list", "stat"):
             out = pre(wiki, "mcp__wiki-search__vault",
                       {"action": action, "path": "entities/acme.md"})
             assert out.strip() == ""
-        assert not snaps(wiki, "acme")
+        assert checkpoints(wiki) == []
 
     def test_path_escaping_the_vault_is_ignored(self, tmp_path):
         wiki = make_wiki(tmp_path)
@@ -223,20 +280,18 @@ class TestMcpVault:
 
 
 class TestMcpEdit:
-    def test_single_edit_snapshots_without_gate(self, tmp_path):
+    def test_single_edit_checkpoints_without_gate(self, tmp_path):
         for prefix in MCP_NAMES:
             (tmp_path / prefix).mkdir()
-            wiki = make_wiki(tmp_path / prefix)
-            make_entity(wiki, "acme", updated=date.today())
+            wiki = dirty_wiki(tmp_path / prefix)
             out = pre(wiki, f"{prefix}__edit",
                       {"path": "entities/acme.md", "operation": "append",
                        "heading": "acme", "content": "more"})
-            assert snaps(wiki, "acme"), prefix
-            assert out.strip() == "", "MCP edit ops are not simulated"
+            assert len(checkpoints(wiki)) == 1, prefix
+            assert "Freshness gate" not in context(out), "MCP edit ops are not simulated"
 
-    def test_batch_snapshots_every_path(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        make_entity(wiki, "acme", updated=date.today())
+    def test_batch_checkpoints_once(self, tmp_path):
+        wiki = dirty_wiki(tmp_path)
         make_entity(wiki, "beta", updated=date.today())
         pre(wiki, "mcp__wiki-search__edit",
             {"operations": [
@@ -245,15 +300,14 @@ class TestMcpEdit:
                 {"path": "entities/beta.md", "operation": "string_replace",
                  "searchText": "beta", "content": "Beta"},
             ]})
-        assert snaps(wiki, "acme") and snaps(wiki, "beta")
+        assert len(checkpoints(wiki)) == 1
 
     def test_dry_run_is_ignored(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        make_entity(wiki, "acme", updated=date.today())
+        wiki = dirty_wiki(tmp_path)
         pre(wiki, "mcp__wiki-search__edit",
             {"path": "entities/acme.md", "operation": "frontmatter_set",
              "content": "status: x", "dryRun": True})
-        assert not snaps(wiki, "acme")
+        assert checkpoints(wiki) == []
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +334,6 @@ class TestRawGuard:
         rec = wiki / "raw" / "articles" / "new-2026.md"
         out = pre(wiki, "Write", {"file_path": str(rec), "content": "body"})
         assert out.strip() == ""
-
-    def test_records_are_not_snapshotted(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        rec = write_page(wiki, "raw/articles/src-2026.md", "body")
-        pre(wiki, "Write", {"file_path": str(rec), "content": "x"})
-        assert not snaps(wiki, "src-2026")
 
     def test_raw_assets_are_not_records(self, tmp_path):
         wiki = make_wiki(tmp_path)

@@ -32,6 +32,7 @@ Optional fields are listed in SCHEMA.md.
 ## Search Hints
 
 - Conceptual / fuzzy queries → `view.semantic_search`
+- `_archive/` holds retired pages, not current ones: prefer the live page a hit names
 - Exact phrases or regex patterns → `view.global_search`
 - Reading a specific section → `view.read` with `heading` parameter
 - Structure overview → `view.outline`

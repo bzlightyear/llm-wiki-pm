@@ -331,6 +331,23 @@ if [[ "$CWD_REAL" == "$WIKI_REAL" || "$CWD_REAL" == "$WIKI_REAL"/* ]]; then
   IN_WIKI=true
 fi
 
+# Checkpoint: a session working inside the wiki first commits what earlier
+# sessions left uncommitted, so its own changes, Bash and script writes
+# included, can be undone from git (lint.py's checkpoint()). pre-write.sh does
+# the same before the first tool write of a session started elsewhere.
+if [[ "$IN_WIKI" == true ]]; then
+  CHECKPOINT=$(python3 -c "
+import sys
+sys.dont_write_bytecode = True
+sys.path.insert(0, sys.argv[1])
+from lint import checkpoint
+print(checkpoint(sys.argv[2], 'session start') or '')
+" "$SCRIPTS_DIR" "$WIKI" 2>/dev/null || true)
+  if [[ -n "$CHECKPOINT" ]]; then
+    CONTEXT="$CONTEXT Checkpoint $CHECKPOINT committed the changes earlier sessions left uncommitted."
+  fi
+fi
+
 if [[ "$IN_WIKI" == true ]]; then
   PRIMER="The llm-wiki-pm wiki (a PM second-brain) is at the path above and this session is running inside it — so it IS your working context. Before responding to the first user message — regardless of what it is — invoke the llm-wiki-pm skill (Skill tool) so its full instructions and proactive behaviors are loaded. Do this on turn 1, unconditionally."
 else

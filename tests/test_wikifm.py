@@ -588,7 +588,7 @@ NOT_SOURCES = {
     "log.md": "a root file isn't a source",
     "raw/assets/deck-2026-01.pdf": "an asset: declare its record",
     "raw/assets/deck-2026-01.md": "an asset: declare its record",
-    "_archive/acme-2026-01-15.md": "an archive snapshot isn't a source",
+    "_archive/acme.md": "an archived page isn't a source",
     "queries/deep-dive/assets/deck.md": "an artifact under assets/ isn't a page",
     "meta/contract.md": "not in raw/ or a page folder",
     "/home/someone/notes.md": "not a path inside the wiki",

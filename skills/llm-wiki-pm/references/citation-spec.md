@@ -49,8 +49,8 @@ asset: raw/assets/example-deck-2026-01.pdf   # optional binary original
   wiki-search MCP match links by. A directory page is named after its folder,
   `queries/<slug>/<slug>.md`, never `README.md`. Same grammar as record IDs,
   and unique across `entities/`, `concepts/`, `comparisons/`, `queries/` and
-  `briefings/`. A page is linked as `[[<slug>]]`, declared by its path, cited as
-  `[source: <slug>, …]`, and snapshotted as `_archive/<slug>-<date>.md`.
+  `briefings/`. A page is linked as `[[<slug>]]`, declared by its path, and
+  cited as `[source: <slug>, …]`.
 - **Other files in a directory page.** Another `.md` file in `queries/<slug>/`
   is either a real page (full frontmatter and a slug unique across the wiki,
   like a research sprint's part pages) or an artifact under the folder's
@@ -172,8 +172,9 @@ EOF
 - **Create:** slug and frontmatter as above, at least 2 outbound wikilinks, and
   `sources:` limited to what the body cites or the page is built from.
 - **Split** (a page over 200 lines, entity promotion, a history split):
-  1. Snapshot the parent (automatic for Write/Edit and MCP `vault` writes; by
-     hand before a script edits it).
+  1. Make sure git can restore the parent. The hooks' checkpoint commit
+     covers it (core §4), except in a session outside the wiki folder that has
+     changed the wiki only through scripts: commit the wiki first.
   2. In each child and in what stays in the parent, turn every source named
      in prose ("Source: raw/…", a meeting and its date, a link to a digest)
      into a marker on the claims it backs, after checking the record says
@@ -192,8 +193,8 @@ EOF
 - **Supersede:** fields and archive as in `update-guide.md`. The new page's
   `sources:` is what it cites, never a copy of the old page's list. Text
   carried over from the old page gets markers first, as in step 2 of Split.
-- **Archive:** `_archive/` is immutable, never a source, and exempt from these
-  rules.
+- **Archive:** `_archive/` holds retired pages. It is immutable, never a
+  source, and exempt from these rules.
 
 ## Frontmatter profile
 

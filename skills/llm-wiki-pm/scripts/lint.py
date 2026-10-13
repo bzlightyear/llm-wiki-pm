@@ -10,7 +10,7 @@ Usage:
 """
 
 import re
-import shutil
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
@@ -127,20 +127,43 @@ def load_taxonomy(schema_path):
     return set(TAXONOMY_TAG_RE.findall(schema_path.read_text()))
 
 
-slug = wikifm.slug  # the one ID function, kept here for pre-write.sh and capture.py
+slug = wikifm.slug  # the one ID function, kept here for post-validate.sh and capture.py
 
 
-def snapshot(page, wiki):
-    """Copy `page` to _archive/<slug>-<YYYY-MM-DD>.md before it changes.
-    At most one snapshot per page per day: an existing snapshot is kept.
-    Shared by pre-write.sh, lint --auto-fix and the migration, so backups are
-    named one way everywhere. Returns the snapshot path."""
-    page, wiki = Path(page), Path(wiki)
-    arc = wiki / "_archive" / f"{slug(page)}-{date.today().isoformat()}.md"
-    if not arc.exists():
-        arc.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(page, arc)
-    return arc
+def checkpoint(wiki, reason):
+    """Commit the wiki's uncommitted changes before something writes to it, so
+    the state it started from can be restored from git. Leaves out _status.md,
+    which session start rewrites every session. Does nothing unless the wiki is
+    the top of a git work tree with changes to commit and no merge, rebase,
+    cherry-pick or revert in progress. Best-effort: never raises. Shared by
+    pre-write.sh, session-start.sh, lint --auto-fix and the migration.
+    Returns the new commit's short hash, or None."""
+    wiki = Path(wiki)
+    rest = ["--", ".", ":(exclude)_status.md"]
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(wiki), *args],
+                              capture_output=True, text=True, timeout=30)
+
+    try:
+        top = git("rev-parse", "--show-toplevel")
+        if top.returncode or Path(top.stdout.strip()).resolve() != wiki.resolve():
+            return None
+        git_dir = Path(git("rev-parse", "--absolute-git-dir").stdout.strip())
+        if any((git_dir / n).exists() for n in (
+                "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD",
+                "rebase-merge", "rebase-apply")):
+            return None
+        status = git("status", "--porcelain", *rest)
+        if status.returncode or not status.stdout.strip():
+            return None
+        if git("add", "-A", *rest).returncode:
+            return None
+        if git("commit", "-q", "-m", f"checkpoint: {reason}").returncode:
+            return None
+        return git("rev-parse", "--short", "HEAD").stdout.strip() or None
+    except Exception:
+        return None
 
 
 def wiki_pages(wiki):
@@ -570,6 +593,8 @@ def main():
     if cited_page is not None:
         sys.exit(print_cited_sources(wiki, cited_page))
 
+    if auto_fix:
+        checkpoint(wiki, "before lint --auto-fix")  # so git can undo the fixes
     today = date.today().isoformat()
     pages = wiki_pages(wiki)
 
@@ -644,7 +669,6 @@ def main():
                     f"rewrote {n} timestamp date(s) as 'YYYY-MM-DD' (R12) in {rel}"
                 )
         if auto_fix and text != original:
-            snapshot(p, wiki)
             p.write_text(text)
         fm, fm_errors = wikifm.parse(text)
 
@@ -820,7 +844,6 @@ def main():
                 t,
             )
             if t2 != t:
-                snapshot(p, wiki)
                 p.write_text(t2)
                 fixes_applied.append(
                     f"rewrote broken [[{target}]] → [[{new_target}]] in {p.relative_to(wiki)}"
@@ -842,7 +865,6 @@ def main():
                     new_text,
                 )
             if new_text != text:
-                snapshot(p, wiki)
                 p.write_text(new_text)
                 fixes_applied.append(
                     f"redirected superseded links in {p.relative_to(wiki)}"

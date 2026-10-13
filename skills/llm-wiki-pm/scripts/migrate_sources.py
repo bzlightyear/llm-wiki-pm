@@ -33,8 +33,8 @@ conversation was cited as `user, conversation, <date>` (or `user, <date>`,
   it, when the ID names exactly one file.
 
 The dry run prints each page's R3, R6, R7 and R12 counts before and after,
-and what is left for a hand pass. --apply snapshots each file before changing
-it, writes frontmatter through wikifm, leaves `updated:` alone (what a page
+and what is left for a hand pass. --apply first commits the wiki's uncommitted
+changes (lint's checkpoint(), when the wiki is a git repo), writes frontmatter through wikifm, leaves `updated:` alone (what a page
 says doesn't change) and appends a log.md entry. Run lint afterwards.
 
 Stdlib only.
@@ -502,13 +502,11 @@ def _add(items, item):
 
 
 def apply(plan, wiki):
-    """Write the plan: snapshots first (M1), then records, moves, pages and
-    root files. Returns the paths whose file doesn't read back as written."""
+    """Write the plan: a checkpoint commit first (M1), then records, moves,
+    pages and root files. Returns the paths whose file doesn't read back as
+    written."""
     changed = [p for p in plan.pages if p.after != p.before]
-    for page in changed:
-        lint.snapshot(page.src, wiki)
-    for rel, _, _ in plan.root:
-        lint.snapshot(wiki / rel, wiki)
+    commit = lint.checkpoint(wiki, "before migrate_sources.py --apply")
     written = {}
     for rel, text, _, _ in plan.records:
         (wiki / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -528,7 +526,8 @@ def apply(plan, wiki):
         lines = [
             f"\n## [{today}] migrate | sources and citations to the citation spec\n",
             f"- {len(plan.records)} reconstructed conversation record(s) in raw/internal/",
-            f"- {len(changed)} page(s) changed, each snapshotted to _archive/ first",
+            f"- {len(changed)} page(s) changed"
+            + (f", after checkpoint {commit}" if commit else ""),
         ]
         lines += [f"- moved {old} → {new}" for old, new in plan.moved.items()]
         lines += [f"- {rel}: {what}" for rel, _, what in plan.root]
@@ -556,8 +555,8 @@ def render(plan, applied):
     out.append(f"{did('Root files', 'change', 'changed')} (M7): {len(plan.root)}")
     out += [f"  {rel}: {what}" for rel, _, what in plan.root]
     changed = sum(1 for p in plan.pages if p.after != p.before)
-    out += ["", f"{did('Pages', 'change', 'changed')}: {changed}, each snapshotted to "
-            "_archive/ first (M1)", ""]
+    out += ["", f"{did('Pages', 'change', 'changed')}: {changed}, after a checkpoint "
+            "commit of the wiki when it's a git repo (M1)", ""]
 
     def cell(before, now):
         return f"{before} → {now}" if before or now else "·"

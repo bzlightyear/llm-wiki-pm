@@ -2,8 +2,9 @@
 # pre-write.sh
 # Runs BEFORE a write to the wiki: Write/Edit/MultiEdit, and the wiki-search
 # MCP's `vault` (create/create_from_template/update/delete) and `edit` tools.
-# - Snapshots an existing page to _archive/<slug>-<YYYY-MM-DD>.md (lint.py's
-#   snapshot()); overview.md only on a whole-file replacement, index.md never.
+# - Before the session's first write to the wiki, commits the wiki's
+#   uncommitted changes (lint.py's checkpoint()), so git can restore the state
+#   the session started from.
 # - Warns when an existing raw/ record is modified (records are write-once).
 # - Freshness gate: if the page as it will be after the write looks ungrounded
 #   (no primary source, no inline provenance), injects a reminder to sweep live
@@ -23,7 +24,7 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills/llm-wiki-pm/scripts" && 
 INPUT=$(cat)
 
 python3 - "$INPUT" "$WIKI" "$SCRIPTS" <<'PY' || true
-import json, os, re, sys
+import json, os, re, sys, tempfile
 
 raw, wiki, scripts = sys.argv[1], sys.argv[2], sys.argv[3]
 try:
@@ -33,7 +34,7 @@ except Exception:
 
 sys.dont_write_bytecode = True  # don't leave __pycache__ in the plugin dir
 sys.path.insert(0, scripts)
-from lint import snapshot
+from lint import checkpoint
 import wikifm
 
 tool = data.get("tool_name") or ""
@@ -58,7 +59,6 @@ else:
     targets = [ti.get("file_path") or ""]
 
 CREATES = {"create", "create_from_template"}
-WHOLE_FILE = {"Write", "update", "delete"}          # replaces or removes the file
 GATED_BY_FRESHNESS = {"Write", "Edit", "MultiEdit", "create", "update"}
 GATED_DIRS = ("entities/", "concepts/", "comparisons/", "queries/", "briefings/")
 # Exempt: archives and structural/generated pages.
@@ -107,6 +107,28 @@ def ungrounded(content):
 
 
 messages = []
+
+# Checkpoint: once per session, before its first write anywhere in the wiki.
+# A marker per session ID in the temp folder stops later writes from
+# committing again.
+if any(os.path.realpath(os.path.abspath(fp)).startswith(wiki_real + os.sep)
+       for fp in targets if fp):
+    session = re.sub(r"[^A-Za-z0-9_-]", "", str(data.get("session_id") or "unknown"))
+    marker = os.path.join(tempfile.gettempdir(), f"llm-wiki-pm-checkpoint-{session}")
+    if not os.path.exists(marker):
+        try:
+            open(marker, "w").close()
+        except Exception:
+            pass
+        commit = checkpoint(wiki_real, f"before session {session[:8]} writes")
+        if commit:
+            messages.append(
+                f"Checkpoint {commit}: the wiki's uncommitted changes were committed "
+                f"before this session's first write. To undo this session's changes "
+                f"to a page, show the diff, then run "
+                f"`git -C \"{wiki_real}\" restore --source={commit} -- <path>`."
+            )
+
 for fp in targets:
     if not fp.endswith(".md"):
         continue
@@ -127,16 +149,6 @@ for fp in targets:
             )
         continue
 
-    # overview.md: snapshot only a whole-file replacement (daily edits are in
-    # git). index.md is derived, so it is never snapshotted.
-    if rel == "overview.md":
-        if exists and kind in WHOLE_FILE:
-            try:
-                snapshot(abs_fp, wiki_real)
-            except Exception:
-                pass
-        continue
-
     if rel.startswith(EXEMPT_DIRS) or stem in EXEMPT_STEMS or stem.startswith("lint-"):
         continue
     if not rel.startswith(GATED_DIRS):
@@ -144,13 +156,6 @@ for fp in targets:
     # Artifacts under a directory page's assets/ subfolder are not pages.
     if "assets" in rel.split(os.sep)[2:-1]:
         continue
-
-    # Pre-update snapshot: at most one per page per day, best-effort.
-    if exists and kind not in CREATES:
-        try:
-            snapshot(abs_fp, wiki_real)
-        except Exception:
-            pass
 
     # MCP edit ops aren't simulated and delete writes nothing: no freshness gate.
     if kind not in GATED_BY_FRESHNESS or not ungrounded(post_image(abs_fp)):

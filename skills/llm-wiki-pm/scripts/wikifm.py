@@ -551,8 +551,8 @@ Resolution = namedtuple("Resolution", "kind path problem")
 def slug(path):
     """The ID of a page or record: its filename stem, the name Obsidian and
     the wiki-search MCP match links by. A folder page is named after its
-    folder, queries/<slug>/<slug>.md. The one ID function: a page is linked,
-    cited and snapshotted by it, and a sources: entry resolves by it."""
+    folder, queries/<slug>/<slug>.md. The one ID function: a page is linked
+    and cited by it, and a sources: entry resolves by it."""
     return Path(path).stem
 
 
@@ -669,7 +669,7 @@ def resolve(entry, wiki):
     elif parts[0] in PAGE_DIRS:
         return Resolution(None, None, "an artifact under assets/ isn't a page")
     elif parts[0] == "_archive":
-        return Resolution(None, None, "an archive snapshot isn't a source")
+        return Resolution(None, None, "an archived page isn't a source")
     else:
         return Resolution(None, None, "not in raw/ or a page folder")
     path = Path(wiki) / entry

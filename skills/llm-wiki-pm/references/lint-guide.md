@@ -120,8 +120,9 @@ Safe repairs applied automatically:
 - **Index backfill**: append missing non-superseded pages to `index.md`
   under the correct type section
 
-Before changing a page, lint copies it to `_archive/<slug>-<YYYY-MM-DD>.md`
-(at most once per page per day), as the pre-write hook does.
+Before changing anything, `--auto-fix` commits the wiki's uncommitted changes
+(a `checkpoint:` commit, when the wiki is a git repo), as the hooks do, so git
+can undo its fixes.
 
 ```bash
 python3 scripts/lint.py $WIKI --auto-fix=content

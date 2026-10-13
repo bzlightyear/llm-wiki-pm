@@ -153,7 +153,7 @@ Get user confirmation before fetching.
 
 **④ Update entity page**
 
-Apply diff discipline (core §4): snapshot to `_archive/<company>-<date>.md` first, show diff before writing, update inline provenance on revised facts, sweep stale variants.
+Apply diff discipline (core §4): show diff before writing, update inline provenance on revised facts, sweep stale variants.
 
 **⑤ Update comparison pages**
 
@@ -250,7 +250,7 @@ Gap research complete:
 - **Coverage markers**: bump `coverage:` after meaningful enrichment.
 - **Confidence discipline**: verified / likely / rumor — label accordingly.
 - **No fabrication**: if search returns nothing, say so.
-- **Snapshot before destructive updates**: `_archive/<slug>-<date>.md` before deep dive overwrites.
+- **Undo is git**: the hooks commit the wiki before a session's first write (core §4), so a deep dive overwrite can be restored.
 - **Dedup**: grep before creating. Confirm update vs create.
 - **Privacy**: private by default — leave customer names, deal sizes, and 1:1 content unflagged (never add `shareable: true` to them).
 - **Synthesis page**: research sprints always produce `queries/research-<topic>-<date>/research-<topic>-<date>.md`.

@@ -37,7 +37,7 @@ Operation procedures (Ingest, Query, Update, Lint, Crystallize) live in the core
 
 **No orphan pages.** Min 2 outbound `[[wikilinks]]` per page. After creating a page, add inbound links from related pages.
 
-**Snapshot before destructive ops.** The pre-write hook snapshots automatically before Write, Edit and MCP `vault` writes. For writes it can't see (Bash `mv`, scripts), copy to `_archive/<slug>-<YYYY-MM-DD>.md` yourself before overwrite, archive, or supersede.
+**Checkpoint before destructive ops.** Git is the undo. The pre-write hook commits the wiki's uncommitted changes before a session's first Write, Edit or MCP write, the session-start hook does the same when a session starts inside the wiki, and lint `--auto-fix` before it fixes anything (commits starting `checkpoint:`). A session outside the wiki folder that changes it only through Bash or scripts gets no checkpoint: commit the wiki first. To undo, show the diff and restore the page from git (core skill §4).
 
 **Verify writes.** Re-read after writing. If frontmatter is malformed or write failed, do not update index.md or log.md.
 

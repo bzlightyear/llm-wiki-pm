@@ -924,7 +924,7 @@ class TestLint:
 
 
 class TestPreWrite:
-    """Freshness gate + automatic pre-update snapshot."""
+    """Freshness gate."""
 
     def _grounded(self, links="[[a]] [[b]]"):
         return (
@@ -972,56 +972,6 @@ class TestPreWrite:
             {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)},
         )
         assert r.returncode == 0 and r.stdout.strip() == ""
-
-    def test_snapshot_created_on_overwrite(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        page = make_entity(wiki, "acme", updated=date.today())
-        r = run_hook(
-            PRE_WRITE,
-            pre_write_payload(str(page), content=self._grounded()),
-            {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)},
-        )
-        assert r.returncode == 0
-        snaps = list((wiki / "_archive").glob("acme-*.md"))
-        assert len(snaps) == 1, "existing page must be snapshotted before overwrite"
-        assert "acme" in snaps[0].read_text()
-
-    def test_snapshot_reads_disk_for_edit_without_content(self, tmp_path):
-        """Edit carries no content; the hook must still snapshot from disk."""
-        wiki = make_wiki(tmp_path)
-        page = make_entity(wiki, "acme", updated=date.today())
-        r = run_hook(
-            PRE_WRITE,
-            pre_write_payload(str(page), content=None, tool="Edit"),
-            {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)},
-        )
-        assert r.returncode == 0
-        assert list((wiki / "_archive").glob("acme-*.md")), "Edit must snapshot too"
-
-    def test_no_snapshot_for_new_page(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        page = wiki / "entities" / "brand-new.md"
-        run_hook(
-            PRE_WRITE,
-            pre_write_payload(str(page), content=self._grounded()),
-            {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)},
-        )
-        assert not list((wiki / "_archive").glob("brand-new-*.md")), (
-            "a brand-new page has nothing to snapshot"
-        )
-
-    def test_snapshot_idempotent_same_day(self, tmp_path):
-        wiki = make_wiki(tmp_path)
-        page = make_entity(wiki, "acme", updated=date.today())
-        for _ in range(2):
-            run_hook(
-                PRE_WRITE,
-                pre_write_payload(str(page), content=self._grounded()),
-                {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)},
-            )
-        assert len(list((wiki / "_archive").glob("acme-*.md"))) == 1, (
-            "at most one snapshot per page per day"
-        )
 
 
 # ---------------------------------------------------------------------------

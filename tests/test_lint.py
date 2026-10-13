@@ -22,6 +22,7 @@ from datetime import date
 from pathlib import Path
 
 from test_hooks import SESSION_START, make_wiki, run_hook, run_lint, session_start_payload
+from test_write_hooks import git, git_init
 
 # TestLint in tests/test_hooks.py holds more lint tests; it stays there so that
 # upstream file isn't edited.
@@ -435,8 +436,8 @@ def test_r12_warns_on_the_profile_and_errs_on_missing_keys(tmp_path):
     assert not any("stamped" in e for e in tiers["errors"])
 
 
-def test_content_fix_repairs_markers_and_dates_after_a_snapshot(tmp_path):
-    wiki = make_wiki(tmp_path)
+def test_content_fix_repairs_markers_and_dates_after_a_checkpoint(tmp_path):
+    wiki = git_init(make_wiki(tmp_path))
     write(wiki, "raw/articles/vendor-y-docs-2026.md")
     write(wiki, "raw/articles/competitor-x-docs-2026.md")
     original = wiki_page(
@@ -462,7 +463,8 @@ def test_content_fix_repairs_markers_and_dates_after_a_snapshot(tmp_path):
                  "[source: vendor-y-docs-2026; competitor-x-docs-2026]")
         .replace("updated: 2026-01-15T00:00:00.000Z", "updated: '2026-01-15'")
     )  # markers citing an ID that names no file, or a URL, are left for a person
-    assert (wiki / "_archive" / f"p-{TODAY}.md").read_text() == original
+    first = git(wiki, "log", "--format=%H", "--grep=^checkpoint:").split()[-1]
+    assert git(wiki, "show", f"{first}:concepts/p.md") == original
     assert "Auto-fix: ON (content)" in text
     assert "- rewrote 3 [source:] marker(s) in the citation grammar (R7) in concepts/p.md" in text
     assert "- rewrote 1 timestamp date(s) as 'YYYY-MM-DD' (R12) in concepts/p.md" in text
@@ -482,14 +484,15 @@ def test_content_fix_keeps_a_path_whose_id_names_two_files(tmp_path):
     assert page_path.read_text() == original
 
 
-def test_auto_fix_snapshots_a_page_before_changing_it(tmp_path):
-    wiki = make_wiki(tmp_path)
+def test_auto_fix_commits_the_wiki_before_changing_a_page(tmp_path):
+    wiki = git_init(make_wiki(tmp_path))
     original = wiki_page(body="See \\[\\[other]].\n")
     page_path = write(wiki, "concepts/p.md", original)
     write(wiki, "concepts/other.md", wiki_page(body="See [[p]].\n"))
     report(wiki, "--auto-fix")
     assert page_path.read_text() == original.replace("\\[\\[", "[[")
-    assert (wiki / "_archive" / f"p-{TODAY}.md").read_text() == original
+    assert git(wiki, "log", "-1", "--format=%s") == "checkpoint: before lint --auto-fix\n"
+    assert git(wiki, "show", "HEAD:concepts/p.md") == original
 
 
 def test_grounding_counts_only_records_as_primary(tmp_path):
