@@ -18,6 +18,8 @@ and NW7 follow.
 Closed NW12 the same day: checkpoint commits replaced snapshots (fork changelog
 PATCH-19), `backlinks.py` stopped scanning `_archive/`, and pm-wiki's 441
 snapshots were removed. NW1, NW2, NW7 and NW10 record the effect.
+Added NW13: `.wiki-lock` warns whenever any other session is open, and any
+session's end clears it. The proposal drops the lock and its warning.
 
 revised on: 2026-10-08
 Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
@@ -60,7 +62,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW13 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW14 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -450,6 +452,49 @@ on the per-day report in `queries/`. Found in the design review
   (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
+
+**NW13. `.wiki-lock` warns about every session, in any project.**
+- **What happens:** the hooks run in every session in any project, with
+  `$WIKI_PATH` pointing them at pm-wiki. `session-start.sh` writes
+  `$WIKI/.wiki-lock` at every session start and warns "Another wiki session may
+  be active" when it finds a lock under 2 hours old. `session-stop.sh` deletes
+  the lock at the end of any session, whoever wrote it. The file holds only
+  the latest session, a compaction warns a session about its own lock, and hand
+  runs of the hooks write and clear it too.
+- **Measured** in this machine's transcripts, 2026-08-06 to 2026-10-13: the
+  warning fired at 50 of 152 hook runs. 16 of the warnings named a session
+  that never touched pm-wiki, 11 an ID with no transcript (3 were tests'
+  `test-session-123`), and 1 the session itself after a compaction. Only two
+  pairs of sessions wrote to pm-wiki in overlapping windows (2026-08-07 and
+  2026-09-01), and neither got a warning. Agents passed the warning on to you
+  or ran extra checks before writing (2026-09-23, 09-28, 09-30).
+- **Why it matters:** the warning is noise that agents act on, and nothing can
+  rely on the lock, as NW10's planned checkpoint gate found. It never blocked a
+  write. Two skills send agents to `_status.md` for lock state it never
+  records, and the core skill says the lock "prevents concurrent-session
+  corruption".
+- **Proposal: drop the lock and its warning.** Remove it from both hooks and
+  the scaffold's empty-folder rule, fix `hooks/README.md`, core `SKILL.md`
+  (Pitfalls, Pre-Flight ⑤) and `llm-wiki-brief`, add a test in
+  `tests/test_write_hooks.py`, and then delete pm-wiki's `.wiki-lock` and its
+  `.gitignore` lines in a pm-wiki commit. Claude Code's Write and Edit already
+  refuse a file changed since it was read, and the checkpoint commit keeps
+  another session's work recoverable. About 40 lines removed, about 15 test
+  lines.
+- **Alternative if you want a signal:** a note that another session wrote to
+  the wiki N minutes ago, given at a session's first wiki write, from
+  per-session markers in the temp folder, with no file in the wiki. Ruled out: a lock scoped to
+  wiki sessions with owner-checked removal (one owner per file, still needs
+  staleness), owner-checked removal alone (more warnings), and a staleness
+  change alone.
+- **Upstream:** same code. A user-scope plugin install gets the same noise,
+  and with no wiki path configured the hooks write the lock into each
+  project's folder. Not on upstream's discuss-first list: raise an issue with
+  the measurements and offer the removal as a pull request.
+- **Full analysis:** [Wiki Lock Brief](wiki-lock-brief.md).
+- **Related:** NW12 and NW10 (the checkpoint doesn't read the lock), NW5
+  (`$WIKI_PATH` as every project's default wiki).
+- **Found in:** the NW12 work, an llm-wiki-pm session on 2026-10-13.
 
 ## Closed
 
