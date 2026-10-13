@@ -17,8 +17,22 @@ recommendation in place of the `_snapshots/` folder with NW2's ignore list,
 which becomes the alternative. Added measurements: how many snapshots git
 already holds, the `.wiki-lock` behavior that rules out NW10's lock check, the
 only recorded snapshot "backstop", and pm-wiki's commit cadence.
+Recorded the same day's approval and implementation of option 5, where it
+departs from this brief, and the measured query's result afterwards.
 
-Status: proposal, awaiting approval. Nothing is implemented.
+Status: option 5 approved and implemented 2026-10-13, step 1 included. Your
+fork's commit `0b93311` (fork changelog PATCH-19), and pm-wiki's commits
+`4d680a3` (the 441 snapshots removed) and `15f0f83` (the `overview.md` pointer
+and the vault contract's search hint).
+Where it departs from this brief:
+- A session outside the wiki folder that changes it only through scripts is
+  told to commit the wiki first (`AGENTS.md`, core §4, `citation-spec.md`'s
+  split step). That narrow rule replaces the by-hand snapshot rule rather than
+  disappearing.
+- `wikifm` now says "an archived page isn't a source" for an `_archive/` path.
+- The pre-write hook's message names the commit and the `git restore` command.
+After the change, the measured query returned no `_archive/` hits, and
+`concepts/cfp-alerts-cost-owners.md` three times in its top 10.
 Backlog item: NW12 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md),
 which NW10 was merged into on 2026-10-13.
 Related: NW7 (an `_archive/` copy steals a live page's backlinks), NW2 (the

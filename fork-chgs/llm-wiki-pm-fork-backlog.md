@@ -15,6 +15,9 @@ snapshot fill is no longer needed. NW10's check of `.wiki-lock` is dropped:
 every session in any project writes and clears that lock. NW12's earlier
 proposal, `_snapshots/` with NW2's ignore list, is now its alternative, and NW2
 and NW7 follow.
+Closed NW12 the same day: checkpoint commits replaced snapshots (fork changelog
+PATCH-19), `backlinks.py` stopped scanning `_archive/`, and pm-wiki's 441
+snapshots were removed. NW1, NW2, NW7 and NW10 record the effect.
 
 revised on: 2026-10-08
 Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
@@ -113,7 +116,9 @@ points: the two findings below, and I8's revisit mechanism.
   - **Mitigated since 2026-09-29:** `pre-write.sh` snapshots `overview.md`
     before a whole-file replacement (`Write`, or the MCP's `vault` update or
     delete), so a regeneration can be undone (fork changelog PATCH-5). One done
-    section by section through `Edit` would not be snapshotted.
+    section by section through `Edit` would not be snapshotted. Since
+    2026-10-13 (NW12) the mitigation is the checkpoint commit before a
+    session's first write, which covers section-by-section edits too.
   - **For this design:** whatever structure it settles on for `overview.md`, the
     indexer's regeneration mode should produce it, or be removed.
 
@@ -137,9 +142,8 @@ Since NW5, the MCP runs as one shared server under launchd: a fork build means
 repointing that LaunchAgent and restarting it, and streamable HTTP would go in
 the fork if Claude Code drops SSE.
 NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
-`directory` filter can't exclude a folder. Since 2026-10-13 NW12 proposes
-dropping snapshots, which needs no fork. An ignore list in the fork is only
-NW12's alternative, if snapshots are kept.
+`directory` filter can't exclude a folder. NW12 dropped snapshots on
+2026-10-13 instead, so it gives no reason to fork.
 
 **NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
@@ -253,11 +257,11 @@ on the per-day report in `queries/`. Found in the design review
   then-live `cfp-mcp-ai-insights-history`, taken by the migration on
   2026-09-30. A history split on 2026-10-06 gave a new live page the same
   name. A snapshot's name equals a split page's name whenever a slug ends in
-  `-history`. NW12's proposal deletes snapshots, this one included. M1
+  `-history`. NW12 removed snapshots on 2026-10-13, this one included. M1
   itself is an archived page and stays for step 3.
-- **`backlinks.py` should also drop `_archive`** from its folder list in step
-  1. Snapshots were 35 of 57, 88 of 133 and 63 of 102 linking files for three
-  busy pages on 2026-10-08 (NW12).
+- **`backlinks.py` no longer scans `_archive`** (done 2026-10-13, NW12), part
+  of step 1. Snapshots had been 35 of 57, 88 of 133 and 63 of 102 linking
+  files for three busy pages on 2026-10-08. The rest of step 1 is open.
 - **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
   2026-10-01.
 
@@ -447,80 +451,6 @@ on the per-day report in `queries/`. Found in the design review
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
-**NW12. `_archive/` snapshots crowd live pages out of search.**
-- **What happens:** pre-write snapshots live in `_archive/` inside the wiki
-  folder, and three readers treat them as pages:
-  - **The wiki-search MCP** indexes every `.md` file under the wiki
-    (`listNotes()` skips nothing). A `semantic_search` on 2026-10-08 returned
-    6 `_archive/` snapshots in its top 10, including the top hit. The live
-    history page with the same text ranked third, and the current page wasn't
-    in the 10.
-  - **`grep -r "$WIKI"`,** which several skills use, reads `_archive/`.
-  - **`backlinks.py`** scans `_archive/` on purpose. Snapshots were about 60%
-    of the linking files for three busy pages.
-  - **Obsidian** already hides `_archive/`.
-  - **No skill** tells agents to skip `_archive/` hits, although
-    `citation-spec.md` says `_archive/` is never a source.
-- **Why it matters:** agents can quote stale, uncited snapshot text, and the
-  current page can drop out of the results an agent reads. On 2026-10-13
-  `_archive/` held 447 files: 441 snapshots, 5 superseded entity pages and
-  NW7's M1 page. No `_archive/` file was ever changed after it was
-  created, so the harm is to reading, not writing.
-- **Options weighed:** a query rule alone (depends on agent behavior and can't
-  undo the crowding), server-side exclusion (the `directory` filter is an
-  include-only prefix applied after retrieval, so a real exclusion needs
-  NW2's fork), moving snapshots outside the wiki folder (takes them out of the
-  wiki's Claude project), combinations that keep snapshots, and dropping
-  snapshots for git.
-- **Snapshots in use:** never used for an undo (NW10). The one log entry
-  calling them a backstop (2026-09-22) was restored from the agent's context;
-  no snapshot of that page existed that day. 310 of the 441 are identical to a
-  committed version of a live file, and git holds all 441 as `_archive/`
-  files.
-- **Proposal: drop snapshots, checkpoint into git** (merges NW10):
-  1. **Now:** `backlinks.py` drops `_archive` (with NW7 step 1), and the
-     query and update steps gain a rule: an `_archive/` hit is a retired page,
-     not current.
-  2. **`checkpoint()` replaces `snapshot()`** in `lint.py`: when the wiki has
-     uncommitted changes (other than `_status.md`) and no merge or rebase is
-     in progress, it commits them with a `checkpoint:` message, best-effort.
-     `pre-write.sh` calls it before a session's first wiki write from any
-     project, `session-start.sh` when a session starts in the wiki folder,
-     and `--auto-fix` and `migrate_sources.py` before they write. No caller
-     checks `.wiki-lock`, which every session in any project writes and
-     clears. "Undo that" becomes a git restore the agent runs, and the
-     by-hand snapshot rule for script edits goes.
-  3. **Delete the 441 snapshots** in one pm-wiki commit, with the user's OK,
-     and point `overview.md`'s "Pre-2026-10-06 text" at `7db03cd:overview.md`.
-  It covers more than snapshots do (a second session the same day, and Bash
-  or script writes after a session's first write or in a session started in
-  pm-wiki), and fixes search without NW2. Not covered, as now: script-only
-  writes from another project's session, and text written and then damaged in
-  the same session.
-- **Costs:** automatic commits in pm-wiki's history (at most one per writing
-  session that starts with uncommitted changes, plus `--auto-fix` runs), which
-  can include an overlapping session's half-done edits. Undo goes through
-  git. About 40 code lines, about 60 test lines rewritten (temporary wikis
-  need `git init`), about 14 doc edits including `AGENTS.md`, I7 and NW1's
-  overview mitigation line. More divergence from upstream.
-- **Alternative if automatic commits are unwanted:** keep snapshots in a
-  `_snapshots/` folder inside pm-wiki that the server ignores, through an
-  ignore list as NW2's first fix, plus a grep rule. That needs NW2's Node
-  build, and leaves NW10's script gap open. Moving snapshots outside the wiki
-  instead avoids NW2 but takes them out of the wiki's Claude project.
-- **To decide:** automatic `checkpoint:` commits, deleting the 441 snapshots,
-  and step 1 now.
-- **Upstream:** upstream snapshots into `_archive/` too, with the same server.
-  The search problem goes up as an issue with the measurements and this
-  approach. Upstream would need an answer for wikis that aren't git repos.
-- **Full analysis:** [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
-- **Related:** NW10 (merged into this item), NW7 (same-name `_archive/`
-  copies, `backlinks.py`'s folder list), NW2 (the ignore list, only for the
-  alternative), NW11 (`AGENTS.md` holds the snapshot rule), NW1 (its overview
-  mitigation is a pre-write snapshot).
-- **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
-  in pm-wiki.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -707,7 +637,8 @@ on the per-day report in `queries/`. Found in the design review
   10b, 2026-09-30.
 
 **NW10. Script writes to pages get no snapshot.**
-- **Status: merged into NW12 on 2026-10-13.** NW12 now proposes dropping
+- **Status: merged into NW12 on 2026-10-13, and done with it the same day**
+  (fork changelog PATCH-19). NW12 proposed dropping
   snapshots and relying on git, with this item's checkpoint commit made before
   a session's first write to the wiki. That covers script writes, so the
   snapshot fill below isn't needed. The checkpoint doesn't check `.wiki-lock`:
@@ -807,3 +738,85 @@ on the per-day report in `queries/`. Found in the design review
   in a wiki).
 - **Found in:** a pm-wiki maintenance session on 2026-10-02 (the agent's own
   report), analyzed in an llm-wiki-pm session the same day.
+
+**NW12. `_archive/` snapshots crowd live pages out of search.**
+- **Status: done 2026-10-13.** Git checkpoint commits replaced pre-write
+  snapshots in your fork (commit `0b93311`, changelog PATCH-19), with step 1
+  included: `backlinks.py` no longer scans `_archive/`, and the query and
+  update steps call `_archive/` hits retired pages. pm-wiki's 441 snapshots
+  were removed in its commit `4d680a3`, and `overview.md` points at git for
+  its pre-2026-10-06 text. The measured query then returned no `_archive/`
+  hits, and the current page three times in the top 10. The text below
+  describes the problem and the proposal as approved.
+- **What happens:** pre-write snapshots live in `_archive/` inside the wiki
+  folder, and three readers treat them as pages:
+  - **The wiki-search MCP** indexes every `.md` file under the wiki
+    (`listNotes()` skips nothing). A `semantic_search` on 2026-10-08 returned
+    6 `_archive/` snapshots in its top 10, including the top hit. The live
+    history page with the same text ranked third, and the current page wasn't
+    in the 10.
+  - **`grep -r "$WIKI"`,** which several skills use, reads `_archive/`.
+  - **`backlinks.py`** scans `_archive/` on purpose. Snapshots were about 60%
+    of the linking files for three busy pages.
+  - **Obsidian** already hides `_archive/`.
+  - **No skill** tells agents to skip `_archive/` hits, although
+    `citation-spec.md` says `_archive/` is never a source.
+- **Why it matters:** agents can quote stale, uncited snapshot text, and the
+  current page can drop out of the results an agent reads. On 2026-10-13
+  `_archive/` held 447 files: 441 snapshots, 5 superseded entity pages and
+  NW7's M1 page. No `_archive/` file was ever changed after it was
+  created, so the harm is to reading, not writing.
+- **Options weighed:** a query rule alone (depends on agent behavior and can't
+  undo the crowding), server-side exclusion (the `directory` filter is an
+  include-only prefix applied after retrieval, so a real exclusion needs
+  NW2's fork), moving snapshots outside the wiki folder (takes them out of the
+  wiki's Claude project), combinations that keep snapshots, and dropping
+  snapshots for git.
+- **Snapshots in use:** never used for an undo (NW10). The one log entry
+  calling them a backstop (2026-09-22) was restored from the agent's context;
+  no snapshot of that page existed that day. 310 of the 441 are identical to a
+  committed version of a live file, and git holds all 441 as `_archive/`
+  files.
+- **Proposal: drop snapshots, checkpoint into git** (merges NW10):
+  1. **Now:** `backlinks.py` drops `_archive` (with NW7 step 1), and the
+     query and update steps gain a rule: an `_archive/` hit is a retired page,
+     not current.
+  2. **`checkpoint()` replaces `snapshot()`** in `lint.py`: when the wiki has
+     uncommitted changes (other than `_status.md`) and no merge or rebase is
+     in progress, it commits them with a `checkpoint:` message, best-effort.
+     `pre-write.sh` calls it before a session's first wiki write from any
+     project, `session-start.sh` when a session starts in the wiki folder,
+     and `--auto-fix` and `migrate_sources.py` before they write. No caller
+     checks `.wiki-lock`, which every session in any project writes and
+     clears. "Undo that" becomes a git restore the agent runs, and the
+     by-hand snapshot rule for script edits goes.
+  3. **Delete the 441 snapshots** in one pm-wiki commit, with the user's OK,
+     and point `overview.md`'s "Pre-2026-10-06 text" at `7db03cd:overview.md`.
+  It covers more than snapshots do (a second session the same day, and Bash
+  or script writes after a session's first write or in a session started in
+  pm-wiki), and fixes search without NW2. Not covered, as now: script-only
+  writes from another project's session, and text written and then damaged in
+  the same session.
+- **Costs:** automatic commits in pm-wiki's history (at most one per writing
+  session that starts with uncommitted changes, plus `--auto-fix` runs), which
+  can include an overlapping session's half-done edits. Undo goes through
+  git. About 40 code lines, about 60 test lines rewritten (temporary wikis
+  need `git init`), about 14 doc edits including `AGENTS.md`, I7 and NW1's
+  overview mitigation line. More divergence from upstream.
+- **Alternative if automatic commits are unwanted:** keep snapshots in a
+  `_snapshots/` folder inside pm-wiki that the server ignores, through an
+  ignore list as NW2's first fix, plus a grep rule. That needs NW2's Node
+  build, and leaves NW10's script gap open. Moving snapshots outside the wiki
+  instead avoids NW2 but takes them out of the wiki's Claude project.
+- **To decide:** automatic `checkpoint:` commits, deleting the 441 snapshots,
+  and step 1 now.
+- **Upstream:** upstream snapshots into `_archive/` too, with the same server.
+  The search problem goes up as an issue with the measurements and this
+  approach. Upstream would need an answer for wikis that aren't git repos.
+- **Full analysis:** [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
+- **Related:** NW10 (merged into this item), NW7 (same-name `_archive/`
+  copies, `backlinks.py`'s folder list), NW2 (the ignore list, only for the
+  alternative), NW11 (`AGENTS.md` holds the snapshot rule), NW1 (its overview
+  mitigation is a pre-write snapshot).
+- **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
+  in pm-wiki.

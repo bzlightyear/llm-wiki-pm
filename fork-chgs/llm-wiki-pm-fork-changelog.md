@@ -3,8 +3,13 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-18) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-19) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
+
+revised on: 2026-10-13
+Added PATCH-19: git checkpoint commits replace pre-write snapshots, and
+`backlinks.py` no longer scans `_archive/` (backlog NW12, NW10 merged into
+it). Marked PATCH-5's snapshot part replaced by it.
 
 revised on: 2026-10-06
 Added to PATCH-7: the split procedure now turns sources named in prose into
@@ -184,7 +189,9 @@ the set would go upstream with the migration script, isn't done.
 - **Where:** `hooks/pre-write.sh`, `hooks/hooks.json`, `hooks/README.md`,
   `README.md`, `lint.py`, `tests/test_write_hooks.py`. Commit `eda0293` (step
   3, design 5.11). The permission rules are in `~/.claude/settings.json`.
-- **Status:** active. Upstream candidate; the permission rules are per user.
+- **Status:** active, except snapshots: PATCH-19 replaced them with checkpoint
+  commits on 2026-10-13. The MCP coverage, the raw write-once warning and the
+  freshness gate stay. Upstream candidate; the permission rules are per user.
 
 #### PATCH-6 — `wikifm.py`, the one frontmatter parser
 
@@ -394,6 +401,45 @@ the set would go upstream with the migration script, isn't done.
 - **Status:** active. Upstream candidate. The suite passed on 2026-10-02: 449
   passed, 2 skipped.
 
+### Backups
+
+#### PATCH-19 — Git checkpoint commits replace pre-write snapshots
+
+- **What:** `lint.py`'s `checkpoint()` replaces `snapshot()`. It commits the
+  wiki's uncommitted changes, leaving out `_status.md`, with a message starting
+  `checkpoint:`, when the wiki is the top of a git work tree with no merge,
+  rebase, cherry-pick or revert in progress. It's best-effort and never
+  raises. Callers:
+  - `pre-write.sh`, before a session's first write to the wiki, once per
+    session (a marker per session ID in the temp folder). It tells the agent
+    which commit restores the session's starting state.
+  - `session-start.sh`, when the session starts inside the wiki, which covers
+    Bash and script writes there.
+  - `lint.py --auto-fix` and `migrate_sources.py --apply`, before they write.
+
+  No snapshots are written, and `_archive/` holds retired pages only.
+  `backlinks.py` no longer scans it. The core skill's query and update steps,
+  `update-guide.md` and the vault contract template say `_archive/` hits are
+  retired pages. The by-hand snapshot rule for script edits is gone from core
+  §4, `citation-spec.md`'s split step and `AGENTS.md`, which now describe the
+  checkpoint and a git restore. pm-wiki's 441 snapshots were removed in its
+  commit `4d680a3`, and stay in its history.
+- **Why:** snapshots in `_archive/` crowded live pages out of wiki-search
+  results, 6 of the top 10 for one query, and were most of what `grep -r` and
+  `backlinks.py` returned. They covered only a page's first tool write of the
+  day, no Bash or script writes (NW10), and had never been used for an undo.
+  On 2026-10-12 a session had to rebuild twelve of them by hand from git,
+  because hook snapshots taken after script edits held edited text.
+  See the [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md).
+- **Where:** `lint.py`, `hooks/pre-write.sh`, `hooks/session-start.sh`,
+  `migrate_sources.py`, `backlinks.py`, `wikifm.py` (wording), `AGENTS.md`,
+  the core and research `SKILL.md` files, `citation-spec.md`, `lint-guide.md`,
+  `update-guide.md`, `templates/vault-contract.md`, `hooks/README.md`, and the
+  tests. Commit `0b93311`. Design invariant I7 updated.
+- **Status:** active. Fork-only for now: upstream snapshots into `_archive/`
+  too (its PLUGIN-REVIEW item A4), so the search problem goes up as an issue,
+  and upstream would need an undo for wikis that aren't git repos.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -418,7 +464,8 @@ Not patches to upstream's code, and not offered upstream:
   `extract_tags()` are gone. Any upstream lint change needs porting onto
   `wikifm`, not a textual merge.
 - `hooks/session-start.sh` (lint parsing, stale scan, scaffold, the removed
-  warning), `hooks/pre-write.sh` (PATCH-5, PATCH-6) and `hooks/hooks.json`
+  warning, the checkpoint), `hooks/pre-write.sh` (PATCH-5, PATCH-6, PATCH-19;
+  an upstream snapshot change doesn't apply here) and `hooks/hooks.json`
   (matchers, `post-validate.sh` in place of `post-write.sh`).
 - `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
