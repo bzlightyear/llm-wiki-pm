@@ -9,6 +9,12 @@ future design, review and companion docs to follow. They were first applied by t
 ## Revision History
 
 revised on: 2026-10-14
+About This Document's list of contents is now open-ended and names baselines
+and conventions for reading or maintaining the doc, as the changelog and backlog
+use. The template no longer says "one item per line", which read as a format
+rule against the multi-line items those docs use.
+
+revised on: 2026-10-14
 A doc's status line now gets its own `## Status` section, ahead of
 `## About This Document`, which keeps the rest of the opening material. The
 seven docs that had a status line inside About This Document were changed to
@@ -69,7 +75,7 @@ revised on: YYYY-MM-DD
 
 ## About This Document
 
-<The rest of the opening material, one item per line.>
+<The rest of the opening material: short paragraphs or bullets.>
 ```
 
 The body follows, after a `---` rule where the doc uses one. In a prompt, the
@@ -92,7 +98,9 @@ The body follows, after a `---` rule where the doc uses one. In a prompt, the
   - `## Status` holds the doc's status line. When the doc's only other opening
     material is its backlog item and related docs, those go there too.
   - `## About This Document`, after Status, holds the rest: backlog item, related
-    docs, companions, scope, provenance notes, and label or severity conventions.
+    docs, companions, scope, provenance notes, baselines, and conventions for
+    reading or maintaining the doc, such as label, severity or numbering schemes
+    and how to add an entry.
   - A doc leaves out a section it has nothing for.
 
 ## Updating an existing doc to the convention
