@@ -9,13 +9,15 @@ design's proposed changes, the findings of the
 current code. It lists 29 issues, each with a proposed design edit, and maps
 every proposed change and every review finding to the step that implements it.
 
-## About This Document
-
-Reviewer: the session that implemented step 1.
+## Status
 
 Status: all 29 issues accepted on 2026-09-29, with the recommended answer to each
 open decision, and applied to the design, its appendices and the implementation
 prompt. Each edit there is marked "(plan review Pn)".
+
+## About This Document
+
+Reviewer: the session that implemented step 1.
 
 Scope: the design and its appendices at `556d1b4` (step 1 done); the review; the
 [Sources and References Implementation Prompt](sources-and-references-implementation-prompt.md);

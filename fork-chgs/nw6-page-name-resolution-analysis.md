@@ -16,11 +16,13 @@ Replaced the proposed design, implementation and open decisions (sections
 after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
 
-## About This Document
+## Status
 
 Status: done 2026-10-01. Option 4 is implemented (section 10 below). In the
 [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), this closes NW6's next
 steps 1-3. Its next step 4 became NW7 and step 5 is done, so NW6 is closed.
+
+## About This Document
 
 Companion to [Sources and References Design](sources-and-references-design.md),
 the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md) (NW6) and

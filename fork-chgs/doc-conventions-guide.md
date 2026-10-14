@@ -9,6 +9,12 @@ future design, review and companion docs to follow. They were first applied by t
 ## Revision History
 
 revised on: 2026-10-14
+A doc's status line now gets its own `## Status` section, ahead of
+`## About This Document`, which keeps the rest of the opening material. The
+seven docs that had a status line inside About This Document were changed to
+match.
+
+revised on: 2026-10-14
 Each substantive revision now gets its own entry, so several can share a date,
 and a change made on the creation day after the first commit gets one too. The
 entries sit under a `## Revision History` header, and the other opening material
@@ -59,7 +65,11 @@ revised on: YYYY-MM-DD
 
 ## Status
 
-<The other opening material, one item per line.>
+<The doc's status line.>
+
+## About This Document
+
+<The rest of the opening material, one item per line.>
 ```
 
 The body follows, after a `---` rule where the doc uses one. In a prompt, the
@@ -76,13 +86,14 @@ The body follows, after a `---` rule where the doc uses one. In a prompt, the
   are never edited. The newest entry's date is the doc's last-updated date.
 - **A doc with no revision entries leaves out Revision History** until its first
   revision.
-- **Other opening material gets its own section after Revision History,** so it
-  doesn't read as part of the history: status, backlog item, related docs,
-  companions, scope, provenance notes, and label or severity conventions, one item
-  per line where they used to share a line with a date. Name the section for its
-  content: `## Status` when it holds only status, backlog item and related-doc
-  lines, and `## About This Document` when it holds more. A doc with no other
-  opening material leaves the section out.
+- **Other opening material follows Revision History in its own sections,** so it
+  doesn't read as part of the history, one item per line where items used to
+  share a line with a date:
+  - `## Status` holds the doc's status line. When the doc's only other opening
+    material is its backlog item and related docs, those go there too.
+  - `## About This Document`, after Status, holds the rest: backlog item, related
+    docs, companions, scope, provenance notes, and label or severity conventions.
+  - A doc leaves out a section it has nothing for.
 
 ## Updating an existing doc to the convention
 

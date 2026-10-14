@@ -13,12 +13,14 @@ revised on: 2026-08-30
 Moved into the fork from the PM wiki, where it had been a concept page, without
 its links to other wiki pages.
 
-## About This Document
+## Status
 
 Status: describes the setup on 2026-08-08, when the plugin started one MCP
 server per Claude Code session. The package is still v2.3.0 (checked
 2026-10-02), but since NW5 this install runs one shared server under launchd;
 see the [Wiki-Search Launchd Guide](wiki-search-launchd-guide.md).
+
+## About This Document
 
 _Relocated from `pm-wiki/concepts/wiki-search-architecture.md` (a PM
 knowledge wiki that runs on this plugin) — tooling/meta content, not PM domain

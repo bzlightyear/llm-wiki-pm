@@ -15,11 +15,13 @@ Recorded the decisions (all six recommendations in section 10 accepted), added
 the implementation plan with `$WIKI_PATH` as the default wiki (section 11), and
 recorded its results (section 12).
 
-## About This Document
+## Status
 
 Status: implemented 2026-10-02 (section 12). In the
 [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), this closes NW5. The
 setup is documented in the [Wiki-Search Launchd Guide](wiki-search-launchd-guide.md).
+
+## About This Document
 
 Companion to the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md) (NW5),
 [Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md),

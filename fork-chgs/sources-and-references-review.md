@@ -7,6 +7,14 @@ against the wiki's data, the hook and MCP code, and session history. It gives 16
 findings with severity and recommendations, a cost/benefit verdict on every new
 mechanism, and the design edits it led to.
 
+## Status
+
+**Status:** all findings accepted as revised, and applied to the design and its
+appendices on 2026-09-28. Where a finding offered options, the design uses:
+date-free R10 (F1); the permission rule, with step 12 dropped (F4); a separate
+`--auto-fix=content` flag (F5); dropping R13 (F6); moving the two unrouted
+folders' files into routed folders (F15).
+
 ## About This Document
 
 Reviewer: fresh session, read-only
@@ -21,12 +29,6 @@ archive snapshots, wiki repo at `7ea0375`); Claude Code transcripts under
 `~/.claude/projects/` (retained from 2026-08-07). Lint was run only against the
 scratch copy. All wiki facts below are counts. No page names, people, companies
 or source slugs appear in this report.
-
-**Status:** all findings accepted as revised, and applied to the design and its
-appendices on 2026-09-28. Where a finding offered options, the design uses:
-date-free R10 (F1); the permission rule, with step 12 dropped (F4); a separate
-`--auto-fix=content` flag (F5); dropping R13 (F6); moving the two unrouted
-folders' files into routed folders (F15).
 
 Companion document: [Wiki-Search MCP Tools Analysis](wiki-search-mcp-tools-analysis.md)
 lists every wiki-search MCP tool and operation with its risk, the full usage

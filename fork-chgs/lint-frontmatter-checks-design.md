@@ -11,9 +11,11 @@ revised on: 2026-09-29
 Replaced the names of real people and customer companies in the examples with
 placeholders (`person-a`, `customer-a`, …), as part of the design's step 0.
 
-## About This Document
+## Status
 
 Status: **proposed, not implemented**
+
+## About This Document
 
 Target file: `skills/llm-wiki-pm/scripts/lint.py`
 
