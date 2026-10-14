@@ -6,6 +6,15 @@ The naming and opening-section conventions for documents in `fork-chgs/`, for
 future design, review and companion docs to follow. They were first applied by the
 [Doc Conventions Prompt](doc-conventions-prompt.md).
 
+## Revision History
+
+revised on: 2026-10-14
+Each substantive revision now gets its own entry, so several can share a date,
+and a change made on the creation day after the first commit gets one too. The
+entries sit under a `## Revision History` header, and the other opening material
+moves to its own section after it. Every doc in `fork-chgs/` was moved to this
+layout the same day.
+
 ## File names
 
 - `<subject>-<doctype>.md`, all lowercase kebab case. For example,
@@ -31,40 +40,59 @@ the text of any link to it. For example,
 
 ## Opening section
 
-Every doc starts with this block, directly under the H1:
+Every doc opens with these parts, in this order:
 
 ```
+# <Title>
+
 created: YYYY-MM-DD
 
 <Purpose: 1–3 sentences on what the document is for and what it covers.>
+
+## Revision History
 
 revised on: YYYY-MM-DD
 <2–3 sentences describing what that revision changed.>
 
 revised on: YYYY-MM-DD
 <…>
+
+## Status
+
+<The other opening material, one item per line.>
 ```
 
-- **Revision entries are newest first.** Each later update adds a new entry at the
-  top of the list; older entries are never edited. The newest entry's date is the
-  doc's last-updated date.
-- **One entry per calendar day with substantive changes.** Changes made on the
-  creation day are part of the initial version: the purpose statement describes
-  the final state, and there is no entry. Typo, formatting and rename-only
-  changes don't need an entry.
-- **Other opening material follows the block.** Status, scope, companions, and
-  label or severity conventions go below it, one item per line where they used to
-  share a line with a date.
+The body follows, after a `---` rule where the doc uses one. In a prompt, the
+`---` rule separates the opening from the prompt text.
+
+- **The purpose statement describes the doc as it stands.** A revision that
+  changes what the doc covers or recommends updates it.
+- **One entry per substantive revision.** Several entries can share a date. A
+  doc's initial version is what was first committed, so any later substantive
+  change gets an entry, including one made on the creation day. Typo, formatting
+  and rename-only changes don't need an entry.
+- **Revision entries are newest first,** including among entries with the same
+  date. Each later revision adds a new entry at the top of the list; older entries
+  are never edited. The newest entry's date is the doc's last-updated date.
+- **A doc with no revision entries leaves out Revision History** until its first
+  revision.
+- **Other opening material gets its own section after Revision History,** so it
+  doesn't read as part of the history: status, backlog item, related docs,
+  companions, scope, provenance notes, and label or severity conventions, one item
+  per line where they used to share a line with a date. Name the section for its
+  content: `## Status` when it holds only status, backlog item and related-doc
+  lines, and `## About This Document` when it holds more. A doc with no other
+  opening material leaves the section out.
 
 ## Updating an existing doc to the convention
 
 - Reconstruct revision entries from git history (`git log --follow`) and from
-  revision notes already in the text.
-- The block is additive. The doc's existing opening text stays, word for word.
-  Remove only text whose sole job is a date or revision note that the block now
-  records. Where a line mixes a date with other items, remove just the date. Where
-  a revision note also states a lasting convention, keep the convention as an
-  undated sentence.
+  revision notes already in the text, one entry per substantive revision.
+- The opening is additive. The doc's existing opening text stays word for word,
+  moved into the section after Revision History. Remove only text whose sole job
+  is a date or revision note that Revision History now records. Where a line
+  mixes a date with other items, remove just the date. Where a revision note also
+  states a lasting convention, keep the convention as an undated sentence.
 - When a new title-case H1 replaces a more descriptive old one, make sure the
   purpose statement keeps that description.
 - Rename with `git mv`, and update every reference: markdown links and plain-text
