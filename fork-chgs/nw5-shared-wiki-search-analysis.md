@@ -8,10 +8,14 @@ session. It checks NW5's claims against the MCP's code and live tests on a
 scratch copy of the wiki, compares the options, and recommends one. A second
 wiki is covered as a nice-to-have.
 
+## Revision History
+
 revised on: 2026-10-02
 Recorded the decisions (all six recommendations in section 10 accepted), added
 the implementation plan with `$WIKI_PATH` as the default wiki (section 11), and
 recorded its results (section 12).
+
+## About This Document
 
 Status: implemented 2026-10-02 (section 12). In the
 [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), this closes NW5. The

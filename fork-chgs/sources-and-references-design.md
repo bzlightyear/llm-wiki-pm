@@ -6,6 +6,8 @@ Invariant-based redesign of how the wiki writes and checks `raw/` source records
 frontmatter `sources:`, inline `[source: …]` citations and wikilinks, with the
 lint rules, hooks, migration and implementation plan that enforce it.
 
+## Revision History
+
 revised on: 2026-10-13
 Changed I7's mechanism: git checkpoint commits replace pre-write snapshots in
 `_archive/`, which crowded live pages out of search (backlog NW12). The
@@ -112,6 +114,8 @@ revised on: 2026-09-26
 Added the lint rule catalog (5.15), impact lines for each new finding, and the
 MCP round-trip findings (N15) with follow-on work. Also disambiguated write-path
 IDs and narrowed root-file snapshots.
+
+## About This Document
 
 Status: **in progress**: steps 0–9, 10a and 10b done (see section 8)
 

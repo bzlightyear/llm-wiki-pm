@@ -7,6 +7,8 @@ lint ignores the `confidence_decay_days` field, and it skips any page whose name
 starts with `lint-`. Each is given as found and as checked against the fork on
 2026-09-30.
 
+## Status
+
 Status: open, no fix proposed.
 
 ## Origin

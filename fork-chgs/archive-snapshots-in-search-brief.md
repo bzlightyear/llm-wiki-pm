@@ -11,6 +11,8 @@ the wiki (option 5, which takes in backlog item NW10). Keeping snapshots in a
 `_snapshots/` folder that the wiki-search server ignores, through NW2's fork, is
 the alternative if automatic commits are unwanted.
 
+## Revision History
+
 revised on: 2026-10-13
 Added option 5, dropping snapshots for checkpoint commits, and made it the
 recommendation in place of the `_snapshots/` folder with NW2's ignore list,
@@ -19,6 +21,8 @@ already holds, the `.wiki-lock` behavior that rules out NW10's lock check, the
 only recorded snapshot "backstop", and pm-wiki's commit cadence.
 Recorded the same day's approval and implementation of option 5, where it
 departs from this brief, and the measured query's result afterwards.
+
+## Status
 
 Status: option 5 approved and implemented 2026-10-13, step 1 included. Your
 fork's commit `0b93311` (fork changelog PATCH-19), and pm-wiki's commits

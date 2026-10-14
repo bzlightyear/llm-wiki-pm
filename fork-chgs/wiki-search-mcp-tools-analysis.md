@@ -6,6 +6,8 @@ Every tool and operation of the wiki-search MCP, with its usage in this wiki and
 its risk, plus a measurement of whether searching with grep instead of semantic
 search has cost anything.
 
+## About This Document
+
 Companion to
 [Sources and References Review](sources-and-references-review.md)
 (finding F4) and

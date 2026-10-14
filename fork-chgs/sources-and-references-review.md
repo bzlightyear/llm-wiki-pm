@@ -7,6 +7,8 @@ against the wiki's data, the hook and MCP code, and session history. It gives 16
 findings with severity and recommendations, a cost/benefit verdict on every new
 mechanism, and the design edits it led to.
 
+## About This Document
+
 Reviewer: fresh session, read-only
 
 Assumes: D1–D11 accepted as recommended, including the step 0 scrub (D8).

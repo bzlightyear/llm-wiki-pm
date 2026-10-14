@@ -9,6 +9,8 @@ design's proposed changes, the findings of the
 current code. It lists 29 issues, each with a proposed design edit, and maps
 every proposed change and every review finding to the step that implements it.
 
+## About This Document
+
 Reviewer: the session that implemented step 1.
 
 Status: all 29 issues accepted on 2026-09-29, with the recommended answer to each

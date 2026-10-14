@@ -6,6 +6,8 @@ How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
 change (PATCH-1 to PATCH-19) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
+## Revision History
+
 revised on: 2026-10-13
 Added PATCH-19: git checkpoint commits replace pre-write snapshots, and
 `backlinks.py` no longer scans `_archive/` (backlog NW12, NW10 merged into
@@ -54,7 +56,7 @@ revised on: 2026-08-29
 Added PATCH-4 (relationship-map wiring), captured from the diff before it was
 committed.
 
-## About this document
+## About This Document
 
 - **Baseline:** upstream `github.com/anh-chu/llm-wiki-pm` (the `upstream`
   remote) at `0667f75 chore(release): 2.21.0`. Upstream has had no commits

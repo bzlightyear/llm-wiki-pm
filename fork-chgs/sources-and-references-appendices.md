@@ -6,11 +6,15 @@ Plain-language explanations of the design's seven root causes (RC1–RC7) and
 fifteen new findings (N1–N15): what each is, what it costs, and how the plan fixes
 it.
 
+## Revision History
+
 revised on: 2026-09-29
 Narrowed N12 to the names of people and customer companies, in one doc and the
 test file, to match the design's narrowed step 0 scrub. Corrected N13's fix to
 match the design's section 5.13. Moved N9's fix to step 6, added step 6 to N4's,
 and renamed the migration step 10b, after the plan review.
+
+## About This Document
 
 Companion to [Sources and References Design](sources-and-references-design.md).
 Section numbers, root-cause IDs (RC1–RC7) and finding IDs (N1–N15) refer to the

@@ -9,6 +9,8 @@ lock. This brief lists every reader and writer of the lock, measures how often
 the warning fired and how often sessions really wrote to the wiki at the same
 time, and weighs five options. It recommends dropping the lock and its warning.
 
+## Status
+
 Status: proposed, not implemented.
 Backlog item: NW13 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW12 and NW10 (the checkpoint commits, which don't read the lock;

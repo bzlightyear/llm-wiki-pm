@@ -8,11 +8,15 @@ page name, link or path into a file. Each was tested on the live wiki
 fix applied. It ends with the options for fixing NW6, the one chosen, and its
 implementation plan.
 
+## Revision History
+
 revised on: 2026-10-01
 Replaced the proposed design, implementation and open decisions (sections
 9–11) with the options considered, the decision (option 4: name a folder page
 after its folder and delete the `README.md` rule) and its implementation plan.
 The proposals had grown far beyond the problem.
+
+## About This Document
 
 Status: done 2026-10-01. Option 4 is implemented (section 10 below). In the
 [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), this closes NW6's next

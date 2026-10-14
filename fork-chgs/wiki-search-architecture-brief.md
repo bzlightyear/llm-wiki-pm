@@ -7,9 +7,13 @@ retrieval for a wiki running this plugin, and how it compares to `qmd`, the
 search tool Karpathy's LLM Wiki gist recommends for larger wikis. Written from
 an inspection of the installed package.
 
+## Revision History
+
 revised on: 2026-08-30
 Moved into the fork from the PM wiki, where it had been a concept page, without
 its links to other wiki pages.
+
+## About This Document
 
 Status: describes the setup on 2026-08-08, when the plugin started one MCP
 server per Claude Code session. The package is still v2.3.0 (checked

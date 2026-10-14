@@ -7,6 +7,8 @@ improve, and performance to tune. Each item records what is known when it's
 captured. An item big enough to need one gets its own design, analysis or
 proposal doc when the work starts.
 
+## Revision History
+
 revised on: 2026-10-13
 Reworked NW12's proposal: drop pre-write snapshots and rely on git, with a
 checkpoint commit before a session's first write to the wiki. Merged NW10 into
@@ -53,6 +55,8 @@ Added NW10, script writes to pages getting no snapshot, with a session-start
 checkpoint commit and a git-based snapshot fill as the proposal. Added NW11,
 skills citing an `AGENTS.md` that wiki sessions never load, with a new Orient
 step that reads it as the proposal.
+
+## About This Document
 
 The first seven items, NW1–NW7, were recorded during the sources and references
 work and moved here word for word from section 10 of the

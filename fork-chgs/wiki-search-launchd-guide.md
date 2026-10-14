@@ -8,6 +8,8 @@ restarts, troubleshooting, rollback, and adding a second wiki. Set up for NW5;
 the reasoning and tests are in the
 [NW5 Shared Wiki-Search Analysis](nw5-shared-wiki-search-analysis.md).
 
+## About This Document
+
 Companion to the [Wiki Path Launchd Guide](wiki-path-launchd-guide.md), which
 sets `WIKI_PATH` for apps launched from the Dock or Finder.
 

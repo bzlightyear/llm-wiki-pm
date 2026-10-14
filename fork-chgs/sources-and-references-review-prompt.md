@@ -5,10 +5,14 @@ created: 2026-09-27
 The prompt for the independent review of the sources and references design,
 including the four error patterns the review was asked to hunt for.
 
+## About This Document
+
 > Review prompt for sources-and-references-design.md, written
 > 2026-09-27 after the design session. It asks a fresh session to find gaps,
 > weaknesses and side effects in the design, using the error patterns found
 > during that session as a checklist.
+
+---
 
 You are reviewing a design document I will act on, and I need you to find what is wrong with it before I implement it. Work in Claude Code with read access to the files below.
 

@@ -9,6 +9,8 @@ with the project command `/implement-step <N>`
 (`.claude/commands/implement-step.md`), or paste the text below the `---` with
 the step number filled in.
 
+## Revision History
+
 revised on: 2026-09-30
 The environment note no longer lists
 TestPostWrite::test_parses_file_path_from_stdin_without_jq as a failure that
