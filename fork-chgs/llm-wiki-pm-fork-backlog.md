@@ -408,55 +408,6 @@ on the per-day report in `queries/`. Found in the design review
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
-**NW13. `.wiki-lock` warns about every session, in any project.**
-- **What happens:** the hooks run in every session in any project, with
-  `$WIKI_PATH` pointing them at pm-wiki. `session-start.sh` writes
-  `$WIKI/.wiki-lock` at every session start and warns "Another wiki session may
-  be active" when it finds a lock under 2 hours old. `session-stop.sh` deletes
-  the lock at the end of any session, whoever wrote it. The file holds only
-  the latest session, a compaction warns a session about its own lock, and hand
-  runs of the hooks write and clear it too.
-- **Measured** in this machine's transcripts, 2026-08-06 to 2026-10-13: the
-  warning fired at 50 of 152 hook runs. 16 of the warnings named a session
-  that never touched pm-wiki, 11 an ID with no transcript (3 were tests'
-  `test-session-123`), and 1 the session itself after a compaction. Only two
-  pairs of sessions wrote to pm-wiki in overlapping windows (2026-08-07 and
-  2026-09-01), and neither got a warning. Agents passed the warning on to you
-  or ran extra checks before writing (2026-09-23, 09-28, 09-30).
-- **Why it matters:** the warning is noise that agents act on, and nothing can
-  rely on the lock, as NW10's planned checkpoint gate found. It never blocked a
-  write. Two skills send agents to `_status.md` for lock state it never
-  records, and the core skill says the lock "prevents concurrent-session
-  corruption".
-- **Proposal (option 2, chosen 2026-10-14, not implemented): drop the lock
-  and add a "recent writer" note.**
-  - Remove the lock from both hooks and the scaffold's empty-folder rule, fix
-    `hooks/README.md`, core `SKILL.md` (Pitfalls, Pre-Flight ⑤) and
-    `llm-wiki-brief`, and then delete pm-wiki's `.wiki-lock` and its
-    `.gitignore` lines in a pm-wiki commit. Claude Code's Write and Edit
-    already refuse a file changed since it was read, and the checkpoint commit
-    keeps another session's work recoverable.
-  - `post-validate.sh` updates a per-session marker in the temp folder after
-    each wiki write. At a session's first wiki write, `pre-write.sh` tells the
-    agent when another session wrote to the wiki in the last 30 minutes. That
-    note is the signal that overlaps are becoming common, which dropping the
-    lock alone (option 1, the first recommendation) wouldn't give.
-  - About 40 lines removed, about 25 added, and about 55 test lines in
-    `tests/test_write_hooks.py`.
-- **Not chosen:** an overlap count in the session-start summary (about 15 more
-  lines; trends only matter once overlaps are common). Ruled out: a lock
-  scoped to wiki sessions with owner-checked removal (one owner per file,
-  still needs staleness), owner-checked removal alone (more warnings), and a
-  staleness change alone.
-- **Upstream:** same code. A user-scope plugin install gets the same noise,
-  and with no wiki path configured the hooks write the lock into each
-  project's folder. The change is for your fork: its fork changelog entry
-  marks it an upstream candidate, to offer later if you choose.
-- **Full analysis:** [Wiki Lock Brief](wiki-lock-brief.md).
-- **Related:** NW12 and NW10 (the checkpoint doesn't read the lock), NW5
-  (`$WIKI_PATH` as every project's default wiki).
-- **Found in:** the NW12 work, an llm-wiki-pm session on 2026-10-13.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -826,3 +777,59 @@ on the per-day report in `queries/`. Found in the design review
   mitigation is a pre-write snapshot).
 - **Found in:** an llm-wiki-pm session on 2026-10-08, from a wiki-search query
   in pm-wiki.
+
+**NW13. `.wiki-lock` warns about every session, in any project.**
+- **Status: done 2026-10-14.** Option 2 is in your fork (changelog PATCH-20):
+  the lock and its warning are gone, and at a session's first wiki write
+  `pre-write.sh` names other sessions that wrote to the wiki in the last 30
+  minutes, from markers `post-validate.sh` keeps in the temp folder. pm-wiki's
+  `.wiki-lock` and its two `.gitignore` lines were removed in a pm-wiki commit
+  the same day. The text below describes the problem and the proposal as
+  approved.
+- **What happens:** the hooks run in every session in any project, with
+  `$WIKI_PATH` pointing them at pm-wiki. `session-start.sh` writes
+  `$WIKI/.wiki-lock` at every session start and warns "Another wiki session may
+  be active" when it finds a lock under 2 hours old. `session-stop.sh` deletes
+  the lock at the end of any session, whoever wrote it. The file holds only
+  the latest session, a compaction warns a session about its own lock, and hand
+  runs of the hooks write and clear it too.
+- **Measured** in this machine's transcripts, 2026-08-06 to 2026-10-13: the
+  warning fired at 50 of 152 hook runs. 16 of the warnings named a session
+  that never touched pm-wiki, 11 an ID with no transcript (3 were tests'
+  `test-session-123`), and 1 the session itself after a compaction. Only two
+  pairs of sessions wrote to pm-wiki in overlapping windows (2026-08-07 and
+  2026-09-01), and neither got a warning. Agents passed the warning on to you
+  or ran extra checks before writing (2026-09-23, 09-28, 09-30).
+- **Why it matters:** the warning is noise that agents act on, and nothing can
+  rely on the lock, as NW10's planned checkpoint gate found. It never blocked a
+  write. Two skills send agents to `_status.md` for lock state it never
+  records, and the core skill says the lock "prevents concurrent-session
+  corruption".
+- **Proposal (option 2, chosen 2026-10-14): drop the lock and add a "recent
+  writer" note.**
+  - Remove the lock from both hooks and the scaffold's empty-folder rule, fix
+    `hooks/README.md`, core `SKILL.md` (Pitfalls, Pre-Flight ⑤) and
+    `llm-wiki-brief`, and then delete pm-wiki's `.wiki-lock` and its
+    `.gitignore` lines in a pm-wiki commit. Claude Code's Write and Edit
+    already refuse a file changed since it was read, and the checkpoint commit
+    keeps another session's work recoverable.
+  - `post-validate.sh` updates a per-session marker in the temp folder after
+    each wiki write. At a session's first wiki write, `pre-write.sh` tells the
+    agent when another session wrote to the wiki in the last 30 minutes. That
+    note is the signal that overlaps are becoming common, which dropping the
+    lock alone (option 1, the first recommendation) wouldn't give.
+  - About 40 lines removed, about 25 added, and about 55 test lines in
+    `tests/test_write_hooks.py`.
+- **Not chosen:** an overlap count in the session-start summary (about 15 more
+  lines; trends only matter once overlaps are common). Ruled out: a lock
+  scoped to wiki sessions with owner-checked removal (one owner per file,
+  still needs staleness), owner-checked removal alone (more warnings), and a
+  staleness change alone.
+- **Upstream:** same code. A user-scope plugin install gets the same noise,
+  and with no wiki path configured the hooks write the lock into each
+  project's folder. The change is for your fork: its fork changelog entry
+  marks it an upstream candidate, to offer later if you choose.
+- **Full analysis:** [Wiki Lock Brief](wiki-lock-brief.md).
+- **Related:** NW12 and NW10 (the checkpoint doesn't read the lock), NW5
+  (`$WIKI_PATH` as every project's default wiki).
+- **Found in:** the NW12 work, an llm-wiki-pm session on 2026-10-13.

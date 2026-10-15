@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # post-validate.sh
 # Runs AFTER a write to the wiki: Write/Edit/MultiEdit, and the wiki-search
-# MCP's `vault` (create/create_from_template/update) and `edit` tools.
+# MCP's `vault` (create/create_from_template/update/delete) and `edit` tools.
 # Re-reads each written page and checks it with lint's own functions:
 # - frontmatter (I1: R1, R2, R5, R12, missing frontmatter or required keys),
 #   sources: entries (I2: R6), citations (I3: R3), the citation grammar (R7),
@@ -9,6 +9,8 @@
 # - the freshness gate for the writes pre-write.sh can't judge beforehand
 #   (MCP create_from_template and edit);
 # - a split reminder when the write takes a page over 200 lines.
+# Touches a per-session marker in the temp folder after any write in the wiki,
+# which pre-write.sh reads to tell other sessions of a recent writer.
 # Reports up to 6 lines as additionalContext in the same turn, and appends
 # the problems (not the reminders) to _status.md.
 # Non-blocking: never denies, always exits 0.
@@ -27,7 +29,7 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills/llm-wiki-pm/scripts" && 
 INPUT=$(cat)
 
 python3 - "$INPUT" "$WIKI" "$SCRIPTS" <<'PY' || true
-import json, os, re, sys
+import json, os, re, sys, tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -52,8 +54,8 @@ tr = tr if isinstance(tr, dict) else {}
 # "mcp_edit" for the MCP edit tool. MCP paths are vault-relative.
 if re.match(r"^mcp__.*wiki-search__vault$", tool):
     kind = ti.get("action")
-    if kind not in ("create", "create_from_template", "update"):
-        sys.exit(0)  # reads, and delete, which leaves nothing to check
+    if kind not in ("create", "create_from_template", "update", "delete"):
+        sys.exit(0)  # reads
     targets = [os.path.join(wiki, ti.get("path") or "")]
 elif re.match(r"^mcp__.*wiki-search__edit$", tool):
     if ti.get("dryRun"):
@@ -171,6 +173,18 @@ def check_page(page, rel, text):
         reminders.append(f"page is now {n} lines (> {SPLIT_LINES}): {rel} — {lint.SPLIT_POINTER}")
     return problems, reminders
 
+
+# Mark this session as a recent wiki writer, for pre-write.sh's note to other
+# sessions. The marker's modification time is the time of the last write.
+if any(Path(os.path.realpath(os.path.abspath(fp))).is_relative_to(wiki_real)
+       for fp in targets if fp):
+    session = re.sub(r"[^A-Za-z0-9_-]", "", str(data.get("session_id") or "unknown"))
+    try:
+        Path(tempfile.gettempdir(), f"llm-wiki-pm-wrote-{session}").touch()
+    except OSError:
+        pass
+if kind == "delete":
+    sys.exit(0)  # leaves nothing to check
 
 problems, reminders, by_page = [], [], []
 for fp in dict.fromkeys(targets):

@@ -5,6 +5,9 @@
 # - Before the session's first write to the wiki, commits the wiki's
 #   uncommitted changes (lint.py's checkpoint()), so git can restore the state
 #   the session started from.
+# - At the session's first write, notes other sessions that wrote to the wiki
+#   in the last 30 minutes (post-validate.sh's markers), so the agent re-reads
+#   pages before changing them.
 # - Warns when an existing raw/ record is modified (records are write-once).
 # - Freshness gate: if the page as it will be after the write looks ungrounded
 #   (no primary source, no inline provenance), injects a reminder to sweep live
@@ -24,7 +27,7 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../skills/llm-wiki-pm/scripts" && 
 INPUT=$(cat)
 
 python3 - "$INPUT" "$WIKI" "$SCRIPTS" <<'PY' || true
-import json, os, re, sys, tempfile
+import glob, json, os, re, sys, tempfile, time
 
 raw, wiki, scripts = sys.argv[1], sys.argv[2], sys.argv[3]
 try:
@@ -127,6 +130,23 @@ if any(os.path.realpath(os.path.abspath(fp)).startswith(wiki_real + os.sep)
                 f"before this session's first write. To undo this session's changes "
                 f"to a page, show the diff, then run "
                 f"`git -C \"{wiki_real}\" restore --source={commit} -- <path>`."
+            )
+        # Other sessions that wrote to the wiki in the last 30 minutes, from
+        # the markers post-validate.sh touches after each wiki write.
+        own = f"llm-wiki-pm-wrote-{session}"
+        recent = []
+        for path in glob.glob(os.path.join(tempfile.gettempdir(), "llm-wiki-pm-wrote-*")):
+            try:
+                age = time.time() - os.path.getmtime(path)
+            except OSError:
+                continue
+            if os.path.basename(path) != own and age < 30 * 60:
+                recent.append((age, os.path.basename(path)[len("llm-wiki-pm-wrote-"):]))
+        for age, other in sorted(recent):
+            minutes = max(1, round(age / 60))
+            messages.append(
+                f"Session `{other}` wrote to the wiki {minutes} minute"
+                f"{'s' if minutes != 1 else ''} ago. Re-read a page before changing it."
             )
 
 for fp in targets:

@@ -9,8 +9,8 @@
 
 set -euo pipefail
 
-# Save stdin (JSON input) for later use
-STDIN_JSON=$(cat)
+# Drain stdin (JSON input): nothing below reads it
+cat > /dev/null
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Trust CLAUDE_PLUGIN_ROOT when set (always set during plugin execution).
@@ -51,12 +51,12 @@ fi
 # Never overwrite files in an existing non-empty directory.
 # The wiki-search MCP may start first and write meta/ (and later its
 # .markdown_vault_mcp/ index), and a run that skipped the scaffold leaves this
-# hook's own _status.md and .wiki-lock. None of them makes the dir non-empty.
+# hook's own _status.md. None of them makes the dir non-empty.
 SCAFFOLD=false
 if [[ ! -e "$WIKI" ]]; then
   SCAFFOLD=true
 elif [[ -z "$(find "$WIKI" -mindepth 1 -maxdepth 1 ! -name meta ! -name .markdown_vault_mcp \
-    ! -name _status.md ! -name .wiki-lock -print -quit 2>/dev/null)" ]]; then
+    ! -name _status.md -print -quit 2>/dev/null)" ]]; then
   SCAFFOLD=true
 elif [[ ! -f "$WIKI/SCHEMA.md" ]]; then
   echo "Warning: $WIKI exists and is non-empty but has no SCHEMA.md. Skipping scaffold to avoid overwriting files." >&2
@@ -95,39 +95,6 @@ open(sys.argv[3], 'w').write(text)
   mkdir -p "$WIKI/meta"
   (set -C; cat "$TEMPLATES_DIR/vault-contract.md" > "$WIKI/meta/contract.md") 2>/dev/null || true
 fi
-
-# ②b Concurrent session lock
-LOCKFILE="$WIKI/.wiki-lock"
-LOCK_WARNING=""
-if [[ -f "$LOCKFILE" ]]; then
-  LOCK_OWNER=$(cat "$LOCKFILE" 2>/dev/null || true)
-  LOCK_AGE=0
-  if [[ -n "$LOCK_OWNER" ]]; then
-    LOCK_TS=$(echo "$LOCK_OWNER" | cut -d: -f2- || true)
-    if [[ -n "$LOCK_TS" ]]; then
-      LOCK_EPOCH=$(python3 -c "
-from datetime import datetime
-import sys
-try:
-    print(int(datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))
-except Exception:
-    print(0)
-" "$LOCK_TS" 2>/dev/null || echo 0)
-      if [[ "$LOCK_EPOCH" -gt 0 ]]; then
-        LOCK_AGE=$(( $(date +%s) - LOCK_EPOCH ))
-      fi
-    fi
-  fi
-  # Stale lock threshold: 2 hours (session probably crashed)
-  if [[ "$LOCK_AGE" -gt 7200 ]]; then
-    rm -f "$LOCKFILE"
-  else
-    LOCK_WARNING="Another wiki session may be active (lock: $LOCK_OWNER). Concurrent writes risk data loss. Proceed with caution or wait for the other session to end."
-  fi
-fi
-# Write our lock
-SESSION_ID=$(echo "$STDIN_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id','unknown'))" 2>/dev/null || echo "$$")
-echo "${SESSION_ID}:$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$LOCKFILE" 2>/dev/null || true
 
 # ③ Gather health metrics
 NOW_TS=$(date +%s)
@@ -313,9 +280,6 @@ else
   CONTEXT="Wiki at $WIKI. Health check: lint failed, health unknown."
   CONTEXT="$CONTEXT Stale: $STALE_COUNT. Confidence decay: $DECAY_COUNT."
   CONTEXT="$CONTEXT See _status.md for details."
-fi
-if [[ -n "$LOCK_WARNING" ]]; then
-  CONTEXT="$CONTEXT LOCK WARNING: $LOCK_WARNING"
 fi
 
 # Context-aware primer.

@@ -174,7 +174,7 @@ defaults. Never create it during Pre-Flight (auto-created on first ingest).
 **④ Role pack (optional).** Check `.claude/roles/` for a file matching the user's
 role; if found apply `focus_tags`, `preferred_output_format`, `crystallize_template`,
 `surface_confidence_threshold`. Missing dir is not an error.
-**⑤ _status.md warnings.** If present, read it and surface staleness/lock warnings.
+**⑤ _status.md warnings.** If present, read it and surface staleness warnings.
 
 ## Orient Every Session
 
@@ -378,8 +378,10 @@ work. Headless sync: `references/obsidian-sync.md`.
   `superseded_by:` fields; the old page is archived, not deleted.
 - **Coverage markers**: set `coverage:` and `gaps:` on entity/concept pages (lint
   warns when missing) so the user can tell a trustworthy page from a stub.
-- **Session lock**: `.wiki-lock` prevents concurrent-session corruption
-  (session-start writes it, session-stop removes it; stale locks >2h auto-clear).
+- **Recent-writer note**: at a session's first wiki write, pre-write says which
+  other sessions wrote to the wiki in the last 30 minutes. Tell the user, and
+  re-read a page before changing it. It covers tool writes only, not Bash, and
+  nothing blocks a concurrent write.
 - **Don't launder wiki prose into insight**: a recalled claim is a hypothesis until
   re-derived from a primary source (Session Defaults → Source discipline).
 

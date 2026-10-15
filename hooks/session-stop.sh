@@ -14,10 +14,6 @@ if [[ ! -d "$WIKI" ]]; then
   exit 0
 fi
 
-LOCKFILE="$WIKI/.wiki-lock"
-# Release lock on any exit path (early returns, errors, normal completion)
-trap 'rm -f "$LOCKFILE" 2>/dev/null || true' EXIT
-
 LOG_FILE="$WIKI/log.md"
 
 # ② Exit silently if log.md does not exist

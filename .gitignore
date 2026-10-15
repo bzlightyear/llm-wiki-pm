@@ -8,7 +8,6 @@ _status.md
 queries/
 
 # Wiki/vault runtime artifacts (generated per-session, not plugin source)
-.wiki-lock
 .wiki-path
 .markdown_vault_mcp/
 meta/

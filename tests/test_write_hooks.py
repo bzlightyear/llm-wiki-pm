@@ -3,7 +3,8 @@ Tests for the write hooks' coverage of every write path: wiki-search MCP
 payloads (both tool-name forms), the checkpoint commit before a session's
 first write (lint.checkpoint(), pre-write.sh and session-start.sh),
 directory-page assets/, the raw write-once warning, the freshness gate judged
-on the post-edit text, and post-validate.sh's checks of the page as written.
+on the post-edit text, post-validate.sh's checks of the page as written, and
+the recent-writer note that replaced .wiki-lock.
 
 Kept apart from test_hooks.py (upstream-owned) to keep merges simple.
 
@@ -17,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
@@ -437,16 +439,19 @@ CLEAN = (
 )
 
 
-def post(wiki: Path, tool: str, tool_input: dict, tool_response: dict = None):
+def post(wiki: Path, tool: str, tool_input: dict, tool_response: dict = None,
+         session: str = "test-session-123"):
     payload = {
-        "session_id": "test-session-123",
+        "session_id": session,
         "hook_event_name": "PostToolUse",
         "tool_name": tool,
         "tool_input": tool_input,
         "tool_response": tool_response or {},
         "cwd": "/tmp",
     }
-    r = run_hook(POST_VALIDATE, payload, {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+    # The recent-writer marker goes in TMPDIR, the folder pre() uses.
+    r = run_hook(POST_VALIDATE, payload, {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki),
+                                          "TMPDIR": str(wiki.parent)})
     assert r.returncode == 0, r.stderr
     assert r.stderr == "", r.stderr
     return r.stdout
@@ -697,3 +702,92 @@ class TestSplitReminder:
     def test_short_page_no_reminder(self, tmp_path):
         wiki = valid_wiki(tmp_path)
         assert write_acme(wiki, long_page(200), response={"status": "created"}) == ""
+
+
+# ---------------------------------------------------------------------------
+# No .wiki-lock; the recent-writer note
+# ---------------------------------------------------------------------------
+
+
+def marker(wiki: Path, session: str, minutes_ago: float = 0) -> Path:
+    """Another session's recent-writer marker, last touched minutes_ago."""
+    m = wiki.parent / f"llm-wiki-pm-wrote-{session}"
+    m.touch()
+    when = time.time() - minutes_ago * 60
+    os.utime(m, (when, when))
+    return m
+
+
+def first_write(wiki: Path, session: str = "this-session") -> str:
+    """The context pre-write.sh gives a grounded page write."""
+    page = wiki / "entities" / "acme.md"
+    return context(pre(wiki, "Write", {"file_path": str(page), "content": GROUNDED},
+                       session=session))
+
+
+class TestNoLock:
+    def test_session_start_ignores_a_leftover_lock(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        lock = wiki / ".wiki-lock"
+        lock.write_text(f"other-session:{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n")
+        before = lock.read_text()
+        r = run_hook(SESSION_START, session_start_payload(),
+                     {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+        assert r.returncode == 0, r.stderr
+        ctx = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+        assert "LOCK" not in ctx and "Another wiki session" not in ctx
+        assert lock.read_text() == before, "the hook writes no lock"
+
+    def test_session_start_writes_no_lock(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        r = run_hook(SESSION_START, session_start_payload(),
+                     {"CLAUDE_PLUGIN_OPTION_wiki_path": str(wiki)})
+        assert r.returncode == 0, r.stderr
+        assert not (wiki / ".wiki-lock").exists()
+
+
+class TestRecentWriter:
+    def test_wiki_write_touches_the_sessions_marker(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        write_acme(wiki, CLEAN)
+        m = tmp_path / "llm-wiki-pm-wrote-test-session-123"
+        assert m.exists() and time.time() - m.stat().st_mtime < 60
+        assert list(wiki.rglob("llm-wiki-pm-wrote-*")) == [], "nothing in the wiki"
+
+    def test_mcp_delete_touches_the_marker(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        post(wiki, "mcp__wiki-search__vault", {"action": "delete", "path": "entities/gone.md"})
+        assert (tmp_path / "llm-wiki-pm-wrote-test-session-123").exists()
+
+    def test_write_outside_the_wiki_leaves_no_marker(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        outside = write_page(tmp_path, "notes.md", "x")
+        post(wiki, "Write", {"file_path": str(outside)})
+        assert not (tmp_path / "llm-wiki-pm-wrote-test-session-123").exists()
+
+    def test_another_sessions_write_is_noted_at_the_first_write(self, tmp_path):
+        wiki = valid_wiki(tmp_path)
+        post(wiki, "Write", {"file_path": str(wiki / "entities" / "beta.md")},
+             session="other-session")
+        ctx = first_write(wiki)
+        assert ("Session `other-session` wrote to the wiki 1 minute ago. "
+                "Re-read a page before changing it.") in ctx
+        assert first_write(wiki) == "", "only at the session's first write"
+
+    def test_minutes_and_each_recent_session(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        marker(wiki, "session-a", minutes_ago=5)
+        marker(wiki, "session-b", minutes_ago=29)
+        ctx = first_write(wiki)
+        assert "Session `session-a` wrote to the wiki 5 minutes ago." in ctx
+        assert "Session `session-b` wrote to the wiki 29 minutes ago." in ctx
+
+    def test_older_marker_is_not_noted(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        marker(wiki, "other-session", minutes_ago=31)
+        assert first_write(wiki) == ""
+
+    def test_own_marker_is_not_noted(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        marker(wiki, "this-session", minutes_ago=1)
+        assert first_write(wiki) == ""

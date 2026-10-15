@@ -14,6 +14,13 @@ the wiki in the last 30 minutes (option 2).
 ## Revision History
 
 revised on: 2026-10-14
+Recorded option 2 as implemented in your fork (changelog PATCH-20) and
+pm-wiki's lock files as removed. Two details go beyond the plan: an MCP
+`vault` delete also refreshes the session's marker, and the tests set
+`TMPDIR` so a test run's markers never reach real sessions. The fork's own
+`.gitignore` line for `.wiki-lock` was removed too.
+
+revised on: 2026-10-14
 Dropped the proposal to raise this upstream now. The change is for your fork,
 and its fork changelog entry will mark it an upstream candidate for later.
 
@@ -25,7 +32,8 @@ without an overlap count.
 
 ## Status
 
-Status: option 2 chosen 2026-10-14, not implemented.
+Status: option 2 implemented 2026-10-14 (changelog PATCH-20), and pm-wiki's
+`.wiki-lock` and its `.gitignore` lines removed.
 Backlog item: NW13 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW12 and NW10 (the checkpoint commits, which don't read the lock;
 the finding is in the [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md)),

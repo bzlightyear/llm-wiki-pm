@@ -88,7 +88,7 @@ When a brief is asked to pull from external sources (whatever the user's connect
 - [[slug]]: question text
 
 ### Warnings
-- (staleness, coverage flags, lock state from _status.md)
+- (staleness, coverage flags from _status.md)
 ```
 
 If 24h window is empty, expand to 48h and note it. If still empty, offer weekly brief.

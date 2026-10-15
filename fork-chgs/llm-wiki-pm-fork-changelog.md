@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-19) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-20) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -393,6 +393,47 @@ the set would go upstream with the migration script, isn't done.
   too (its PLUGIN-REVIEW item A4), so the search problem goes up as an issue,
   and upstream would need an undo for wikis that aren't git repos.
 
+### Concurrent sessions
+
+#### PATCH-20 — A recent-writer note replaces `.wiki-lock`
+
+- **What:** the lock is gone. `session-start.sh` no longer reads, ages out or
+  writes `.wiki-lock` and adds no LOCK WARNING, its scaffold rule no longer
+  lists the file, and `session-stop.sh` no longer deletes it (log rotation
+  stays). In its place:
+  - `post-validate.sh` touches `llm-wiki-pm-wrote-<session ID>` in the temp
+    folder, beside `pre-write.sh`'s checkpoint marker, after any write in the
+    wiki, MCP `vault` delete included. Nothing is written in the wiki.
+  - At a session's first wiki write, `pre-write.sh` adds a line for each other
+    session whose marker is under 30 minutes old: "Session `<id>` wrote to the
+    wiki N minutes ago. Re-read a page before changing it."
+
+  Tool writes only, through the write hooks' existing matcher; Bash writes
+  leave no marker. Both hooks still always exit 0 and never block. The core
+  skill's Pitfalls bullet now describes the note, its Pre-Flight ⑤ says
+  "staleness warnings", and `llm-wiki-brief` no longer asks for "lock state",
+  which `_status.md` never recorded. `tests/conftest.py` sets `TMPDIR` to each
+  test's temp directory, so test runs neither read real sessions' markers nor
+  leave ones a real session would report.
+- **Why:** every session in any project wrote the lock and any session's end
+  cleared it. Its warning fired at 50 of 152 hook runs between 2026-08-06 and
+  2026-10-13 and matched no concurrent writing, while the only two real
+  overlaps of wiki writes got no warning. Claude Code's Write and Edit refuse a
+  file changed since it was read, and the checkpoint commit (PATCH-19) keeps
+  another session's work recoverable, so the lock added no protection. The
+  note fires only on real wiki writes and is the signal if overlaps become
+  common. See the [Wiki Lock Brief](wiki-lock-brief.md), option 2, and
+  backlog NW13.
+- **Where:** `hooks/session-start.sh`, `hooks/session-stop.sh`,
+  `hooks/pre-write.sh`, `hooks/post-validate.sh`, `hooks/README.md`, the core
+  and `llm-wiki-brief` `SKILL.md` files, `.gitignore` (upstream's `.wiki-lock`
+  line), `tests/conftest.py`, `tests/test_write_hooks.py`,
+  `tests/test_scaffold.py`. Commit "feat(hooks): replace .wiki-lock with a
+  recent-writer note" (2026-10-14). pm-wiki's `.wiki-lock` and its two
+  `.gitignore` lines were removed in a pm-wiki commit the same day. The suite
+  passed: 456 passed, 2 skipped.
+- **Status:** active. Upstream candidate, not filed.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -417,9 +458,11 @@ Not patches to upstream's code, and not offered upstream:
   `extract_tags()` are gone. Any upstream lint change needs porting onto
   `wikifm`, not a textual merge.
 - `hooks/session-start.sh` (lint parsing, stale scan, scaffold, the removed
-  warning, the checkpoint), `hooks/pre-write.sh` (PATCH-5, PATCH-6, PATCH-19;
-  an upstream snapshot change doesn't apply here) and `hooks/hooks.json`
-  (matchers, `post-validate.sh` in place of `post-write.sh`).
+  warning, the checkpoint, the removed lock), `hooks/pre-write.sh` (PATCH-5,
+  PATCH-6, PATCH-19, PATCH-20; an upstream snapshot change doesn't apply
+  here), `hooks/session-stop.sh` (PATCH-20, the removed lock) and
+  `hooks/hooks.json` (matchers, `post-validate.sh` in place of
+  `post-write.sh`).
 - `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
   template (PATCH-7, PATCH-14).

@@ -83,12 +83,11 @@ def test_meta_alone_counts_as_empty(tmp_path):
 
 def test_what_a_skipped_first_session_left_counts_as_empty(tmp_path):
     """A wiki made before the meta/ rule, whose first session skipped the
-    scaffold: the MCP's files plus this hook's own _status.md and lock."""
+    scaffold: the MCP's files plus this hook's own _status.md."""
     wiki = tmp_path / "wiki"
     write(wiki, "meta/contract.md", DEFAULT_CONTRACT)
     (wiki / ".markdown_vault_mcp").mkdir()
     write(wiki, "_status.md", "# Wiki Status\n")
-    write(wiki, ".wiki-lock", "other-session:2026-01-01T00:00:00Z\n")
     start(wiki)
     assert scaffolded(wiki)
 
