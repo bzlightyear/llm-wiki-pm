@@ -14,6 +14,10 @@ the wiki in the last 30 minutes (option 2).
 ## Revision History
 
 revised on: 2026-10-14
+Dropped the proposal to raise this upstream now. The change is for your fork,
+and its fork changelog entry will mark it an upstream candidate for later.
+
+revised on: 2026-10-14
 Made option 2 the recommendation in place of option 1. Dropping the lock alone
 leaves no signal that overlaps are becoming common, and option 2's note is that
 signal for about 25 more lines of code. Recorded the choice of plain option 2,
@@ -267,15 +271,14 @@ hooks since your last merge (`0667f75`), up to its 2.22.0 release
   it turned up in the plugin repo that way.
 - The lock isn't on upstream's CONTRIBUTING list of things not to change
   without discussion.
-- Proposal: open an upstream issue with the measurements above and offer
-  option 1's removal as a pull request, with option 2's note as a follow-on if
-  upstream wants a signal.
-- Divergence if upstream doesn't take it: two removed regions in upstream-owned
-  hooks, which conflict only if upstream edits those lines.
+- The change is for your fork. Its fork changelog entry, written when it's
+  implemented, marks it an upstream candidate, so it can be offered upstream
+  later, with these measurements, if you choose.
+- Divergence from upstream: two removed regions and the note's additions in
+  upstream-owned hooks, which conflict only if upstream edits those lines.
 
 ## To approve
 
 - Option 2: chosen 2026-10-14, without the overlap count.
 - Deleting pm-wiki's `.wiki-lock` and its `.gitignore` lines, in a pm-wiki
   commit, after the hook change.
-- Raising it upstream as an issue, with option 1 offered as a pull request.

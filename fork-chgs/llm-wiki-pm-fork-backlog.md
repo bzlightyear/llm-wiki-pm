@@ -450,9 +450,8 @@ on the per-day report in `queries/`. Found in the design review
   staleness change alone.
 - **Upstream:** same code. A user-scope plugin install gets the same noise,
   and with no wiki path configured the hooks write the lock into each
-  project's folder. Not on upstream's discuss-first list: raise an issue with
-  the measurements, offer the removal as a pull request, and the note as a
-  follow-on.
+  project's folder. The change is for your fork: its fork changelog entry
+  marks it an upstream candidate, to offer later if you choose.
 - **Full analysis:** [Wiki Lock Brief](wiki-lock-brief.md).
 - **Related:** NW12 and NW10 (the checkpoint doesn't read the lock), NW5
   (`$WIKI_PATH` as every project's default wiki).
