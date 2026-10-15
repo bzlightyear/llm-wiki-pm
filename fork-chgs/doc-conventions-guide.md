@@ -9,6 +9,12 @@ future design, review and companion docs to follow. They were first applied by t
 ## Revision History
 
 revised on: 2026-10-14
+Ledgers, docs made of entries that each carry their own status, now have no
+Revision History or Status section, since their entries, About This Document
+and git already record what those sections would. The changelog and backlog
+lost theirs. A doc's first commit can be in the repo it came from.
+
+revised on: 2026-10-14
 About This Document's list of contents is now open-ended and names baselines
 and conventions for reading or maintaining the doc, as the changelog and backlog
 use. The template no longer says "one item per line", which read as a format
@@ -84,9 +90,10 @@ The body follows, after a `---` rule where the doc uses one. In a prompt, the
 - **The purpose statement describes the doc as it stands.** A revision that
   changes what the doc covers or recommends updates it.
 - **One entry per substantive revision.** Several entries can share a date. A
-  doc's initial version is what was first committed, so any later substantive
-  change gets an entry, including one made on the creation day. Typo, formatting
-  and rename-only changes don't need an entry.
+  doc's initial version is what was first committed, in this repo or the one it
+  came from, so any later substantive change gets an entry, including one made
+  on the creation day. Typo, formatting and rename-only changes don't need an
+  entry.
 - **Revision entries are newest first,** including among entries with the same
   date. Each later revision adds a new entry at the top of the list; older entries
   are never edited. The newest entry's date is the doc's last-updated date.
@@ -102,6 +109,15 @@ The body follows, after a `---` rule where the doc uses one. In a prompt, the
     reading or maintaining the doc, such as label, severity or numbering schemes
     and how to add an entry.
   - A doc leaves out a section it has nothing for.
+- **Ledgers have no Revision History and no Status section.** A ledger is a doc
+  made of independent entries that each carry their own status, such as the
+  [llm-wiki-pm Fork Changelog](llm-wiki-pm-fork-changelog.md) and the
+  [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
+  - Each entry records its own changes: its status line, and dates in its text.
+  - About This Document states what a reader needs to know about the doc as a
+    whole: its origin, baseline, numbering and conventions. When one of those
+    changes, update it there.
+  - Git holds the timeline: `git log --follow <file>`.
 
 ## Updating an existing doc to the convention
 

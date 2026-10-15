@@ -6,61 +6,12 @@ How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
 change (PATCH-1 to PATCH-19) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
-## Revision History
-
-revised on: 2026-10-13
-Added PATCH-19: git checkpoint commits replace pre-write snapshots, and
-`backlinks.py` no longer scans `_archive/` (backlog NW12, NW10 merged into
-it). Marked PATCH-5's snapshot part replaced by it.
-
-revised on: 2026-10-06
-Added to PATCH-7: the split procedure now turns sources named in prose into
-markers before `--cited-sources` sets `sources:`, after pm-wiki's 2026-10-06
-history splits left five pages with no markers. Supersede does the same for
-text carried over from the old page.
-
-revised on: 2026-10-02
-Rewrote the changelog from git against the 2.21.0 baseline, for a fork that
-runs from this clone rather than as an installed plugin. Patches are renumbered
-PATCH-1 to PATCH-18 and grouped by area, with an old-to-new mapping. The
-sources and references work and NW6 are now entries. The removed patches are
-reduced to background lines. The open issues moved to the
-[llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md), and the plugin-cache
-re-application steps gave way to a section on merging an upstream release.
-Verified PATCH-14 against pm-wiki's September promotions and limited it to
-internal people, closing its open question.
-
-revised on: 2026-10-01
-Marked PATCH-2 and PATCH-3b removed. A folder page is now named after its
-folder, so neither `backlinks.py` nor `slug()` needs a `README.md` rule (NW6 in
-the llm-wiki-pm fork backlog).
-
-revised on: 2026-09-30
-Marked ISSUE-3 closed. After the PM wiki's migration (step 10b of the sources
-and references design), no citation there fails to resolve, and body legends
-are no longer something citations must match.
-
-revised on: 2026-09-29
-Marked ISSUE-2 mitigated, now that the pre-write hook snapshots `overview.md`
-before any whole-file replacement (step 3 of the sources and references design).
-Marked PATCH-3a replaced by the `wikifm.py` frontmatter parser (step 4), and
-added a correction to `91878dc`'s commit message.
-
-revised on: 2026-08-30
-Moved into the fork from the PM wiki, where it had been kept as a wiki page.
-Reorganized with PATCH-N/ISSUE-N IDs, merged five overlapping open issues into
-ISSUE-1, fixed a stale patch count and a dangling cross-reference, and added a
-status line to each open issue.
-
-revised on: 2026-08-29
-Added PATCH-4 (relationship-map wiring), captured from the diff before it was
-committed.
-
 ## About This Document
 
 - **Baseline:** upstream `github.com/anh-chu/llm-wiki-pm` (the `upstream`
-  remote) at `0667f75 chore(release): 2.21.0`. Upstream has had no commits
-  since (checked 2026-10-02).
+  remote) at `0667f75 chore(release): 2.21.0`. Upstream has since released
+  2.22.0 (`62f3453`, 2026-10-06), which the fork hasn't merged (checked
+  2026-10-14).
 - **Fork:** `github.com/bzlightyear/llm-wiki-pm` (`origin`), branch `main`.
 - **Inventory:** `git log 0667f75..main` and `git diff 0667f75 main`. Git holds
   the diffs, so entries cite commits instead of pasting them.
@@ -544,7 +495,7 @@ of every later commit.
 
 ### Old Patch and Issue Numbers
 
-Older docs, commit messages and this changelog's older revision entries use
+Older docs, commit messages and this changelog's earlier versions (in git) use
 these numbers.
 
 | Old | New | Note |

@@ -7,55 +7,6 @@ improve, and performance to tune. Each item records what is known when it's
 captured. An item big enough to need one gets its own design, analysis or
 proposal doc when the work starts.
 
-## Revision History
-
-revised on: 2026-10-13
-Reworked NW12's proposal: drop pre-write snapshots and rely on git, with a
-checkpoint commit before a session's first write to the wiki. Merged NW10 into
-it and moved NW10 to Closed, since the checkpoint covers script writes and its
-snapshot fill is no longer needed. NW10's check of `.wiki-lock` is dropped:
-every session in any project writes and clears that lock. NW12's earlier
-proposal, `_snapshots/` with NW2's ignore list, is now its alternative, and NW2
-and NW7 follow.
-Closed NW12 the same day: checkpoint commits replaced snapshots (fork changelog
-PATCH-19), `backlinks.py` stopped scanning `_archive/`, and pm-wiki's 441
-snapshots were removed. NW1, NW2, NW7 and NW10 record the effect.
-Added NW13: `.wiki-lock` warns whenever any other session is open, and any
-session's end clears it. The proposal drops the lock and its warning.
-
-revised on: 2026-10-08
-Added NW12, pre-write snapshots in `_archive/` crowding live pages out of
-wiki-search, `grep -r` and `backlinks.py` results. Its proposal keeps snapshots
-in a `_snapshots/` folder inside the wiki that the server ignores through an
-ignore list added under NW2, since moving them outside the wiki would take them
-out of the wiki's Claude project. Corrected NW10's claim that nothing reads
-snapshots automatically. Added to NW2 the ignore list as a reason to fork, and
-to NW7 a second same-name `_archive/` file and `backlinks.py` dropping
-`_archive`.
-
-revised on: 2026-10-03
-Added to NW7: the wiki-search server updates its index from file events, with
-no periodic reindex. New files are confirmed to index live, and renames remain
-the open case.
-Closed NW5: one shared wiki-search server per wiki, under launchd, with
-`$WIKI_PATH` as the default wiki. Corrected its title, and added a line on NW5's
-effect to NW2 and NW7.
-Merged the fork changelog's last open issues, ISSUE-1 (action items have no
-update mechanism) and ISSUE-2 (the indexer's overview regeneration), into NW1,
-and pointed NW4 at NW1. Added NW8, the maintain skill filing a weekly brief as
-a daily one (upstream `anh-chu#12`). Split NW1's org-chart part into NW9, org
-structure kept in three places, with measurements and the relationship map's
-creation rule. Added to NW9:
-- How far the person-page org fields disagree with the map, and with each
-  other (a reciprocity check).
-- A fourth copy, in page bodies.
-- An ingest that missed a reverse update.
-- A lean toward the fields as the source of truth, with a lint rule.
-Added NW10, script writes to pages getting no snapshot, with a session-start
-checkpoint commit and a git-based snapshot fill as the proposal. Added NW11,
-skills citing an `AGENTS.md` that wiki sessions never load, with a new Orient
-step that reads it as the proposal.
-
 ## About This Document
 
 The first seven items, NW1–NW7, were recorded during the sources and references
