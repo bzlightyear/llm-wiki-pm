@@ -7,11 +7,21 @@ Because the hooks run in every Claude Code session in any project, the warning
 fires whenever any other session is open, and any session's end clears another's
 lock. This brief lists every reader and writer of the lock, measures how often
 the warning fired and how often sessions really wrote to the wiki at the same
-time, and weighs five options. It recommends dropping the lock and its warning.
+time, and weighs five options. It recommends dropping the lock and its warning,
+and adding a note at a session's first wiki write when another session wrote to
+the wiki in the last 30 minutes (option 2).
+
+## Revision History
+
+revised on: 2026-10-14
+Made option 2 the recommendation in place of option 1. Dropping the lock alone
+leaves no signal that overlaps are becoming common, and option 2's note is that
+signal for about 25 more lines of code. Recorded the choice of plain option 2,
+without an overlap count.
 
 ## Status
 
-Status: proposed, not implemented.
+Status: option 2 chosen 2026-10-14, not implemented.
 Backlog item: NW13 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW12 and NW10 (the checkpoint commits, which don't read the lock;
 the finding is in the [Archive Snapshots in Search Brief](archive-snapshots-in-search-brief.md)),
@@ -20,13 +30,16 @@ pm-wiki).
 
 ## Recommendation in brief
 
-Drop the lock and its warning (option 1). It never blocked a write, a third of
-hook runs showed a warning that matched no concurrent writing, and the two
-real overlaps in ten weeks got no warning. Claude Code's own Write and Edit
-refuse a file that changed since the session read it, and the checkpoint commit
-keeps the other session's work recoverable. If you still want a concurrency
-signal, option 2 replaces the lock with a note at a session's first wiki write
-that another session wrote recently, using markers kept outside the wiki.
+Drop the lock and its warning, and replace them with a "recent writer" note
+(option 2). The lock never blocked a write, a third of hook runs showed a
+warning that matched no concurrent writing, and the two real overlaps in ten
+weeks got no warning. Claude Code's own Write and Edit refuse a file that
+changed since the session read it, and the checkpoint commit keeps the other
+session's work recoverable, so dropping the lock loses no protection. But
+dropping it alone (option 1) leaves nothing to say when overlaps become common.
+Option 2's note, given at a session's first wiki write when another session
+wrote to the wiki in the last 30 minutes, is that signal, from markers kept
+outside the wiki.
 
 ## What happens
 
@@ -145,7 +158,7 @@ a concurrency signal beyond those two guards.
 
 ## Options
 
-### 1. Drop the lock and its warning (recommended)
+### 1. Drop the lock and its warning
 
 - **Code:** remove ②b and the warning line from `session-start.sh` (about 35
   lines), and the lock and its trap from `session-stop.sh` (3 lines). Remove
@@ -162,10 +175,16 @@ a concurrency signal beyond those two guards.
   commit. Old sessions run the new scripts from the fork clone, so nothing
   writes the file again.
 - **Loses:** a warning that, as measured, never matched concurrent writing.
+- **Leaves no signal:** nothing would show that overlaps had become common, for
+  example once scheduled maintenance sweeps run beside interactive sessions.
+  Finding out would mean rerunning this brief's transcript scan, and Claude
+  Code can delete transcripts after 30 days.
 - **Cost:** about 40 lines removed, about 15 test lines, 4 doc edits, one
   pm-wiki commit. A fork changelog entry.
 
-### 2. Replace it with a "recent writer" note at the first wiki write
+### 2. Replace it with a "recent writer" note at the first wiki write (recommended)
+
+Everything in option 1, plus:
 
 - `post-validate.sh` touches a per-session marker in the temp folder after
   each wiki write, beside `pre-write.sh`'s checkpoint marker.
@@ -174,11 +193,21 @@ a concurrency signal beyond those two guards.
   wiki N minutes ago. Re-read a page before changing it."
 - Nothing in the wiki, nothing to remove at session end, and no staleness
   beyond the time window. Sessions that never write are never reported.
-- **Limits:** covers tool writes only, not Bash. Only the second session to
+- **The signal:** the agent normally passes the note on, as agents did with the
+  lock warning, so you hear of each overlap when it happens. Unlike the lock
+  warning, it fires only on real wiki writes.
+- **Docs:** `hooks/README.md` describes the note under `pre-write.sh` and the
+  marker under `post-validate.sh`. The core `SKILL.md` Pitfalls bullet about
+  the lock is replaced by one about the note, rather than dropped.
+- **Limits:** covers tool writes only, not Bash. Only the later session to
   write is told. Of the two measured overlaps, it would have fired for
   2026-09-01 (4 minutes apart) and not for 2026-08-07 (76 minutes).
 - **Cost:** option 1's removals, plus about 25 lines in the two write hooks and
   about 40 test lines in `tests/test_write_hooks.py`.
+- **Variant not chosen: an overlap count.** Each note also appends a line to a
+  log outside the wiki, and the session-start summary reports the count for the
+  last 30 days. About 15 more lines. It adds trends, which matter only if
+  overlaps become common, and the notes themselves would show that.
 
 ### 3. Scope the lock to sessions that use the wiki
 
@@ -191,8 +220,8 @@ a concurrency signal beyond those two guards.
 - **Still broken:** the file holds one owner, so a second writer takes it over
   and the first is unrecorded. A session that stays open, or ends without
   running SessionEnd, keeps the lock, so it depends on staleness anyway, and a
-  2-hour age from session start is wrong for that. A fair staleness rule needs the lock
-  refreshed on every write and judged by idle time. At that point it is option
+  2-hour age from session start is wrong for that. A fair staleness rule needs
+  the lock refreshed on every write and judged by idle time. At that point it is option
   2 with a file in the wiki and more to get wrong.
 - **Cost:** about 60 lines across three hooks, about 60 test lines, and the
   same doc fixes, which would be rewritten rather than removed.
@@ -216,6 +245,7 @@ option 3.
 |---|---|---|---|
 | False warnings | None | Rare: only real wiki writes in the last 30 minutes | Fewer, still from idle sessions holding it |
 | Catches real overlaps | No | One of the two measured | Only if the first session's lock survives |
+| Signal that overlaps are common | None | A note through the agent, each time | The warning, when it fires |
 | Files in the wiki | None | None | `.wiki-lock` |
 | Session-end handling | None | None | Owner check |
 | Code | About 40 lines removed | Plus about 25 lines | About 60 lines changed |
@@ -238,14 +268,14 @@ hooks since your last merge (`0667f75`), up to its 2.22.0 release
 - The lock isn't on upstream's CONTRIBUTING list of things not to change
   without discussion.
 - Proposal: open an upstream issue with the measurements above and offer
-  option 1 as a pull request.
+  option 1's removal as a pull request, with option 2's note as a follow-on if
+  upstream wants a signal.
 - Divergence if upstream doesn't take it: two removed regions in upstream-owned
   hooks, which conflict only if upstream edits those lines.
 
 ## To approve
 
-- Option 1: drop the lock, its warning and the doc claims. Or option 2 if you
-  want a "recent writer" note instead.
+- Option 2: chosen 2026-10-14, without the overlap count.
 - Deleting pm-wiki's `.wiki-lock` and its `.gitignore` lines, in a pm-wiki
   commit, after the hook change.
 - Raising it upstream as an issue, with option 1 offered as a pull request.
