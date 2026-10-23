@@ -17,7 +17,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW14 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW15 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -407,6 +407,26 @@ on the per-day report in `queries/`. Found in the design review
   (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
+
+**NW14. Registry sweeps have no rule for their time window.**
+Status: design approved 2026-10-22, not implemented.
+- **What happens:** no skill says what time range a registry sweep reads from
+  each source. Agents chain each sweep from the previous sweep's dates in
+  `log.md`: one window for all sources, day-granular, in free text that gets
+  rotated. The completeness guard's "widen the window" can re-read old content,
+  and `limit`≤15 has no paging rule, so a busy source can be cut short and still
+  count as `hits`.
+- **Seen:** on 2026-10-12 you limited the sweep to meetings. The next sweep
+  started from 10/12 for every source, and the Confluence pages seen on 10/12
+  were carried to 10/14 by hand.
+- **Proposal:** a per-source Swept through timestamp in the Sweep Registry,
+  advanced only for sources fully covered and ingested, with paging and a
+  50-item ceiling. Full design in the
+  [Sweep Window Design](sweep-window-design.md).
+- **Related:** NW8 (cadence then picks only the brief), and a possible Slack
+  capture skill using Claude in Chrome, which would need per-channel windows.
+- **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
+  would be swept.
 
 ## Closed
 
