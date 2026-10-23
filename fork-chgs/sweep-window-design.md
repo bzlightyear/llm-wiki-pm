@@ -7,19 +7,37 @@ each run picks one by guessing. This design adds a per-source "Swept through"
 timestamp to the Sweep Registry. Each sweep reads from that point to the time of
 the sweep, and moves the point forward only for sources it fully covered and
 ingested. It also covers paging past the 15-result cap, how "daily" and "weekly"
-requests relate to the window, and the migration of pm-wiki's registry.
+requests relate to the window, and the migration of pm-wiki's registry. It also
+folds in NW8: a maintenance run picks the daily or weekly brief from the run's
+cadence and files it at that brief's path.
+
+## Revision History
+
+revised on: 2026-10-22
+Folded in NW8, since without it a weekly run after daily runs would brief only
+the last day. Added the "Cadence picks the brief" section, NW8's changes, and
+four new choices, approved the same day. NW8's backlog item is closed as folded
+into NW14.
+
+revised on: 2026-10-22
+Added a check for an explicit range that falls inside time already swept. In an
+interactive run, the agent says so and asks whether to re-read or sweep only
+since the last timestamp. Either way, items you set aside earlier aren't offered
+again unless they changed. Added at your request after approval, so it counts as
+approved.
 
 ## Status
 
-Status: approved 2026-10-22, all five choices under To approve; not implemented.
+Status: approved 2026-10-22, all nine choices under To approve; not
+implemented.
 
 ## About This Document
 
-- Backlog item: NW14 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
-- Related: NW8 (maintain files a weekly brief as a daily one; the cadence
-  question this design leaves to the brief), and a possible Slack capture skill
-  that reads channels through Claude in Chrome, discussed 2026-10-22 and not
-  started, which would need this window rule to know what is new.
+- Backlog items: NW14, and NW8 folded in, in the
+  [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
+- Related: a possible Slack capture skill that reads channels through Claude in
+  Chrome, discussed 2026-10-22 and not started, which would need this window
+  rule to know what is new.
 - Scope: registry sweeps by `llm-wiki-maintain` and by `llm-wiki-brief` when it
   sweeps live sources. A single-page freshness check is out of scope and never
   moves a source's timestamp.
@@ -127,11 +145,66 @@ write.
 The window comes from the timestamps, not from the request. A daily run after a
 three-day gap reads three days, and a weekly run reads from each source's own
 timestamp. Cadence chooses only the brief: daily or weekly format and filing
-path, which is NW8's fix.
+path (see "Cadence picks the brief" below).
 
 **An explicit range you give** ("sweep the last 3 days") is used as asked. It
 advances a source's timestamp only if the range starts at or before the current
 Swept through, so a range that leaves a gap never marks the gap as covered.
+
+**A range over time already swept.** When an explicit range starts before a
+source's Swept through:
+
+- **Interactive:** before sweeping, the agent says how much of the range is
+  already covered ("all sources are swept through 2026-10-22T09:40; the last 3
+  days were already read") and asks whether to re-read the whole range or sweep
+  only since each source's Swept through. One question covers all sources.
+- **Autonomous:** sweep the range as asked, and note in the ledger which part
+  was a re-read.
+- **Set-aside items stay set aside.** In a re-read, an item named in an earlier
+  sweep's "Not ingested" line in `log.md` isn't offered again unless its
+  last-modified time is after that log entry. Items already in the wiki are
+  handled by the ingest's search-before-create, as now.
+
+### Cadence picks the brief (NW8)
+
+**Today:** maintain step ④ always writes the daily brief and files it as
+`briefings/YYYY-MM-DD.md`. With the window above, a weekly run after a week of
+daily runs reads only since the last one, so its daily brief, which lists the
+last 24–48 hours of `log.md`, covers one day. Without this section the window
+would make weekly runs worse than today, where a guessed 7-day window at least
+put a week of material in the brief. A weekly sweep on 2026-08-28 was filed at
+the daily path and moved by hand.
+
+**The cadence:**
+
+- **Interactive:** from your words. "Weekly", "this week", "week in review" or
+  "what did I miss this week" make it weekly. Anything else, including "maintain
+  the wiki", is daily, with no question asked: every run since 2026-10-08 has
+  been daily.
+- **Autonomous:** from the scheduled task's prompt, by the same words. A task
+  whose prompt names no cadence is daily.
+- The cadence never changes the sweep window.
+
+**The brief:**
+
+- **Daily:** as now, `llm-wiki-brief`'s daily brief, filed as
+  `briefings/YYYY-MM-DD.md`.
+- **Weekly:** `llm-wiki-brief`'s weekly brief, which reads the last 7 days of
+  `log.md`, so it covers the whole week even when daily runs brought the
+  material in. Filed as `queries/weekly-brief-YYYY-MM-DD.md`, the path the
+  weekly brief already uses and where pm-wiki's four weekly briefs are.
+- **Both** get `lifecycle: dated-digest`, the Source Coverage ledger for this
+  run's sweep (with windows), and, in autonomous mode, Needs Review. The weekly
+  brief's own format has neither section today; maintain adds them, as it does
+  for the daily brief.
+- **Filing:** a maintenance run files the brief it writes, weekly as well as
+  daily. The weekly brief's "offer to file" step applies only when you ask for a
+  weekly brief on its own.
+- **Index:** no entry needed. Lint exempts `dated-digest` pages from the
+  `index.md` check. pm-wiki's index lists its weekly briefs anyway, and
+  `lint --auto-fix` may keep doing so.
+- **Log:** the weekly brief's own line, `brief | weekly | last 7 days | filed:
+  yes`.
 
 ### Reporting
 
@@ -160,8 +233,14 @@ table column with a fixed format.
 **Skills and references** (prose only):
 
 - `skills/llm-wiki-maintain/SKILL.md` step ② (lines 48–55): read each row's
-  window as above. Step ③ (lines 57–60): advance timestamps at the end. Step ④
-  (lines 62–66): ledger lines carry the window.
+  window as above, including the check for a range over time already swept.
+  Step ③ (lines 57–60): advance timestamps at the end. Step ④ (lines 62–66):
+  ledger lines carry the window, and the step becomes "Brief": decide the
+  cadence, route to the daily or weekly brief, and file at its path. "Brief
+  lifecycle convention" (lines 77–83) adds the weekly path.
+- `skills/llm-wiki-brief/SKILL.md` weekly brief (lines 105–152): when run from
+  maintain, it includes the Source Coverage ledger and Needs Review and is
+  filed without the offer.
 - `skills/llm-wiki-pm/references/source-discipline.md` completeness guard
   (lines 46–57): the window rule, paging and the ceiling, and that retries in a
   registry sweep don't widen the window.
@@ -199,8 +278,8 @@ One pm-wiki commit after the skill change:
 
 ## Interactions
 
-- **NW8:** this design removes cadence from the sweep, so NW8's cadence check
-  becomes only about which brief to write and where to file it.
+- **NW8:** folded in. Upstream has it as `anh-chu#12`, so it gets its own
+  commit and fork changelog entry, to keep it easy to offer upstream on its own.
 - **Slack through Chrome (if built):** one registry row per channel, each with
   its own timestamp. A channel whose page didn't load stays put while others
   advance.
@@ -213,8 +292,9 @@ One pm-wiki commit after the skill change:
 
 ## Cost
 
-About 40 lines of skill and reference prose across six files, one template
-column, one pm-wiki commit, and a fork changelog entry. No code. Each sweep does
+About 40 lines of skill and reference prose across six files, plus about 20 for
+NW8 in the maintain and brief skills, one template column, one pm-wiki commit,
+and two fork changelog entries. No code. Each sweep does
 one extra edit to `MY-INTEGRATIONS.md`, and a busy source may take extra paged
 queries that it should have been taking already.
 
@@ -227,3 +307,12 @@ All approved 2026-10-22:
 - The 7-day default for a source with no timestamp and no Active Sources date.
 - Leaving the lint check out for now.
 - The migration seed values.
+
+NW8, all approved 2026-10-22:
+
+- Cadence from your words or the task's prompt, daily by default, with no
+  question asked.
+- Weekly briefs filed at `queries/weekly-brief-YYYY-MM-DD.md`.
+- A maintenance run files its weekly brief without offering.
+- The weekly brief from maintain carries the Source Coverage ledger and Needs
+  Review.

@@ -222,26 +222,6 @@ on the per-day report in `queries/`. Found in the design review
 - **Found in:** the NW6 analysis (M1, M4). Split out of NW6's next step 4 on
   2026-10-01.
 
-**NW8. The maintain skill files a weekly brief as a daily one.**
-- **What happens:** `llm-wiki-maintain` step ④ routes to `llm-wiki-brief`'s
-  daily brief and files it as `briefings/YYYY-MM-DD.md`, whatever the sweep's
-  cadence. Its triggers include "maintain the wiki" and scheduled runs that
-  aren't daily, and `llm-wiki-brief` has its own weekly convention
-  (`queries/weekly-brief-YYYY-MM-DD.md`, offered for filing), which maintain
-  never routes to.
-- **Seen:** a weekly sweep on 2026-08-28 filed weekly content at a daily path,
-  left out of `index.md`, until it was moved by hand to the weekly path.
-- **Since step 2 of the sources design:** maintain no longer rotates briefs into
-  `_archive/briefings/`, so a misfiled weekly brief is no longer archived as a
-  daily one. The misfiling itself remains. Dated briefs are exempt from lint's
-  index check, so nothing reports it.
-- **Proposal:** a cadence check at step ④ (ask when unclear in interactive mode,
-  take it from the run's declared scope in autonomous mode), routing to the
-  daily or weekly brief and its filing path.
-- **Upstream:** filed from this fork as `anh-chu#12` (2026-08-29), open on
-  2026-10-02. Its rotation part is already fixed here.
-- **Found in:** pm-wiki, 2026-08-29.
-
 **NW9. Org structure is kept in three places.**
 - **What happens:** three copies of who reports to whom, and nothing keeps them
   in step:
@@ -409,7 +389,8 @@ on the per-day report in `queries/`. Found in the design review
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
 **NW14. Registry sweeps have no rule for their time window.**
-Status: design approved 2026-10-22, not implemented.
+- **Status: design approved 2026-10-22, including NW8, folded in the same
+  day; not implemented.**
 - **What happens:** no skill says what time range a registry sweep reads from
   each source. Agents chain each sweep from the previous sweep's dates in
   `log.md`: one window for all sources, day-granular, in free text that gets
@@ -423,7 +404,7 @@ Status: design approved 2026-10-22, not implemented.
   advanced only for sources fully covered and ingested, with paging and a
   50-item ceiling. Full design in the
   [Sweep Window Design](sweep-window-design.md).
-- **Related:** NW8 (cadence then picks only the brief), and a possible Slack
+- **Related:** NW8 (folded in: cadence picks the brief), and a possible Slack
   capture skill using Claude in Chrome, which would need per-channel windows.
 - **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
   would be swept.
@@ -853,3 +834,27 @@ Status: design approved 2026-10-22, not implemented.
 - **Related:** NW12 and NW10 (the checkpoint doesn't read the lock), NW5
   (`$WIKI_PATH` as every project's default wiki).
 - **Found in:** the NW12 work, an llm-wiki-pm session on 2026-10-13.
+
+**NW8. The maintain skill files a weekly brief as a daily one.**
+- **Status: folded into NW14 2026-10-22.** The cadence check is the
+  "Cadence picks the brief" section of the
+  [Sweep Window Design](sweep-window-design.md), to be implemented with NW14
+  in its own commit.
+- **What happens:** `llm-wiki-maintain` step ④ routes to `llm-wiki-brief`'s
+  daily brief and files it as `briefings/YYYY-MM-DD.md`, whatever the sweep's
+  cadence. Its triggers include "maintain the wiki" and scheduled runs that
+  aren't daily, and `llm-wiki-brief` has its own weekly convention
+  (`queries/weekly-brief-YYYY-MM-DD.md`, offered for filing), which maintain
+  never routes to.
+- **Seen:** a weekly sweep on 2026-08-28 filed weekly content at a daily path,
+  left out of `index.md`, until it was moved by hand to the weekly path.
+- **Since step 2 of the sources design:** maintain no longer rotates briefs into
+  `_archive/briefings/`, so a misfiled weekly brief is no longer archived as a
+  daily one. The misfiling itself remains. Dated briefs are exempt from lint's
+  index check, so nothing reports it.
+- **Proposal:** a cadence check at step ④ (ask when unclear in interactive mode,
+  take it from the run's declared scope in autonomous mode), routing to the
+  daily or weekly brief and its filing path.
+- **Upstream:** filed from this fork as `anh-chu#12` (2026-08-29), open on
+  2026-10-02. Its rotation part is already fixed here.
+- **Found in:** pm-wiki, 2026-08-29.
