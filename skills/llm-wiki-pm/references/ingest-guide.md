@@ -129,7 +129,9 @@ any mail provider; `warehouse` covers any SQL/BI/analytics source — Metabase,
 BigQuery, Snowflake, dbt, dashboards. Record the specific tool in
 `<source-label>` / `source_channel`.)
 This is how the skill learns which integrations you actually use. No fabrication —
-only log sources actually ingested this session.
+only log sources actually ingested this session. "Last used" is the last ingest
+of any kind from that source, not the sweep window; the Sweep Registry's Swept
+through column holds that.
 
 ## ①⓪ Report to user
 

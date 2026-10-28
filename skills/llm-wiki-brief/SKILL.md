@@ -40,16 +40,17 @@ When a brief is asked to pull from external sources (whatever the user's connect
 **A brief is exec-facing synthesis — the Provenance-tier & falsification guard applies (core skill → Session Defaults).** A brief reads as a complete, current picture, so a laundered claim does the most damage here. Tier every headline claim computed/primary/recalled; don't state a claim recalled from wiki prose as current fact without confirming it against a live source (a wiki page saying "pipeline is thin" does not override what the CRM says today). For any decision-bearing line, name and run the query that would disprove it before it goes in the brief, and mark claims you couldn't verify as unverified rather than asserting them.
 
 - **Get the source set from the registry, not from memory.** Before sweeping, read the `## Sweep Registry` in `$WIKI/MY-INTEGRATIONS.md` and cover every source listed; the ledger below must have one row per registered source. If no registry exists, build the set from connected tools + the `Active Sources` table, confirm it with the user, and write it to the registry. Forgetting a registered source (e.g. omitting Slack or GitHub from the sweep) is the worst failure — it reads as complete while a high-signal source went unread.
-- Run ≥2 varied queries per source before calling it empty (broaden terms, widen the window, try aliases/handles/scope variants, switch syntax). Keyword search tools commonly miss on first phrasing.
+- Read each source's window from its **Swept through** timestamp, as `llm-wiki-maintain` step ② does. A brief that sweeps but doesn't ingest never advances a timestamp.
+- Run ≥2 varied queries per source before calling it empty (broaden terms, try aliases/handles/scope variants, switch syntax), inside the source's window. Keyword search tools commonly miss on first phrasing.
 - Classify each requested source as `hits` / `empty-after-retries` / `failed`. Never collapse `failed` or `empty-after-retries` into "covered."
 - **Always emit a Source Coverage ledger** (see below) listing every requested source and its state. A source that returned nothing must appear in the brief, not vanish from it. No "enough captured" while a requested source is `failed` or was abandoned after one query.
 
 ```markdown
 ### Source Coverage
-- <source A>: hits (N items)
-- <source B>: hits (N threads)
-- <source C>: empty-after-retries — tried "X", "<scoped query> Y", "<author filter> Z"; quiet or query miss. Confirm scope/range?
-- <source D>: failed — not connected
+- <source A>: hits (N items), 2026-10-21T09:40 → 2026-10-22T08:15
+- <source B>: hits (partial, through 2026-10-22T07:30), 2026-10-21T09:40 → 2026-10-22T08:15
+- <source C>: empty-after-retries, 2026-10-21T09:40 → 2026-10-22T08:15 — tried "X", "<scoped query> Y", "<author filter> Z"; quiet or query miss. Confirm scope/range?
+- <source D>: failed — not connected; Swept through stays 2026-10-21T09:40
 ```
 
 ---

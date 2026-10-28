@@ -49,9 +49,30 @@ stop — it is a signal your search, not the source, may be the problem.
   every source listed. The registry, not your memory, defines "all sources." If
   it's missing, build the set from connected tools + the `Active Sources` table,
   confirm with the user, and write it to the registry before sweeping.
+- **A registry sweep reads one window per source.** Each Sweep Registry row's
+  window runs from its **Swept through** timestamp to the time of the sweep's
+  first query for that source (`llm-wiki-maintain` step ②). An item is in the
+  window if it was created or changed after Swept through: use the item's
+  last-modified time where the tool gives one (Notion `last_edited_time`,
+  Confluence `lastModified`, a commit date), so a meeting held before the last
+  sweep whose notes were finished after it is still caught. A tool that only
+  takes a date: query from the timestamp's date, then drop items whose own time
+  is at or before Swept through (date operators are soft). Only a sweep whose
+  hits were ingested moves Swept through (maintain step ③); a single-page
+  freshness check never does.
 - **Empty ≠ done.** Run ≥2-3 query variations before concluding a source is empty
   (broaden/narrow terms, widen the window, try aliases/handles/scope variants,
-  switch search syntax).
+  switch search syntax). In a registry sweep, retries stay inside the window:
+  vary terms, scope and syntax, not the window. Widening still applies to an
+  open-ended search.
+- **Page until the window is covered.** Keep the first page bounded
+  (`limit`≤15, concise). A full page means more remain: fetch the next page.
+  **Ceiling: 50 items per source per run.** Past it, process the oldest items
+  first where the tool can sort, and advance Swept through only to the newest
+  item processed in unbroken order. Where the tool can't sort or page, don't
+  advance. Either way the ledger shows the source as
+  `hits (partial, through <time>)`, and an autonomous run adds it to Needs
+  Review.
 - **Distinguish three states:** `hits`, `empty-after-retries` (nothing after ≥2
   varied queries), `failed` (auth error, not connected, timeout). Never silently
   collapse `failed`/`empty-after-retries` into "covered."

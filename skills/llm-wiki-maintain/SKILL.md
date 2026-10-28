@@ -53,11 +53,36 @@ run?") and proceed on the answer; default to interactive.
    run (see the Freshness↔batch rule); do NOT re-sweep per page. If no registry
    exists, build it from connected tools + `Active Sources`, confirm (interactive)
    or queue for review (autonomous), and write it before sweeping.
+   - **Each row's window** runs from its **Swept through** timestamp to the time
+     the sweep's first query for that source runs (get it from `date` and record
+     it before querying, so items posted during the sweep land in the next
+     window). A blank Swept through starts at that source's Active Sources "Last
+     used" date at 00:00, or 7 days back if there is none; say which in the
+     ledger. Item times, paging and the 50-item ceiling:
+     `references/source-discipline.md` → Source-completeness guard.
+   - **An explicit range** ("sweep the last 3 days") is used as asked. When it
+     starts before a source's Swept through: interactive, say before sweeping how
+     much of it is already covered and ask once, for all sources, whether to
+     re-read the whole range or sweep only since each Swept through; autonomous,
+     sweep the range and note in the ledger which part was a re-read. In a
+     re-read, an item named in an earlier sweep's "Not ingested" line in `log.md`
+     isn't offered again unless its last-modified time is after that entry.
 
 ③ **Ingest findings.** For each new/changed signal, route to the core ingest
    flow (capture raw → thresholds → write/update → backlinks → log →
    MY-INTEGRATIONS). Pages are private by default; never mark a digest
    `shareable`. Stamp `lifecycle: stub-intentional` on by-design thin stubs.
+   The sweep's `log.md` entry records each source's window where they differ,
+   and one shared window otherwise.
+
+   **Advance Swept through** at the end of ③, in one edit to
+   `MY-INTEGRATIONS.md`, to each source's "to" time when that source finished
+   `hits` or `empty-after-retries` and every hit in its window was ingested, set
+   aside by the user ("your scope call") or queued in Needs Review. Don't advance
+   a source that `failed`, was left out of this run, or whose ingest didn't
+   finish, so the next run re-reads its time. An explicit range advances a
+   source only if it started at or before its Swept through; a source past the
+   paging ceiling advances only as `source-discipline.md` allows.
 
 ④ **Brief.** Decide the cadence, then route to `llm-wiki-brief` and file the
    brief it writes, without offering:
@@ -65,15 +90,16 @@ run?") and proceed on the answer; default to interactive.
      "week in review" or "what did I miss this week" make it weekly; anything
      else, including "maintain the wiki", is daily, with no question asked.
      Autonomous: from the scheduled task's prompt, by the same words; a prompt
-     that names no cadence is daily.
+     that names no cadence is daily. The cadence never changes the sweep window.
    - **Daily:** the daily brief, filed as `briefings/YYYY-MM-DD.md`.
    - **Weekly:** the weekly brief, filed as
      `briefings/weekly-brief-YYYY-MM-DD.md`.
 
    Both are dated by the run and get `lifecycle: dated-digest` (keeps them out
    of the orphan count). Either brief MUST include the Source Coverage ledger
-   (one row per registered source) and, in autonomous mode, a **Needs Review**
-   section.
+   (one row per registered source, each with its window:
+   `- Notion: hits (4 items), <from> → <to>`) and, in autonomous mode, a
+   **Needs Review** section.
 
 ⑤ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
    the export-surface (shareable) audit, and any new orphans/broken links.

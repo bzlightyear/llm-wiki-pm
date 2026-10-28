@@ -105,7 +105,9 @@ is largely enforced by the `pre-write.sh` freshness gate and `lint.py`
   **canonical sweep registry** in `$WIKI/MY-INTEGRATIONS.md` (`## Sweep Registry`)
   and cover every source. Empty ≠ done: run ≥2 varied queries, then classify each
   source `hits` / `empty-after-retries` / `failed` and report all three — never
-  collapse `failed`/`empty-after-retries` into "covered."
+  collapse `failed`/`empty-after-retries` into "covered." Each row's **Swept
+  through** timestamp sets where that source's window starts; retries stay
+  inside it.
 - **Source-depth guard.** A hit that *references* an artifact (attached file,
   linked doc, cited spec) is not the content. Open it before synthesizing; if you
   can't, flag it unread and don't write over it.
@@ -144,6 +146,8 @@ Inventory every connected MCP tool at session start and use them eagerly.
   100K+ chars. Default to the tightest useful query: summary format, no message
   context, `limit`≤15, and **narrow scope (channel/author/label/date) BEFORE broad
   keyword**. Widen only if the narrow pass is empty. Dump-then-slice is a defect.
+  In a registry sweep, a full page means more remain: page until the source's
+  window is covered (`references/source-discipline.md`).
 - **Date operators are soft on semantic backends.** Many treat `after:`/`before:`
   as advisory — verify each result's actual timestamp before trusting it as in-window.
 - **Edit frontmatter with the Edit tool** (in a script, `wikifm.set_field`/`set_list`),
