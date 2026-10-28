@@ -332,7 +332,8 @@ activity** / **Open questions** / **Communication tips**. Log: `## [date] brief 
 `llm-wiki-brief` handles this richer — route there when installed. Fallback: read
 `log.md` for the last N days (default 7), list new/updated pages, decisions, open
 questions; surface `_status.md` warnings and the 2-3 most active areas. Log:
-`## [date] catchup | last N days | X actions`.
+`## [date] brief | catchup | <from> → <to> | filed: no`, times as in the Sweep
+Registry's Swept through (e.g. `2026-10-21T00:00-07:00`).
 
 ### 11. Tag Digest
 `llm-wiki-brief` handles this richer — route there when installed. Fallback: grep

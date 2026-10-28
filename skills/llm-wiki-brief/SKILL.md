@@ -27,7 +27,7 @@ WIKI=${WIKI:-${CLAUDE_PLUGIN_OPTION_wiki_path:-${WIKI_PATH:-$(pwd)}}}
 
 ## Orient (lightweight)
 
-This skill is read-only by default. Before any brief:
+This skill is read-only by default, apart from each daily or weekly brief's own `log.md` line. Before any brief:
 1. Read `$WIKI/_status.md` if it exists — surface any pre-computed warnings immediately
 2. Read last 20-30 lines of `$WIKI/log.md` — know what's recent before summarizing
 
@@ -55,6 +55,39 @@ When a brief is asked to pull from external sources (whatever the user's connect
 
 ---
 
+## Daily and Weekly Briefs
+
+**Windows.** A brief's window is the stretch of `log.md` it reports on, by when material was ingested, separate from the sources' sweep windows.
+- **Daily:** from where the latest brief's window ended, daily or weekly, to now. A daily brief after a three-day gap covers three days, with or without a sweep.
+- **Weekly:** from where the latest weekly brief's window ended to now. A two-week gap gives one weekly brief covering two weeks, and a meeting whose notes arrive late is in the next weekly brief.
+- **The previous end** comes from that brief's log line (below). Where no brief of the kind needed has that line yet, an interactive run asks where to start, and an autonomous run starts 7 days back and says so in the brief.
+- A weekly brief counts as a brief, so the next daily brief starts where it ended.
+- Inside a brief, order and group items by when they happened: a meeting's date from its crystallize page or its raw record.
+
+**What each brief holds.** A daily brief lists what came in and needs attention now; a weekly brief says what changed over its period and where things stand. It summarizes what the dailies already itemized rather than repeating them.
+
+| | Daily | Weekly |
+|---|---|---|
+| Headline | The few things that matter from this material | The period in one paragraph: themes and direction |
+| Meetings | Each new meeting: what happened, decisions, who's waiting on what | Grouped by topic, linking each crystallize page and saying what it changed |
+| Decisions | Each one as it was made | Those in the period, grouped, noting any that reversed or replaced an earlier one |
+| Open questions | New ones raised | Added vs resolved in the period, and which older ones are still open |
+| Needs Review | This run's queue, plus unresolved items carried from the previous brief | Everything still unresolved, with how long each has been open |
+| You owe | From `overview.md`'s "Pete owes" (until NW1) | The same, with what closed and what was added in the period |
+| Customers and people | When a meeting involves them | "Customers to watch": accounts with several signals in the period |
+| Wiki health | This run's lint warnings | Staleness flags, stubs created in the period, activity by tag |
+| Source Coverage | This run's sweep, one row per source | This run's sweep, if it swept |
+
+**Log line.** Every daily and weekly brief gets its own `log.md` entry, filed or not, including one written inside a maintenance run:
+
+```
+## [YYYY-MM-DD] brief | daily|weekly | <from> → <to> | filed: <path or no>
+```
+
+`<from>` and `<to>` use the Sweep Registry's Swept through format, for example `2026-10-26T00:00-07:00 → 2026-10-28T09:40-07:00`.
+
+---
+
 ## Operations
 
 ### 1. Daily Brief
@@ -63,38 +96,19 @@ When a brief is asked to pull from external sources (whatever the user's connect
 
 ① Resolve `$WIKI`. Read `$WIKI/_status.md` if present.
 
-② Read `$WIKI/log.md`. Filter entries from the last 24-48 hours. Parse:
+② Read `$WIKI/log.md` across the daily window (Daily and Weekly Briefs above). Parse:
    - Pages created (`ingest`, `create`)
    - Pages updated (`update`)
    - Decisions logged (`decision`)
    - Open questions added (`query`, `question`)
 
-③ For decision and question entries, read the referenced page to pull the one-line summary or question text.
+③ For decision and question entries, read the referenced page to pull the one-line summary or question text. For each meeting in the window, read its crystallize page, or its raw record if it has none.
 
-④ Output format — structured, scannable, no prose padding:
+④ Output: the Daily column of "What each brief holds", under `## Daily Brief — YYYY-MM-DD`. Structured, scannable, no prose padding.
 
-```markdown
-## Daily Brief — YYYY-MM-DD
+If the window has no entries, say so.
 
-### New Pages
-- [[slug]] — one-line description
-
-### Updated Pages
-- [[slug]] — what changed (one phrase)
-
-### Decisions Logged
-- [[slug]]: decision text (YYYY-MM-DD)
-
-### Open Questions Added
-- [[slug]]: question text
-
-### Warnings
-- (staleness, coverage flags from _status.md)
-```
-
-If 24h window is empty, expand to 48h and note it. If still empty, offer weekly brief.
-
-**Log:** Read-only — do not append to log.md unless user asks to file output.
+**Log:** the brief's log line (Daily and Weekly Briefs above).
 
 **If you file the brief as a page** (e.g. `briefings/YYYY-MM-DD.md`), stamp
 `lifecycle: dated-digest` in its frontmatter. These are orphans by design;
@@ -109,50 +123,23 @@ it, every daily brief permanently inflates the orphan metric.
 
 ① Resolve `$WIKI`. Read `$WIKI/_status.md` if present.
 
-② Read `$WIKI/log.md`. Filter entries from last 7 days (default; user can specify N days).
+② Read `$WIKI/log.md` across the weekly window (Daily and Weekly Briefs above; the user can name another period). Read the daily briefs in the window when there are any; otherwise work from the crystallize pages, `log.md` and this run's sweep. Read raw records only for a meeting with no crystallize page.
 
 ③ Aggregate counts: pages created, updated, decisions logged, questions added vs resolved.
 
 ④ Identify top 3 areas of activity: grep mentioned slugs' frontmatter tags, count by tag frequency.
 
-⑤ Lightweight staleness check on `overview.md` and `index.md`: if `updated:` older than 14 days AND log shows writes this week, surface warning.
+⑤ Lightweight staleness check on `overview.md` and `index.md`: if `updated:` older than 14 days AND log shows writes in the period, surface warning.
 
-⑥ Coverage gaps: grep for `coverage: stub` pages created this week only — not all stubs, just new ones.
+⑥ Coverage gaps: grep for `coverage: stub` pages created in the period only — not all stubs, just new ones.
 
-⑦ Output format:
+⑦ Output: the Weekly column of "What each brief holds", under `## Weekly Brief: YYYY-MM-DD to YYYY-MM-DD` (its period).
 
-```markdown
-## Weekly Brief — Week of YYYY-MM-DD
-
-### Summary
-- Pages created: N | updated: N | decisions: N | open questions: N added, N resolved
-
-### Top Activity Areas
-1. [tag] — N entries, top pages: [[a]], [[b]]
-2. [tag] — N entries, top pages: [[c]]
-3. [tag] — N entries, top pages: [[d]]
-
-### Decisions This Week
-- [[slug]]: decision text (YYYY-MM-DD)
-
-### Open Questions Added
-- [[slug]]: question text
-
-### Staleness Flags
-- [[overview.md]] last updated YYYY-MM-DD — may need refresh
-
-### Coverage Gaps from This Week
-- [[slug]] created as stub — gaps: X, Y
-
-### Warnings
-- (from _status.md)
-```
-
-⑧ Offer to file as `queries/weekly-brief-YYYY-MM-DD.md`. If yes, run full orient per AGENTS.md before writing.
+⑧ Offer to file as `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, with `lifecycle: dated-digest`. If yes, run full orient per AGENTS.md before writing.
 
 **Run from `llm-wiki-maintain`:** add the Source Coverage ledger for the run's sweep and, in autonomous mode, a **Needs Review** section. Maintain files the brief at its weekly path, so skip the offer in ⑧.
 
-**Log:** `## [YYYY-MM-DD] brief | weekly | last 7 days | filed: yes/no` — only if filing.
+**Log:** the brief's log line (Daily and Weekly Briefs above).
 
 ---
 

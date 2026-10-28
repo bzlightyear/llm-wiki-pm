@@ -110,6 +110,8 @@ run?") and proceed on the answer; default to interactive.
 
 ⑥ **Report.** One consolidated summary: sweep coverage ledger, pages
    created/updated, brief link, lint health delta, and the Needs Review queue.
+   The brief's `log.md` line is its own entry (`llm-wiki-brief` → Daily and
+   Weekly Briefs), not a "- Brief:" line under the ingest entry.
 
 ## Brief lifecycle convention
 
