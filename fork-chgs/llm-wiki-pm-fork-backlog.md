@@ -392,30 +392,9 @@ on the per-day report in `queries/`. Found in the design review
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
-**NW14. Registry sweeps have no rule for their time window.**
-- **Status: design approved 2026-10-22, including NW8, folded in the same
-  day; not implemented.**
-- **What happens:** no skill says what time range a registry sweep reads from
-  each source. Agents chain each sweep from the previous sweep's dates in
-  `log.md`: one window for all sources, day-granular, in free text that gets
-  rotated. The completeness guard's "widen the window" can re-read old content,
-  and `limit`≤15 has no paging rule, so a busy source can be cut short and still
-  count as `hits`.
-- **Seen:** on 2026-10-12 you limited the sweep to meetings. The next sweep
-  started from 10/12 for every source, and the Confluence pages seen on 10/12
-  were carried to 10/14 by hand.
-- **Proposal:** a per-source Swept through timestamp in the Sweep Registry,
-  advanced only for sources fully covered and ingested, with paging and a
-  50-item ceiling. Full design in the
-  [Sweep Window Design](sweep-window-design.md).
-- **Related:** NW8 (folded in: cadence picks the brief), NW15 (revises the
-  design's weekly brief path and brief windows before it is built), and a possible Slack capture skill using Claude in Chrome, which
-  would need per-channel windows.
-- **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
-  would be swept.
-
 **NW15. Briefs are built, filed and used in ways the skills don't describe.**
-- **Status: approved 2026-10-28, all four choices; not implemented.**
+- **Status: approved 2026-10-28, all four choices. B, D and G done
+  2026-10-28 with NW14 (changelog PATCH-23); A, C, E and F not implemented.**
 - **What happens:** daily briefs are built from each source sweep, in a format
   no skill defines; brief §1 still describes a 24–48h `log.md` summary. Weekly
   briefs have no lifecycle or date rule, and NW14 files them in `queries/`,
@@ -440,6 +419,8 @@ on the per-day report in `queries/`. Found in the design review
   with the meeting date, however it was ingested. Part 1 (the rule) is
   approved to be built with NW14; parts 2 and 3 need a short design first
   (lint details, cost, the backfill list).
+- **Part 1 done 2026-10-28** (changelog PATCH-24). Crystallize is now ingest
+  step ⑥, not ⑪, and the old ⑥–⑩ are ⑦–⑪. Parts 2 and 3 not started.
 - **What happens:** ingest step ⑪ (`ingest-guide.md:139`) says to crystallize
   every transcript, but 43 of pm-wiki's 152 transcripts are in no crystallize
   page's `sources:` (17 from September, 23 from October, 3 from March and June).
@@ -926,3 +907,27 @@ on the per-day report in `queries/`. Found in the design review
 - **Upstream:** filed from this fork as `anh-chu#12` (2026-08-29), open on
   2026-10-02. Its rotation part is already fixed here.
 - **Found in:** pm-wiki, 2026-08-29.
+
+**NW14. Registry sweeps have no rule for their time window.**
+- **Status: done 2026-10-28.** Implemented in your fork (changelog PATCH-22),
+  with NW8 (PATCH-21) and NW15's B, D and G (PATCH-23). pm-wiki's Sweep
+  Registry got the Swept through column in a pm-wiki commit the same day. The
+  text below describes the problem as found.
+- **What happens:** no skill says what time range a registry sweep reads from
+  each source. Agents chain each sweep from the previous sweep's dates in
+  `log.md`: one window for all sources, day-granular, in free text that gets
+  rotated. The completeness guard's "widen the window" can re-read old content,
+  and `limit`≤15 has no paging rule, so a busy source can be cut short and still
+  count as `hits`.
+- **Seen:** on 2026-10-12 you limited the sweep to meetings. The next sweep
+  started from 10/12 for every source, and the Confluence pages seen on 10/12
+  were carried to 10/14 by hand.
+- **Proposal:** a per-source Swept through timestamp in the Sweep Registry,
+  advanced only for sources fully covered and ingested, with paging and a
+  50-item ceiling. Full design in the
+  [Sweep Window Design](sweep-window-design.md).
+- **Related:** NW8 (folded in: cadence picks the brief), NW15 (revises the
+  design's weekly brief path and brief windows before it is built), and a possible Slack capture skill using Claude in Chrome, which
+  would need per-channel windows.
+- **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
+  would be swept.

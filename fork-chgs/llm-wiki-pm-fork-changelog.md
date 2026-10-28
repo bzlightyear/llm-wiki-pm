@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-20) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-24) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -434,6 +434,117 @@ the set would go upstream with the migration script, isn't done.
   passed: 456 passed, 2 skipped.
 - **Status:** active. Upstream candidate, not filed.
 
+### Sweeps and briefs
+
+From the [Sweep Window Design](sweep-window-design.md), with its 2026-10-28
+revision. Each is prose only; the suite passed after all four: 456 passed, 2
+skipped.
+
+#### PATCH-21 — Maintain picks the daily or weekly brief from the cadence
+
+- **What:** `llm-wiki-maintain` step ④ is now "Brief". The cadence comes from
+  the user's words ("weekly", "this week", "week in review", "what did I miss
+  this week") or the scheduled task's prompt, daily otherwise, with no question
+  asked. Maintain routes to the daily or weekly brief and files it without
+  offering, at `briefings/YYYY-MM-DD.md` or
+  `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, both with
+  `lifecycle: dated-digest`. A weekly brief run from maintain carries the
+  Source Coverage ledger and, in autonomous mode, Needs Review. "Brief
+  lifecycle convention" names both paths.
+- **Why:** maintain always wrote and filed the daily brief, so a weekly sweep
+  on 2026-08-28 was filed at a daily path and moved by hand. With per-source
+  windows (PATCH-22), a weekly run after daily runs would otherwise brief one
+  day. Backlog NW8, folded into NW14. The design first approved
+  `queries/weekly-brief-…`; its 2026-10-28 revision moved weekly briefs to
+  `briefings/`.
+- **Where:** `skills/llm-wiki-maintain/SKILL.md`,
+  `skills/llm-wiki-brief/SKILL.md` (§2). Commit `a055e0f`. The weekly brief's
+  own filing path in §2 ⑧ changed in PATCH-23.
+- **Status:** active. Upstream candidate: upstream has the issue as
+  `anh-chu#12`, filed from this fork.
+
+#### PATCH-22 — Per-source Swept through windows for registry sweeps
+
+- **What:** the Sweep Registry has a **Swept through** column, an ISO 8601
+  local time with offset. Each registry sweep reads every source from its own
+  timestamp to the time of its first query for that source, recorded before
+  querying; a blank timestamp starts at Active Sources "Last used" at 00:00, or
+  7 days back. An item is in the window if it was created or changed after the
+  timestamp, by its last-modified time where the tool gives one. A full page
+  means more remain: page until the window is covered, with a ceiling of 50
+  items per source per run (oldest first, advancing only through unbroken
+  order, and `hits (partial, through <time>)` in the ledger). Retries in a
+  registry sweep stay inside the window. Maintain step ③ advances a source's
+  timestamp, in one edit at the end, only when it finished `hits` or
+  `empty-after-retries` and every hit was ingested, set aside or queued; a
+  `failed`, skipped or unfinished source stays put. An explicit range is used
+  as asked, and one over time already swept is flagged first (interactive) or
+  noted as a re-read (autonomous). Ledger lines and the sweep's log entry carry
+  the windows. A brief that sweeps but doesn't ingest never advances a
+  timestamp.
+- **Why:** no skill defined a sweep's window. Agents chained each sweep from the
+  previous one's dates in `log.md`: one window for every source, by day, in a
+  log that gets rotated. On 2026-10-12 a meetings-only sweep moved every
+  source's start, and Confluence pages were carried to 10/14 by hand. The
+  completeness guard's "widen the window" could re-read old content, and
+  `limit`≤15 had no paging rule. Backlog NW14.
+- **Where:** `skills/llm-wiki-maintain/SKILL.md` (steps ②–④),
+  `skills/llm-wiki-pm/SKILL.md` (Source-completeness summary, bound-output
+  rule), `references/source-discipline.md` (completeness guard),
+  `references/ingest-guide.md` (Active Sources "Last used"),
+  `templates/MY-INTEGRATIONS.md`, `skills/llm-wiki-brief/SKILL.md` (guard and
+  ledger example). Commit `18af433`. pm-wiki's registry got the column in a
+  pm-wiki commit the same day.
+- **Status:** active. Upstream candidate, not filed: the maintain skill, the
+  Sweep Registry and the completeness guard came from upstream.
+
+#### PATCH-23 — Brief windows, contents and one log line per brief
+
+- **What:** a daily brief covers `log.md` from where the latest brief's window
+  ended, daily or weekly, to the run; a weekly brief from where the latest
+  weekly brief's ended. They go by when material was ingested, not by calendar
+  week. With no brief to start from, an interactive run asks and an autonomous
+  run goes 7 days back. A weekly brief reads the dailies in its window, or
+  else crystallize pages and `log.md`. "What each brief holds", a daily and
+  weekly table, replaces both section lists. A weekly brief is titled with its
+  period and filed at `briefings/weekly-brief-<run date>.md` with
+  `lifecycle: dated-digest`. Every brief logs its own
+  `brief | daily|weekly|catchup | <from> → <to> | filed: <path or no>` entry,
+  filed or not, also inside a maintenance run (maintain step ⑥), and core §10's
+  catch-up uses `catchup`.
+- **Why:** the skills described 24–48 hour and 7-day `log.md` summaries; the
+  briefs in use ran "since last sweep" in a format no skill defined. The 10/28
+  sweep's weekly brief stopped at 10/23, so seven 10/26–10/27 transcripts were
+  in no brief. Weekly briefs had no path, date or lifecycle rule, and brief log
+  entries took three forms. Backlog NW15 B, D and G, from the
+  [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md).
+- **Where:** `skills/llm-wiki-brief/SKILL.md` (a new "Daily and Weekly Briefs"
+  section, §1, §2), `skills/llm-wiki-maintain/SKILL.md` (step ⑥),
+  `skills/llm-wiki-pm/SKILL.md` (§10). Commit `49a42bf`. pm-wiki's
+  `meta/contract.md` got the weekly path in a pm-wiki commit the same day.
+- **Status:** active. Upstream candidate, not filed, except the table's
+  "You owe" row, which names pm-wiki's "Pete owes" list and NW1.
+
+#### PATCH-24 — Every meeting transcript gets its own crystallize page
+
+- **What:** ingest's crystallize step says every meeting transcript gets
+  `queries/crystallize-<topic>-<meeting date>.md` in every kind of ingest,
+  single, batch or maintenance, with no exceptions. The step moves from ⑪ to
+  ⑥, ahead of the backlink audit, `index.md` and the log entry, so the log
+  lists the page. The old ⑥–⑩ are now ⑦–⑪ in the core summary and
+  `ingest-guide.md`; ⑫, entity promotion, is unchanged. Maintain step ③ names
+  ⑥ and ⑫. Older fork docs cite the old numbers (the design's "ingest-guide
+  ⑨" is now ⑩, NW16's "⑪" is now ⑥).
+- **Why:** 43 of pm-wiki's 152 transcripts are in no crystallize page, and none
+  of 21 meetings since 2026-10-16 got one. Maintain step ③ left the step out,
+  and it came after "report every file touched", where a batch run's work
+  already looks done. Backlog NW16, part 1; its lint check and backfill are
+  not built.
+- **Where:** `skills/llm-wiki-pm/SKILL.md` (§2),
+  `references/ingest-guide.md`, `skills/llm-wiki-maintain/SKILL.md`. Commit
+  `7bb05a2`.
+- **Status:** active. Upstream candidate, not filed.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -466,6 +577,10 @@ Not patches to upstream's code, and not offered upstream:
 - `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
   template (PATCH-7, PATCH-14).
+- `llm-wiki-maintain`, `llm-wiki-brief`, `source-discipline.md` and the
+  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23). `ingest-guide.md`'s
+  steps ⑥–⑪ were renumbered (PATCH-24), so an upstream edit to one of them may
+  land under the wrong number.
 - The research and PRD skills, wherever upstream names folder pages
   `README.md` (PATCH-13).
 - `README.md`, `hooks/README.md`, `CONTRIBUTING.md`, `GETTING_STARTED.md`.
