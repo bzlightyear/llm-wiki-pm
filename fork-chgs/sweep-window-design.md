@@ -16,6 +16,15 @@ unbriefed, and one `log.md` line for every brief.
 ## Revision History
 
 revised on: 2026-10-28
+Recorded the design as implemented in your fork (changelog PATCH-21 to
+PATCH-23, with NW16's crystallize rule as PATCH-24) and pm-wiki's registry and
+contract as migrated. Details beyond the text: the brief windows, contents
+table and log line sit in one shared section of the brief skill, whose
+"read-only" line now excepts each brief's log line, and the template's Gmail
+example no longer says "last 2 days". Verification waits for the next
+interactive maintenance run.
+
+revised on: 2026-10-28
 Folded in B, D and G from the
 [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md) (NW15), to be
 built with this design. Weekly briefs are filed in `briefings/`, dated by the
@@ -42,7 +51,9 @@ approved.
 ## Status
 
 Status: approved 2026-10-22, all nine choices under To approve; the
-2026-10-28 revision's choices are approved the same day. Not implemented.
+2026-10-28 revision's choices are approved the same day. Implemented
+2026-10-28 (changelog PATCH-21 to PATCH-23) and pm-wiki migrated; not yet
+verified by an interactive maintenance run.
 
 ## About This Document
 

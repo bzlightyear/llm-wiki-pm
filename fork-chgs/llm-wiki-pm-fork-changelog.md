@@ -542,7 +542,8 @@ skipped.
   not built.
 - **Where:** `skills/llm-wiki-pm/SKILL.md` (§2),
   `references/ingest-guide.md`, `skills/llm-wiki-maintain/SKILL.md`. Commit
-  `7bb05a2`.
+  `7bb05a2`. `references/crystallize-guide.md`'s "When to Crystallize", page
+  path and example follow the rule: commit `dc62f03`.
 - **Status:** active. Upstream candidate, not filed.
 
 ### Repository-only files

@@ -888,7 +888,7 @@ on the per-day report in `queries/`. Found in the design review
 - **Status: folded into NW14 2026-10-22.** The cadence check is the
   "Cadence picks the brief" section of the
   [Sweep Window Design](sweep-window-design.md), to be implemented with NW14
-  in its own commit.
+  in its own commit. Done 2026-10-28 (changelog PATCH-21).
 - **What happens:** `llm-wiki-maintain` step ④ routes to `llm-wiki-brief`'s
   daily brief and files it as `briefings/YYYY-MM-DD.md`, whatever the sweep's
   cadence. Its triggers include "maintain the wiki" and scheduled runs that

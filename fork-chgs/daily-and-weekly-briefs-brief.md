@@ -10,6 +10,11 @@ which revises the approved Sweep Window Design (NW14) before it is built.
 ## Revision History
 
 revised on: 2026-10-28
+Recorded B, D and G as implemented in your fork with the Sweep Window Design
+(changelog PATCH-23), and pm-wiki's `meta/contract.md` as updated for B. A, C,
+E and F are not implemented.
+
+revised on: 2026-10-28
 Weekly briefs are now dated by the run day, not the Monday, and D's windows go
 by when material was ingested rather than by calendar week (option 1), so a
 weekly brief covers everything since the last weekly brief. The detailed rules
@@ -18,8 +23,8 @@ revision.
 
 ## Status
 
-Status: approved 2026-10-28, all four choices under To approve; not
-implemented.
+Status: approved 2026-10-28, all four choices under To approve. B, D and G
+implemented 2026-10-28 (changelog PATCH-23); A, C, E and F not implemented.
 Backlog item: NW15 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW14 and NW8 (the [Sweep Window Design](sweep-window-design.md)), NW4
 (the action-items file), NW1 (`overview.md` freshness, including its "Pete
