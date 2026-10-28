@@ -17,7 +17,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW15 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW16 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -55,6 +55,10 @@ points: the two findings below, and I8's revisit mechanism.
     ⑦ is the only step that reliably sends an agent back to `overview.md`, its
     Action Items section became the de facto tracker, and its accretion is
     compensation for the missing update step.
+  - **Briefs are another copy (NW15, 2026-10-28):** every daily brief since
+    mid-October has a "You owe" list, and later ingests edited some of them in
+    place to close items. NW15 leaves owed items to this design; until then a
+    brief's "You owe" reads `overview.md`'s "Pete owes".
   - **Constraint on a fix:** compressing an overview bullet to one line plus a
     link to the digest would make the status signal worse, because the digest
     is the stale copy. A fix needs either a status-sync step in the update and
@@ -404,10 +408,32 @@ on the per-day report in `queries/`. Found in the design review
   advanced only for sources fully covered and ingested, with paging and a
   50-item ceiling. Full design in the
   [Sweep Window Design](sweep-window-design.md).
-- **Related:** NW8 (folded in: cadence picks the brief), and a possible Slack
-  capture skill using Claude in Chrome, which would need per-channel windows.
+- **Related:** NW8 (folded in: cadence picks the brief), NW15 (revises the
+  design's weekly brief path and brief windows before it is built), and a possible Slack capture skill using Claude in Chrome, which
+  would need per-channel windows.
 - **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
   would be swept.
+
+**NW15. Briefs are built, filed and used in ways the skills don't describe.**
+- **Status: approved 2026-10-28, all four choices; not implemented.**
+- **What happens:** daily briefs are built from each source sweep, in a format
+  no skill defines; brief §1 still describes a 24–48h `log.md` summary. Weekly
+  briefs have no lifecycle or date rule, and NW14 files them in `queries/`,
+  where none have been since you moved them to `briefings/` on 2026-10-28. A
+  brief's "You owe" and "Needs review" items are never carried into the next
+  brief, filed briefs are sometimes edited later and sometimes not, lint never
+  adds briefs to `index.md`, and brief log entries take three forms.
+- **Seen:** the 10/28 weekly sweep covered 10/19–10/28 but its brief stops at
+  10/23, so seven 10/26–10/27 transcripts are in no brief. CFP-8814, queued in
+  the 9/17 brief's Needs review, is on no wiki page.
+- **Proposal:** seven groups of changes (A–G), in the
+  [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md). B and D
+  revise NW14 and are best done before or with it. Owed items ("You owe") are
+  left to NW1; briefs stay out of `index.md`, with one pointer line.
+- **Related:** NW14 and NW8, NW4 (the action-items file), NW1 (`overview.md`'s
+  "Pete owes" list).
+- **Found in:** a session on 2026-10-28 analyzing how briefs are created,
+  stored and used.
 
 ## Closed
 
