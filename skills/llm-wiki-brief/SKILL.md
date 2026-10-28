@@ -149,6 +149,8 @@ it, every daily brief permanently inflates the orphan metric.
 
 ⑧ Offer to file as `queries/weekly-brief-YYYY-MM-DD.md`. If yes, run full orient per AGENTS.md before writing.
 
+**Run from `llm-wiki-maintain`:** add the Source Coverage ledger for the run's sweep and, in autonomous mode, a **Needs Review** section. Maintain files the brief at its weekly path, so skip the offer in ⑧.
+
 **Log:** `## [YYYY-MM-DD] brief | weekly | last 7 days | filed: yes/no` — only if filing.
 
 ---

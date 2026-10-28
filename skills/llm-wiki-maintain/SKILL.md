@@ -59,11 +59,21 @@ run?") and proceed on the answer; default to interactive.
    MY-INTEGRATIONS). Pages are private by default; never mark a digest
    `shareable`. Stamp `lifecycle: stub-intentional` on by-design thin stubs.
 
-④ **Daily brief.** Route to `llm-wiki-brief` (daily brief). If filing it as a
-   page, write `briefings/YYYY-MM-DD.md` with `lifecycle: dated-digest` (keeps
-   it out of the orphan count). The brief MUST include the Source Coverage
-   ledger (one row per registered source) and, in autonomous mode, a **Needs
-   Review** section.
+④ **Brief.** Decide the cadence, then route to `llm-wiki-brief` and file the
+   brief it writes, without offering:
+   - **Cadence.** Interactive: from the user's words. "Weekly", "this week",
+     "week in review" or "what did I miss this week" make it weekly; anything
+     else, including "maintain the wiki", is daily, with no question asked.
+     Autonomous: from the scheduled task's prompt, by the same words; a prompt
+     that names no cadence is daily.
+   - **Daily:** the daily brief, filed as `briefings/YYYY-MM-DD.md`.
+   - **Weekly:** the weekly brief, filed as
+     `briefings/weekly-brief-YYYY-MM-DD.md`.
+
+   Both are dated by the run and get `lifecycle: dated-digest` (keeps them out
+   of the orphan count). Either brief MUST include the Source Coverage ledger
+   (one row per registered source) and, in autonomous mode, a **Needs Review**
+   section.
 
 ⑤ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
    the export-surface (shareable) audit, and any new orphans/broken links.
@@ -77,7 +87,8 @@ run?") and proceed on the answer; default to interactive.
 
 ## Brief lifecycle convention
 
-- `briefings/YYYY-MM-DD.md` — every brief, `lifecycle: dated-digest`. Briefs
+- `briefings/YYYY-MM-DD.md` — daily brief; `briefings/weekly-brief-YYYY-MM-DD.md`
+  — weekly brief. Both dated by the run, `lifecycle: dated-digest`. Briefs
   stay in `briefings/` permanently; never move or archive them, since that
   breaks links to them.
 - Briefs are orphans by design; the `dated-digest` flag keeps them out of lint's
