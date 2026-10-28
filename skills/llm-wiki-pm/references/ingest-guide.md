@@ -101,24 +101,39 @@ create vs update.
 - **Confidence level:** set `confidence: verified | likely | rumor` when source
   quality varies. See SCHEMA.md for definitions.
 
-## ⑥ Backlink audit
+## ⑥ Crystallize (for transcripts and research chains)
+
+Every meeting transcript gets its own page,
+`queries/crystallize-<topic>-<meeting date>.md`, dated with the meeting date, in
+every kind of ingest (single, batch or maintenance), with no exceptions. Don't
+feed a meeting straight into concept pages in its place. Do this before ⑦–⑨, so
+the backlink audit, `index.md` and the `log.md` entry include the page.
+
+When ingesting a meeting transcript, 1:1 notes, or multi-source research, produce
+a digest page under `queries/` with sections: Context, Decisions, Action Items,
+Open Questions, Lessons/Patterns. Required frontmatter: title, type: query, tags,
+sources. (Digests are private by default — no flag needed; never mark a 1:1 or
+customer-call digest `shareable`.) See `crystallize-guide.md`. Link affected
+entity pages back to it.
+
+## ⑦ Backlink audit
 
 After creating a page, scan related pages and add inbound `[[links]]` so the new
 page isn't an orphan.
 
-## ⑦ Update `overview.md`
+## ⑧ Update `overview.md`
 
 If the source shifts the domain synthesis, edit the overview. Keep it under 200
 lines. Link heavily.
 
-## ⑧ Update navigation + log
+## ⑨ Update navigation + log
 
 - Add new pages to `index.md` under correct section, alphabetical
 - Bump total page count + "Last updated" header
 - Append to `log.md`: `## [YYYY-MM-DD] ingest | <source title>` with a list of
   every file created/updated
 
-## ⑨ Update MY-INTEGRATIONS.md (auto-log source routing)
+## ①⓪ Update MY-INTEGRATIONS.md (auto-log source routing)
 
 After each ingest, append or update the source row in `$WIKI/MY-INTEGRATIONS.md`.
 If the file doesn't exist, create it from `$CLAUDE_SKILL_DIR/templates/MY-INTEGRATIONS.md`.
@@ -133,19 +148,10 @@ only log sources actually ingested this session. "Last used" is the last ingest
 of any kind from that source, not the sweep window; the Sweep Registry's Swept
 through column holds that.
 
-## ①⓪ Report to user
+## ①① Report to user
 
 List every file touched. One source → 5-15 pages is normal. Confirm before
 mass-updating (10+ pages).
-
-## ①① Crystallize (for transcripts and research chains)
-
-When ingesting a meeting transcript, 1:1 notes, or multi-source research, produce
-a digest page under `queries/` with sections: Context, Decisions, Action Items,
-Open Questions, Lessons/Patterns. Required frontmatter: title, type: query, tags,
-sources. (Digests are private by default — no flag needed; never mark a 1:1 or
-customer-call digest `shareable`.) See `crystallize-guide.md`. Link affected
-entity pages back to it.
 
 ## ①② Entity promotion scan (after every ingest)
 

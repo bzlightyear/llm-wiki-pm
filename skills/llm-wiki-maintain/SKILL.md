@@ -69,8 +69,8 @@ run?") and proceed on the answer; default to interactive.
      isn't offered again unless its last-modified time is after that entry.
 
 ③ **Ingest findings.** For each new/changed signal, route to the core ingest
-   flow (capture raw → thresholds → write/update → backlinks → log →
-   MY-INTEGRATIONS). Pages are private by default; never mark a digest
+   flow (capture raw → thresholds → write/update → ⑥ crystallize each meeting
+   → backlinks → log → MY-INTEGRATIONS → ⑫ entity promotion scan). Pages are private by default; never mark a digest
    `shareable`. Stamp `lifecycle: stub-intentional` on by-design thin stubs.
    The sweep's `log.md` entry records each source's window where they differ,
    and one shared window otherwise.

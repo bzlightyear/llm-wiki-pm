@@ -235,11 +235,14 @@ In brief:
    tools BEFORE writing** (Freshness-first) — never build a page from other pages' prose.
 ⑤ **Write/update** with required frontmatter, taxonomy tags, ≥2 `[[wikilinks]]`,
    inline `[source: ...]` markers, and `coverage:`/`gaps:`/`confidence:` set.
-⑥–⑧ Backlink audit; refresh `overview.md` if synthesis shifts; update `index.md`;
+⑥ **Crystallize** every meeting transcript into its own
+   `queries/crystallize-<topic>-<meeting date>.md`, in every ingest (single,
+   batch or maintenance), and research chains into a `queries/` digest
+   (`references/crystallize-guide.md`).
+⑦–⑨ Backlink audit; refresh `overview.md` if synthesis shifts; update `index.md`;
    append the `ingest` entry to `log.md` listing every file touched.
-⑨ Log the source row in `MY-INTEGRATIONS.md`.
-⑩ Report every file touched; confirm before mass-updating (10+ pages).
-⑪ **Crystallize** transcripts/research chains into a `queries/` digest (`references/crystallize-guide.md`).
+⑩ Log the source row in `MY-INTEGRATIONS.md`.
+⑪ Report every file touched; confirm before mass-updating (10+ pages).
 ⑫ **Entity promotion scan** — promote people/companies/products with 3+ attributes
    to their own page (confirm first). Offer a persona page (`llm-wiki-persona`) for any promoted person. If the promoted entity is an internal person
    (a colleague, not a customer or partner contact), update
