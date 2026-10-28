@@ -7,6 +7,15 @@ used, compared with the 18 briefs in pm-wiki's `briefings/` and their `log.md`
 entries. It lists 13 issues and recommends seven groups of changes (A–G), one of
 which revises the approved Sweep Window Design (NW14) before it is built.
 
+## Revision History
+
+revised on: 2026-10-28
+Weekly briefs are now dated by the run day, not the Monday, and D's windows go
+by when material was ingested rather than by calendar week (option 1), so a
+weekly brief covers everything since the last weekly brief. The detailed rules
+and each brief's contents are in the Sweep Window Design's 2026-10-28
+revision.
+
 ## Status
 
 Status: approved 2026-10-28, all four choices under To approve; not
@@ -95,7 +104,8 @@ list later.
 
 **B. Revise NW14 before building it (fixes 1, 9, 10).**
 - Weekly briefs go to `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the
-  Monday the week starts.
+  run, with the period in the title. A Monday date could give two weekly briefs
+  the same name once periods start mid-week (D).
 - Brief §2 ⑧ and maintain's "Brief lifecycle convention" state that path,
   `lifecycle: dated-digest` and the daily brief's section layout.
 - Update the example in pm-wiki `meta/contract.md`.
@@ -113,11 +123,14 @@ names), which NW1 doesn't cover.
   designed, a brief's "You owe" reads from "Pete owes" and keeps no list of its
   own.
 
-**D. Close each window (fixes 4, 12).** A brief covers from the previous
-brief's end to the run. When a weekly brief's period ends before the run, the
-rest goes into that run's daily brief. A weekly brief reads the week's dailies
-plus `log.md`, and sweeps only from NW14's timestamps. Add to NW14's "What daily
-and weekly mean".
+**D. Close each window (fixes 4, 12).** Windows go by when material was
+ingested, not by calendar week, since `log.md` dates entries by ingest and a
+meeting's notes can arrive after its week. A daily brief covers from the latest
+brief's end to the run; a weekly brief from the latest weekly brief's end. Items
+are grouped by meeting date inside the brief. A weekly brief reads the dailies
+in its window, or crystallize pages and `log.md` when there are none, and sweeps
+only from NW14's timestamps. Detail in the Sweep Window Design's "Brief
+windows" and "What each brief holds".
 
 **E. Freeze briefs after their day (fixes 6).** Later corrections go on the page
 that owns the fact and into the next brief's carry-forward; same-day corrections
@@ -153,6 +166,7 @@ All four approved 2026-10-28.
 
 1. **Where owed items live (C).** NW1 decides. Until then a brief's "You owe"
    reads `overview.md`'s "Pete owes", and C carries forward Needs Review only.
-2. **Weekly date (B).** The week's Monday, not the run date.
+2. **Weekly date (B).** The run day. First approved as the week's Monday, and
+   changed the same day with option 1's windows (D).
 3. **Index (F).** Briefs stay out of `index.md`, with one fixed pointer line.
 4. **Edits after filing (E).** Frozen at the end of their day.
