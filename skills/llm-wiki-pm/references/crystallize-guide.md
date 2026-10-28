@@ -10,9 +10,9 @@ Without this, transcripts just become entity-page updates and the "decision
 ## When to Crystallize
 
 **Always:**
-- 1:1 transcripts (your manager, direct reports)
-- Customer call notes
-- Internal strategy meetings with decisions
+- Every meeting transcript, including 1:1s and customer calls: one page per
+  meeting, dated with the meeting date, in every kind of ingest (single, batch
+  or maintenance), with no exceptions (`ingest-guide.md` ⑥)
 - Multi-source research threads you led (competitive deep-dive over a week)
 - Major query answers that synthesized 5+ pages
 
@@ -76,7 +76,8 @@ After ingesting a transcript into `raw/transcripts/`:
    - What patterns repeat from past meetings?
    - What contradicts or updates existing wiki claims?
 
-② **Draft the crystallize page** in `queries/crystallize-<topic>-<date>.md`
+② **Draft the crystallize page** in `queries/crystallize-<topic>-<meeting date>.md`
+   (other digests keep `crystallize-<topic>-<date>.md`)
 
 ③ **Extract lessons as separate pages** if they're reusable:
    - A new framework → `concepts/<framework>.md`
@@ -97,7 +98,7 @@ After ingesting a transcript into `raw/transcripts/`:
 ⑥ **Log**:
    ```
    ## [YYYY-MM-DD] crystallize | <topic>
-   - queries/crystallize-<topic>-<date>.md
+   - queries/crystallize-<topic>-<meeting date>.md
    - Affected: entities/jordan-lee.md, concepts/pricing-strategy.md, ...
    ```
 
@@ -105,9 +106,9 @@ After ingesting a transcript into `raw/transcripts/`:
 
 (Names below are placeholders — substitute your own people, products, and dates.)
 
-Source: `raw/transcripts/jordan-lee-1-1-2026-04.md`
+Source: `raw/transcripts/jordan-lee-1-1-2026-04-15.md`
 
-Crystallize output: `queries/crystallize-jordan-lee-2026-04.md`
+Crystallize output: `queries/crystallize-jordan-lee-1-1-2026-04-15.md`
 
 ```markdown
 ## Context
@@ -141,7 +142,7 @@ Lumen pricing signals from customer alpha, Q3 headcount.
 ```
 
 Then update:
-- `entities/jordan-lee.md`, add 2026-04 1:1 as source, bump `updated`
+- `entities/jordan-lee.md`, add the 2026-04-15 1:1 as source, bump `updated`
 - `concepts/nimbus-launch.md`, note GA slip decision
 - `concepts/lumen-pricing.md`, reinforce usage-based pilot decision
 - `overview.md`, if launch slip shifts quarter-view
