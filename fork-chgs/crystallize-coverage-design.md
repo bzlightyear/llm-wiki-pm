@@ -13,6 +13,13 @@ order of the two, how much to backfill, cost, logging and commits.
 ## Revision History
 
 revised on: 2026-10-28
+Batch 2 ran: 8 pages, lint 43 → 35, and its context reached about 220k
+tokens, above the 120–150k estimate. Batches 1, 3 and 4 each run in their
+own session and stop for your review. Sonnet runs the batch and an Opus
+subagent writes each page from its record alone. A page that only gains a
+backlink keeps its `updated:` date.
+
+revised on: 2026-10-28
 All eight choices approved, with option C. Batch 2, the smallest, now runs
 first to measure usage before the other three, so the lint count drops
 43 → 35 → 20 → 10 → 0.
@@ -30,7 +37,8 @@ Claude's time, apart from yours.
 Status: approved 2026-10-28, all eight choices under To approve (option C,
 all 43). Part 2 implemented 2026-10-28 (changelog PATCH-25): lint reports
 pm-wiki's 43 and session-start 156 issues, as predicted. Part 3, the
-backfill, not started; pm-wiki not changed.
+backfill: batch 2 done 2026-10-28 (pm-wiki 39e3fd8, lint 43 → 35); batches
+1, 3 and 4 to go.
 
 ## About This Document
 
