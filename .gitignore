@@ -16,3 +16,6 @@ meta/
 # Local editor/OS state, not plugin source
 .obsidian/
 .DS_Store
+
+# Local user guide to the fork (private, never committed)
+llm-wiki-pm-commands.md

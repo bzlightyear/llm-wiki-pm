@@ -594,7 +594,10 @@ Not patches to upstream's code, and not offered upstream:
   reviews, guides, briefs and prompts.
 - `.claude/commands/implement-step.md`, the `/implement-step` command for the
   sources and references plan.
-- `.gitignore`: `.wiki-path`, `.obsidian/` and `.DS_Store`.
+- `.gitignore`: `.wiki-path`, `.obsidian/`, `.DS_Store` and
+  `llm-wiki-pm-commands.md`.
+- `llm-wiki-pm-commands.md`: the user's local guide to the fork's capabilities.
+  Gitignored, so it exists only in the working copy and is never committed.
 
 ## Merging an Upstream Release
 
