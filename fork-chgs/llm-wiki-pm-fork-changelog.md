@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-25) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-26) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -568,6 +568,24 @@ skipped.
   `hooks/README.md` (commit `d3dc652`).
 - **Status:** active. Upstream candidate, not filed.
 
+#### PATCH-26 — Briefs stay out of `index.md`
+
+- **What:** the maintain and brief skills say not to add a brief to
+  `index.md`, and schema-guide's `dated-digest` entry says lint already
+  exempts those pages from the index check. In place of a list of briefs, the
+  index holds one fixed line pointing to `briefings/`. Prose only; lint is
+  unchanged, and `worker-link-validator` already follows lint's exemption.
+- **Why:** Orient reads `index.md` before every write. pm-wiki's `## Briefings`
+  list was 19 of its entries and would grow by about 200 a year, for pages
+  found by date, by folder or through wiki-search, never through the catalog.
+  Backlog NW15, part F; the
+  [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md).
+- **Where:** `skills/llm-wiki-maintain/SKILL.md` (Brief lifecycle convention),
+  `skills/llm-wiki-brief/SKILL.md` (Daily and Weekly Briefs, filing),
+  `skills/llm-wiki-pm/references/schema-guide.md` (`dated-digest`). Commit
+  `663bdbf`. pm-wiki's `index.md` and its brief-filing memory changed to match.
+- **Status:** active. Upstream candidate, not filed.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -601,10 +619,10 @@ Not patches to upstream's code, and not offered upstream:
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
   template (PATCH-7, PATCH-14).
 - `llm-wiki-maintain`, `llm-wiki-brief`, `source-discipline.md` and the
-  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23). `ingest-guide.md`'s
-  steps ⑥–⑪ were renumbered (PATCH-24), so an upstream edit to one of them may
-  land under the wrong number. Step ①'s routing of pasted text changed in
-  PATCH-25.
+  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23, PATCH-26).
+  `ingest-guide.md`'s steps ⑥–⑪ were renumbered (PATCH-24), so an upstream
+  edit to one of them may land under the wrong number. Step ①'s routing of
+  pasted text changed in PATCH-25.
 - The research and PRD skills, wherever upstream names folder pages
   `README.md` (PATCH-13).
 - `README.md`, `hooks/README.md`, `CONTRIBUTING.md`, `GETTING_STARTED.md`.

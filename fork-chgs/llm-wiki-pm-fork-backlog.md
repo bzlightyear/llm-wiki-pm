@@ -394,7 +394,8 @@ on the per-day report in `queries/`. Found in the design review
 
 **NW15. Briefs are built, filed and used in ways the skills don't describe.**
 - **Status: approved 2026-10-28, all four choices. B, D and G done
-  2026-10-28 with NW14 (changelog PATCH-23); A, C, E and F not implemented.**
+  2026-10-28 with NW14 (changelog PATCH-23); F done 2026-10-29 (PATCH-26);
+  A, C and E not implemented.**
 - **What happens:** daily briefs are built from each source sweep, in a format
   no skill defines; brief §1 still describes a 24–48h `log.md` summary. Weekly
   briefs have no lifecycle or date rule, and NW14 files them in `queries/`,

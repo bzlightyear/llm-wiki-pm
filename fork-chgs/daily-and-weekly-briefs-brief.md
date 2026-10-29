@@ -9,6 +9,12 @@ which revises the approved Sweep Window Design (NW14) before it is built.
 
 ## Revision History
 
+revised on: 2026-10-29
+Recorded F as implemented (changelog PATCH-26). pm-wiki's Briefings list is
+one pointer line, and the pm-wiki memory that said to list briefs was
+updated. `worker-link-validator` needed no change: it follows lint's
+exemption for dated digests.
+
 revised on: 2026-10-28
 Recorded B, D and G as implemented in your fork with the Sweep Window Design
 (changelog PATCH-23), and pm-wiki's `meta/contract.md` as updated for B. A, C,
@@ -24,7 +30,8 @@ revision.
 ## Status
 
 Status: approved 2026-10-28, all four choices under To approve. B, D and G
-implemented 2026-10-28 (changelog PATCH-23); A, C, E and F not implemented.
+implemented 2026-10-28 (changelog PATCH-23); F implemented 2026-10-29
+(PATCH-26); A, C and E not implemented.
 Backlog item: NW15 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW14 and NW8 (the [Sweep Window Design](sweep-window-design.md)), NW4
 (the action-items file), NW1 (`overview.md` freshness, including its "Pete
