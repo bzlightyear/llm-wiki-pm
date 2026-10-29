@@ -414,56 +414,6 @@ on the per-day report in `queries/`. Found in the design review
 - **Found in:** a session on 2026-10-28 analyzing how briefs are created,
   stored and used.
 
-**NW16. Meetings stop getting crystallize pages.**
-- **Decided 2026-10-28:** every meeting gets its own crystallize page, dated
-  with the meeting date, however it was ingested. Part 1 (the rule) is
-  approved to be built with NW14; parts 2 and 3 need a short design first
-  (lint details, cost, the backfill list).
-- **Part 1 done 2026-10-28** (changelog PATCH-24). Crystallize is now ingest
-  step ⑥, not ⑪, and the old ⑥–⑩ are ⑦–⑪.
-- **Parts 2 and 3 designed and approved 2026-10-28** in the
-  [Crystallize Coverage Design](crystallize-coverage-design.md): the lint
-  warning, ingest ① routing by what the material is, and a backfill of all
-  43 meetings in four batches. Part 2 done 2026-10-28 (changelog PATCH-25);
-  part 3 (the backfill) done 2026-10-29: pm-wiki lint shows 0 meetings
-  without a crystallize page. NW16 is complete.
-- **What happens:** ingest step ⑪ (`ingest-guide.md:139`) says to crystallize
-  every transcript, but 43 of pm-wiki's 152 transcripts are in no crystallize
-  page's `sources:` (17 from September, 23 from October, 3 from March and June).
-  Counted by meeting date: every transcript got one from 2026-08-20 to 09-16; 5
-  of 23 did from 09-17 to 10-02; nearly all did from 10-01 to 10-15; none of 21
-  has since 10-16. No log entry, session or skill change records a decision to
-  stop. The only logged exception is three meetings on 10-14 "fed straight into
-  concept pages" (pm-wiki `log.md:178`).
-- **Likely causes (inferred, not confirmed):**
-  - Maintain step ③ summarizes ingest as "capture raw → thresholds →
-    write/update → backlinks → log → MY-INTEGRATIONS", which leaves out ⑪ and
-    ⑫. Every sweep since 10-17 is logged as a "maintenance sweep".
-  - ⑪ comes after "⑩ Report every file touched" in the core skill's summary, so
-    a batch run reaches it after its work looks finished.
-  - Orient reads recent `log.md` entries, which since 10-14 show meetings going
-    straight into concept pages as dated sections, a pattern a later run can
-    copy.
-  - Entity promotion (⑫) is probably skipped the same way (not checked).
-- **Proposal:**
-  1. **The rule:** `ingest-guide.md` ⑪ says every meeting transcript gets
-     `queries/crystallize-<topic>-<meeting date>.md` in every ingest, single,
-     batch or maintenance, with no exceptions. The core skill's ingest summary
-     moves ⑪ ahead of the log and report steps, so the log entry lists the
-     page. Maintain step ③ names ⑪ and ⑫.
-  2. **Lint:** a warning for a `raw/transcripts/` record that no crystallize
-     page declares in `sources:`, so drift shows in the session-start health
-     check whatever caused it. About 20 lines in `lint.py` plus tests.
-  3. **Backfill:** crystallize pages for the 43 transcripts from their raw
-     records, as one batch in pm-wiki, separate from your fork's changes. It is
-     a mass update, so the list gets your sign-off first. The 3 from March and
-     June predate current conventions and could be left out.
-- **Related:** NW1 (crystallize action items go stale; this adds more of them
-  until NW1 is designed), NW15 (a weekly brief could group a week's meetings by
-  their crystallize pages), NW14 (maintain step ③ is edited by both).
-- **Found in:** the 2026-10-28 brief analysis (NW15), checking whether meetings
-  have meeting-dated pages.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -937,3 +887,55 @@ on the per-day report in `queries/`. Found in the design review
   would need per-channel windows.
 - **Found in:** an llm-wiki-pm session on 2026-10-22, asking how a Slack channel
   would be swept.
+
+**NW16. Meetings stop getting crystallize pages.**
+- **Status: done 2026-10-29.** Changelog PATCH-24 (the rule) and PATCH-25 (the
+  lint warning); the backfill is four commits in pm-wiki, lint 43 → 0.
+- **Decided 2026-10-28:** every meeting gets its own crystallize page, dated
+  with the meeting date, however it was ingested. Part 1 (the rule) is
+  approved to be built with NW14; parts 2 and 3 need a short design first
+  (lint details, cost, the backfill list).
+- **Part 1 done 2026-10-28** (changelog PATCH-24). Crystallize is now ingest
+  step ⑥, not ⑪, and the old ⑥–⑩ are ⑦–⑪.
+- **Parts 2 and 3 designed and approved 2026-10-28** in the
+  [Crystallize Coverage Design](crystallize-coverage-design.md): the lint
+  warning, ingest ① routing by what the material is, and a backfill of all
+  43 meetings in four batches. Part 2 done 2026-10-28 (changelog PATCH-25);
+  part 3 (the backfill) done 2026-10-29: pm-wiki lint shows 0 meetings
+  without a crystallize page. NW16 is complete.
+- **What happens:** ingest step ⑪ (`ingest-guide.md:139`) says to crystallize
+  every transcript, but 43 of pm-wiki's 152 transcripts are in no crystallize
+  page's `sources:` (17 from September, 23 from October, 3 from March and June).
+  Counted by meeting date: every transcript got one from 2026-08-20 to 09-16; 5
+  of 23 did from 09-17 to 10-02; nearly all did from 10-01 to 10-15; none of 21
+  has since 10-16. No log entry, session or skill change records a decision to
+  stop. The only logged exception is three meetings on 10-14 "fed straight into
+  concept pages" (pm-wiki `log.md:178`).
+- **Likely causes (inferred, not confirmed):**
+  - Maintain step ③ summarizes ingest as "capture raw → thresholds →
+    write/update → backlinks → log → MY-INTEGRATIONS", which leaves out ⑪ and
+    ⑫. Every sweep since 10-17 is logged as a "maintenance sweep".
+  - ⑪ comes after "⑩ Report every file touched" in the core skill's summary, so
+    a batch run reaches it after its work looks finished.
+  - Orient reads recent `log.md` entries, which since 10-14 show meetings going
+    straight into concept pages as dated sections, a pattern a later run can
+    copy.
+  - Entity promotion (⑫) is probably skipped the same way (not checked).
+- **Proposal:**
+  1. **The rule:** `ingest-guide.md` ⑪ says every meeting transcript gets
+     `queries/crystallize-<topic>-<meeting date>.md` in every ingest, single,
+     batch or maintenance, with no exceptions. The core skill's ingest summary
+     moves ⑪ ahead of the log and report steps, so the log entry lists the
+     page. Maintain step ③ names ⑪ and ⑫.
+  2. **Lint:** a warning for a `raw/transcripts/` record that no crystallize
+     page declares in `sources:`, so drift shows in the session-start health
+     check whatever caused it. About 20 lines in `lint.py` plus tests.
+  3. **Backfill:** crystallize pages for the 43 transcripts from their raw
+     records, as one batch in pm-wiki, separate from your fork's changes. It is
+     a mass update, so the list gets your sign-off first. The 3 from March and
+     June predate current conventions and could be left out.
+- **Related:** NW1 (crystallize action items go stale; this adds more of them
+  until NW1 is designed), NW15 (a weekly brief could group a week's meetings by
+  their crystallize pages), NW14 (maintain step ③ is edited by both).
+- **Found in:** the 2026-10-28 brief analysis (NW15), checking whether meetings
+  have meeting-dated pages.
