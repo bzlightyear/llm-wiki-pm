@@ -37,8 +37,8 @@ Claude's time, apart from yours.
 Status: approved 2026-10-28, all eight choices under To approve (option C,
 all 43). Part 2 implemented 2026-10-28 (changelog PATCH-25): lint reports
 pm-wiki's 43 and session-start 156 issues, as predicted. Part 3, the
-backfill: batch 2 done 2026-10-28 (pm-wiki 39e3fd8, lint 43 → 35); batches
-1, 3 and 4 to go.
+backfill, done 2026-10-29: four batches in pm-wiki (39e3fd8, aca8a10, ce21d1b,
+7c1e128), lint 43 → 0.
 
 ## About This Document
 

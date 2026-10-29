@@ -425,7 +425,8 @@ on the per-day report in `queries/`. Found in the design review
   [Crystallize Coverage Design](crystallize-coverage-design.md): the lint
   warning, ingest ① routing by what the material is, and a backfill of all
   43 meetings in four batches. Part 2 done 2026-10-28 (changelog PATCH-25);
-  part 3 not started.
+  part 3 (the backfill) done 2026-10-29: pm-wiki lint shows 0 meetings
+  without a crystallize page. NW16 is complete.
 - **What happens:** ingest step ⑪ (`ingest-guide.md:139`) says to crystallize
   every transcript, but 43 of pm-wiki's 152 transcripts are in no crystallize
   page's `sources:` (17 from September, 23 from October, 3 from March and June).
