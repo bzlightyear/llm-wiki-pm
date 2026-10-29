@@ -8,12 +8,22 @@ a page. This design covers NW16's other two parts: a lint warning for a
 `raw/transcripts/` record that no crystallize page declares, shown in the
 session-start health summary (part 2), and one signed-off batch that backfills
 pages for the 43 meetings from their raw records (part 3). It also sets the
-order of the two, cost, logging and commits.
+order of the two, how much to backfill, cost, logging and commits.
+
+## Revision History
+
+revised on: 2026-10-28
+Ingest ① now routes material by what it is, pasted or fetched, with signs
+for meetings, chat threads and talk or podcast transcripts, and asks when
+unclear (choice 3, approved). Added "How much to backfill" with options A to
+C, and replaced the cost estimate with token usage counting context resends,
+ways to lower it, and a measure-first batch; hours are now labelled as
+Claude's time, apart from yours.
 
 ## Status
 
-Status: proposed 2026-10-28, waiting on the choices under To approve. Nothing
-built, and pm-wiki not changed.
+Status: proposed 2026-10-28. Choice 3 approved the same day; the other seven
+under To approve are waiting. Nothing built, and pm-wiki not changed.
 
 ## About This Document
 
@@ -97,13 +107,33 @@ to mark meetings: of 156 records, 82 have `source_type: transcript`, 5 a
 Notion meeting type, 60 none, and 9 have no frontmatter. Records are
 write-once, so they can't be tagged afterwards either.
 
-So the check treats every `raw/transcripts/` record as a meeting, and
-`ingest-guide.md` ① gets one line: a meeting transcript goes to
-`raw/transcripts/`; a talk, video or podcast transcript is a publication and
-goes to `raw/articles/`. That matches the crystallize guide, which skips
-single-article ingests. pm-wiki has no such record today. If one turns up in
-`raw/transcripts/`, the warning stays visible until you decide what to do with
-it. That's rare enough not to build an exemption for now.
+So the check treats every `raw/transcripts/` record as a meeting, and the
+folder carries the agent's judgement at ingest to lint later. That needs the
+routing in `ingest-guide.md` ① to be clear. Today its "Paste/transcript →
+`raw/transcripts/`" line also matches a pasted Slack fragment, which the chat
+route just below it sends to `raw/internal/`, and nothing says which wins.
+
+The line becomes a short list that routes by what the material is, not by
+whether it was pasted or fetched:
+
+- **Meeting transcript or notes** → `raw/transcripts/`. Signs: several people
+  in one call or room, speaker turns or notes from one session, often
+  attendees, decisions and action items; or a meeting page found in a sweep.
+- **Chat thread** → the chat route, `raw/internal/<channel>-<date>.md`.
+  Signs: short messages with names and times, replies, a channel or thread;
+  or a thread read through a chat tool.
+- **Talk, video or podcast transcript** → `raw/articles/`. Signs: one speaker,
+  or a host and guest, made for an audience, usually public, often a link.
+  It's a publication, and the crystallize guide skips single-article ingests.
+- **Still unclear** (a few pasted lines with no names): an interactive run
+  asks you; an unattended run goes by where the material came from.
+
+Micro-capture is unaffected: `capture.py` always writes conversation records
+to `raw/internal/`, and the fast path skips crystallize. pm-wiki has no
+misrouted record in `raw/transcripts/` today: its 9 Slack and Teams records
+are all in `raw/internal/`. If a non-meeting does land in `raw/transcripts/`,
+the warning stays visible until you decide what to do with it. That's rare
+enough not to build an exemption for now.
 
 The reverse case isn't checked: a meeting record filed outside
 `raw/transcripts/`. pm-wiki has one, a March internal meeting saved to
@@ -169,9 +199,34 @@ over the line, and that batch's lint run would show it.
 
 ## Part 3: the backfill
 
+### How much to backfill
+
+Nothing breaks without the backfill: the facts are already on entity and
+concept pages, and briefs fall back to a meeting's raw record. What's lost is
+each meeting's decisions, action items and open questions in one place, which
+"what did we decide about X" queries read. And unless every meeting is
+covered, lint needs a cutoff date, or it warns on the rest forever and a new
+miss is lost among them. A cutoff also exempts any old meeting imported
+later, which is rare, since sweeps bring in recent material.
+
+| | Backfill | Lint cutoff | Tokens (rough) | Gap left |
+|---|---|---|---|---|
+| A. None | 0 | meetings before 10/28 | none | 9/17–10/27, March, June |
+| B. October only | 23 | meetings before 10/01 | ~8–15M | 9/17–9/30, March, June |
+| C. All (recommended) | 43 | none | ~15–30M | none |
+
+C is the only option that makes "every meeting has a page" true and needs no
+cutoff. B gets most of the value for about half the cost if you rarely look
+back more than a month: October's meetings are the ones whose action items
+and open questions may still be live. A leaves the most recent six weeks
+without digests. Token figures are explained under Cost. The rest of this
+section describes C. Under B, the batch list drops to batches 3 and 4 plus the
+October part of batch 2, and lint gets the cutoff constant (about 3 lines and
+a test).
+
 ### What's in it
 
-All 43, including the March and June ones (recommended). The backlog said
+All 43, including the March and June ones. The backlog said
 those three "predate current conventions". They don't: their records have the
 same shape as the September ones, and 9 of 12 meetings from January to June
 already have pages. They're short (488 to 867 words), so they cost little.
@@ -304,8 +359,9 @@ changelog):
 - `skills/llm-wiki-pm/references/lint-guide.md`: the warning under 🟡 Warnings
   (after "Unresolved contradictions", line 38); the "NOT auto-fixed" list
   (line 144); the `--json` description (line 160).
-- `skills/llm-wiki-pm/references/ingest-guide.md` ① (line 14): meeting
-  transcripts to `raw/transcripts/`, other transcripts to `raw/articles/`.
+- `skills/llm-wiki-pm/references/ingest-guide.md` ① (line 14): the
+  "Paste/transcript" line becomes the routing list above, by what the
+  material is, with its signs and the ask-if-unclear rule (about 10 lines).
 - `hooks/README.md` session-start (lines 23–28): one sentence on the new count
   and list.
 - Fork changelog PATCH-25; backlog NW16 updated (part 2 done; part 3 done or
@@ -367,17 +423,41 @@ already reads a meeting's crystallize page when there is one;
 
 ## Cost
 
-- **Your fork:** about 35 lines of code, 60 of tests and 10 of prose, three
+- **Your fork:** about 35 lines of code, 60 of tests and 20 of prose, three
   commits, one changelog entry.
-- **pm-wiki backfill, rough:** the 43 records total about 35,000 words (median
-  784, maximum 1,447), about 46,000 tokens to read. The pages come to about
-  24,000 words (500 to 600 each, like the October pages), about 32,000 output
-  tokens. Backlinks mean reading the matching section of 46 pages and making
-  105 small edits. Per batch: about 10 to 15 meetings' records, 8 to 10 pages
-  written, and 10 to 25 page edits, so a context that stays well inside one
-  session. Crystallize is synthesis, which AGENTS.md routes to Opus. Expect
-  roughly 30 to 45 minutes per batch, under 3 hours in all. That's an
-  estimate, not measured.
+- **pm-wiki backfill, content:** the 43 records total about 35,000 words
+  (median 784, maximum 1,447), about 46,000 tokens to read. The pages come to
+  about 24,000 words (500 to 600 each, like the October pages), about 32,000
+  output tokens. Backlinks mean reading the matching section of 46 pages and
+  making 105 small edits.
+- **pm-wiki backfill, usage:** a session resends its whole context on every
+  tool call, so usage depends on the number of calls and how large the
+  context has grown, not on the content alone. Reasoned out, not measured:
+
+  | | Per batch | All four |
+  |---|---|---|
+  | Tool calls | 60–90 | 250–350 |
+  | Context at start (system prompt, skills, Orient) | ~50k | — |
+  | Context by the end | ~120–150k | — |
+  | New content read | ~70–100k | ~350k |
+  | Output (pages, edits, reasoning) | ~30–45k | ~120–170k |
+  | Input processed, counting resends | ~4–7M | ~15–30M |
+
+  Most of the input processed is cache reads; about 1–2M in all is new. How
+  your plan's limits weigh cache reads isn't known here. Option B is about
+  half.
+- **Ways to lower it:** write each page in a short-lived subagent that reads
+  only its record, so the long context isn't resent, and leave only links
+  and index lines to the main session; and do the mechanical link edits on a
+  cheaper model, as AGENTS.md routes I/O work to Sonnet. Page writing is
+  synthesis, which AGENTS.md routes to Opus. Neither is measured.
+- **Measure first:** run batch 2 (8 meetings) first and read its usage from
+  the session afterwards. That gives a real per-meeting figure before the
+  other three batches.
+- **Time, rough:** about 3 to 4 minutes of session time per meeting, under 3
+  hours for all 43. That's Claude's elapsed time, not your attention. Your
+  part: approve the list once, start each session, answer prompts and look
+  over each batch, maybe 10 to 15 minutes per batch.
 - **Ongoing:** none beyond the warning, which should stay at zero.
 
 ## To approve
@@ -386,11 +466,15 @@ already reads a meeting's crystallize page when there is one;
    `queries/crystallize-*` page declaring it; 🟡; no R number (R15 if you
    want one).
 2. **No date cutoff and no exemptions.**
-3. **Ingest ① routing line:** non-meeting transcripts go to `raw/articles/`.
+3. **Approved 2026-10-28: ingest ① routes by what the material is,** pasted
+   or fetched: meetings to `raw/transcripts/`, chat threads to the chat
+   route, talk, video or podcast transcripts to `raw/articles/`, with signs
+   for each; when unclear, ask (interactive) or go by the source (unattended).
 4. **Session-start:** a Health Summary row and list, counted in the health
    total, named in the context line only when above zero.
-5. **Backfill all 43, March and June included**; leave out the March
-   `raw/internal/` extract.
+5. **How much to backfill:** C, all 43, March and June included
+   (recommended), or B, October only with a lint cutoff at 10/01. Either way,
+   leave out the March `raw/internal/` extract.
 6. **Page form:** `queries/crystallize-<record ID>.md` from the raw record only,
    action items `not tracked`, backlinks in the matching dated section, no
    concept-page re-ingest, no `overview.md` change.
