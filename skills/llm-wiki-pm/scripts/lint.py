@@ -629,6 +629,8 @@ def main():
     missing_fields = []  # [{"page": ..., "missing": [...]}]
     secondhand = []  # R10
     record_cache = {}  # record path -> is_secondhand()
+    crystallized = set()  # records a queries/crystallize-* page declares
+    uncrystallized = []  # meeting records no crystallize page declares
 
     errors.extend(check_ids(files))
     contract_note = check_contract(wiki)
@@ -757,6 +759,8 @@ def main():
                 (errors if is_error else warnings).append(msg)
             # R10: revisit a page whose primary sources are all secondhand
             records = [r.path for r in resolved if r.kind == "record" and not r.problem]
+            if rel.startswith("queries/") and p.name.startswith("crystallize-"):
+                crystallized.update(records)
             if records and all(is_secondhand(r, record_cache) for r in records):
                 secondhand.append(rel)
                 info.append(
@@ -870,6 +874,17 @@ def main():
                     f"redirected superseded links in {p.relative_to(wiki)}"
                 )
 
+    # every meeting transcript gets its own crystallize page (ingest-guide.md ⑥);
+    # everything in raw/transcripts/ is a meeting by ingest ①'s routing
+    for record in sorted((wiki / "raw" / "transcripts").rglob("*.md")):
+        if record not in crystallized:
+            rec = record.relative_to(wiki).as_posix()
+            uncrystallized.append(rec)
+            warnings.append(
+                f"meeting with no crystallize page: {rec} — create "
+                f"queries/crystallize-{record.stem}.md (ingest-guide.md ⑥)"
+            )
+
     # orphans (superseded pages are allowed to be orphans; intentional stubs too)
     intentional_stub_orphans = 0
     for p in pages:
@@ -963,6 +978,7 @@ def main():
                     "index_gaps": [p.relative_to(wiki).as_posix() for p in missing_in_index],
                     "missing_fields": missing_fields,
                     "secondhand": secondhand,
+                    "uncrystallized": uncrystallized,
                     "invariants": {k: len(v) for k, v in invariant_pages.items()},
                     "errors": len(errors),
                     "warnings": len(warnings),

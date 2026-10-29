@@ -581,6 +581,54 @@ def test_json_writes_nothing_and_carries_the_lists(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Meetings with no crystallize page (ingest-guide.md ⑥)
+# ---------------------------------------------------------------------------
+
+MEETING = "raw/transcripts/pricing-review-2026-01-10.md"
+
+
+def uncrystallized_warnings(wiki):
+    return [w for w in findings(wiki)["warnings"] if w.startswith("meeting with no")]
+
+
+def test_warns_on_a_meeting_no_crystallize_page_declares(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, MEETING)
+    write(wiki, "raw/transcripts/2026/standup-2026-01-12.md")  # subfolders count
+    assert uncrystallized_warnings(wiki) == [
+        "meeting with no crystallize page: raw/transcripts/2026/standup-2026-01-12.md "
+        "— create queries/crystallize-standup-2026-01-12.md (ingest-guide.md ⑥)",
+        f"meeting with no crystallize page: {MEETING} — create "
+        "queries/crystallize-pricing-review-2026-01-10.md (ingest-guide.md ⑥)",
+    ]
+
+
+def test_a_crystallize_page_declaring_the_meeting_covers_it(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, MEETING)
+    write(wiki, "queries/crystallize-pricing-call-2026-01-10.md", wiki_page(
+        f"[{MEETING}]", type_="query"
+    ))
+    assert uncrystallized_warnings(wiki) == []
+
+
+def test_only_crystallize_pages_cover_a_meeting(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, MEETING)
+    write(wiki, "concepts/pricing.md", wiki_page(f"[{MEETING}]"))
+    write(wiki, "queries/pricing-digest.md", wiki_page(f"[{MEETING}]", type_="query"))
+    write(wiki, "concepts/crystallize-pricing.md", wiki_page(f"[{MEETING}]"))
+    assert len(uncrystallized_warnings(wiki)) == 1
+
+
+def test_json_lists_meetings_with_no_crystallize_page(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, MEETING)
+    write(wiki, "raw/internal/conversation-2026-01-15-pricing-tier.md", CONVERSATION)
+    assert lint_json(wiki)["uncrystallized"] == [MEETING]
+
+
+# ---------------------------------------------------------------------------
 # --cited-sources — the split procedure's helper
 # ---------------------------------------------------------------------------
 
@@ -772,6 +820,19 @@ class TestSessionStartHealth:
         section = status.split("## Secondhand, unverified\n", 1)[1]
         assert "\n- concepts/told.md\n" in section
 
+    def test_lists_meetings_with_no_crystallize_page(self, tmp_path):
+        wiki = make_wiki(tmp_path)
+        write(wiki, MEETING)
+        line, status = self.start(wiki)
+        assert line.endswith(
+            "Health check: 1 issues. Broken links: 0. Orphans: 0. Stale: 0. "
+            "Confidence decay: 0. Meetings with no crystallize page: 1. "
+            "See _status.md for details."
+        )
+        assert "| Meetings with no crystallize page | 1 |" in status
+        section = status.split("## Meetings with no crystallize page\n", 1)[1]
+        assert f"\n- {MEETING}\n" in section
+
     def test_a_lint_crash_reads_as_health_unknown(self, tmp_path):
         wiki = make_wiki(tmp_path)
         plugin = fake_plugin(tmp_path, "raise SystemExit('lint crashed')\n")
@@ -779,6 +840,7 @@ class TestSessionStartHealth:
         assert "Health check: lint failed, health unknown." in line
         assert "| Broken links | unknown |" in status
         assert "| Pages with unresolved citations (I3) | unknown |" in status
+        assert "| Meetings with no crystallize page | unknown |" in status
         assert "**lint failed: health unknown.**" in status
 
     def test_output_that_isnt_lints_json_reads_as_health_unknown(self, tmp_path):
