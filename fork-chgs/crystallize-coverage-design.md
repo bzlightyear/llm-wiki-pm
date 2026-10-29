@@ -22,8 +22,9 @@ Claude's time, apart from yours.
 
 ## Status
 
-Status: proposed 2026-10-28. Choice 3 approved the same day; the other seven
-under To approve are waiting. Nothing built, and pm-wiki not changed.
+Status: proposed 2026-10-28. Choices 3 and 5 (option C, all 43) approved the
+same day; the other six under To approve are waiting. Nothing built, and
+pm-wiki not changed.
 
 ## About This Document
 
@@ -219,8 +220,8 @@ C is the only option that makes "every meeting has a page" true and needs no
 cutoff. B gets most of the value for about half the cost if you rarely look
 back more than a month: October's meetings are the ones whose action items
 and open questions may still be live. A leaves the most recent six weeks
-without digests. Token figures are explained under Cost. The rest of this
-section describes C. Under B, the batch list drops to batches 3 and 4 plus the
+without digests. Token figures are explained under Cost. C was chosen on
+2026-10-28, and the rest of this section describes it. Under B, the batch list drops to batches 3 and 4 plus the
 October part of batch 2, and lint gets the cutoff constant (about 3 lines and
 a test).
 
@@ -472,9 +473,9 @@ already reads a meeting's crystallize page when there is one;
    for each; when unclear, ask (interactive) or go by the source (unattended).
 4. **Session-start:** a Health Summary row and list, counted in the health
    total, named in the context line only when above zero.
-5. **How much to backfill:** C, all 43, March and June included
-   (recommended), or B, October only with a lint cutoff at 10/01. Either way,
-   leave out the March `raw/internal/` extract.
+5. **Approved 2026-10-28: option C,** backfill all 43, March and June
+   included, with no lint cutoff. Leave out the March `raw/internal/`
+   extract.
 6. **Page form:** `queries/crystallize-<record ID>.md` from the raw record only,
    action items `not tracked`, backlinks in the matching dated section, no
    concept-page re-ingest, no `overview.md` change.
