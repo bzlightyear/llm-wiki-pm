@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-24) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-25) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -546,6 +546,28 @@ skipped.
   path and example follow the rule: commit `dc62f03`.
 - **Status:** active. Upstream candidate, not filed.
 
+#### PATCH-25 — Lint warns on a meeting with no crystallize page
+
+- **What:** lint warns (🟡) on each `raw/transcripts/` record that no
+  `queries/crystallize-*` page declares in `sources:`, naming the page to
+  create. `--json` lists them as `uncrystallized`. Session-start adds a
+  "Meetings with no crystallize page" row and list to `_status.md`, counts
+  them in the health total, and names the count in the context line when
+  it's above zero. No R number, cutoff or exemption. Ingest ① now routes
+  pasted or fetched text by what it is: meetings to `raw/transcripts/`, chat
+  threads to the chat route, talk or podcast transcripts to `raw/articles/`,
+  with signs for each and a rule for unclear cases, so the folder can stand
+  for "a meeting".
+- **Why:** PATCH-24 states the rule, but nothing showed when an ingest
+  skipped it, and the 43 misses went unnoticed for weeks. Backlog NW16, part
+  2; the [Crystallize Coverage Design](crystallize-coverage-design.md).
+  pm-wiki shows 43 until the backfill (part 3).
+- **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `hooks/session-start.sh`,
+  `tests/test_lint.py` (commit `c56abd9`);
+  `references/lint-guide.md`, `references/ingest-guide.md` ①,
+  `hooks/README.md` (commit `d3dc652`).
+- **Status:** active. Upstream candidate, not filed.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -581,7 +603,8 @@ Not patches to upstream's code, and not offered upstream:
 - `llm-wiki-maintain`, `llm-wiki-brief`, `source-discipline.md` and the
   `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23). `ingest-guide.md`'s
   steps ⑥–⑪ were renumbered (PATCH-24), so an upstream edit to one of them may
-  land under the wrong number.
+  land under the wrong number. Step ①'s routing of pasted text changed in
+  PATCH-25.
 - The research and PRD skills, wherever upstream names folder pages
   `README.md` (PATCH-13).
 - `README.md`, `hooks/README.md`, `CONTRIBUTING.md`, `GETTING_STARTED.md`.

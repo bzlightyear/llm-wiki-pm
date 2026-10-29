@@ -424,7 +424,8 @@ on the per-day report in `queries/`. Found in the design review
 - **Parts 2 and 3 designed and approved 2026-10-28** in the
   [Crystallize Coverage Design](crystallize-coverage-design.md): the lint
   warning, ingest ① routing by what the material is, and a backfill of all
-  43 meetings in four batches. Not built yet.
+  43 meetings in four batches. Part 2 done 2026-10-28 (changelog PATCH-25);
+  part 3 not started.
 - **What happens:** ingest step ⑪ (`ingest-guide.md:139`) says to crystallize
   every transcript, but 43 of pm-wiki's 152 transcripts are in no crystallize
   page's `sources:` (17 from September, 23 from October, 3 from March and June).

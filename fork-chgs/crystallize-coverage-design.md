@@ -28,7 +28,9 @@ Claude's time, apart from yours.
 ## Status
 
 Status: approved 2026-10-28, all eight choices under To approve (option C,
-all 43). Not built yet, and pm-wiki not changed.
+all 43). Part 2 implemented 2026-10-28 (changelog PATCH-25): lint reports
+pm-wiki's 43 and session-start 156 issues, as predicted. Part 3, the
+backfill, not started; pm-wiki not changed.
 
 ## About This Document
 
