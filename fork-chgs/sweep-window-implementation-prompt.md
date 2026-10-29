@@ -11,7 +11,7 @@ the text below the `---` into a new session started in this repo.
 ## Status
 
 Status: ready to run. Every choice it implements was approved 2026-10-28; the
-design docs are committed (6311602).
+design docs are committed (f6a91a0).
 
 ---
 

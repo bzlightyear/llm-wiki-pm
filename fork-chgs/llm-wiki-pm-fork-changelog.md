@@ -458,7 +458,7 @@ skipped.
   `queries/weekly-brief-…`; its 2026-10-28 revision moved weekly briefs to
   `briefings/`.
 - **Where:** `skills/llm-wiki-maintain/SKILL.md`,
-  `skills/llm-wiki-brief/SKILL.md` (§2). Commit `a055e0f`. The weekly brief's
+  `skills/llm-wiki-brief/SKILL.md` (§2). Commit `a4b5782`. The weekly brief's
   own filing path in §2 ⑧ changed in PATCH-23.
 - **Status:** active. Upstream candidate: upstream has the issue as
   `anh-chu#12`, filed from this fork.
@@ -493,7 +493,7 @@ skipped.
   rule), `references/source-discipline.md` (completeness guard),
   `references/ingest-guide.md` (Active Sources "Last used"),
   `templates/MY-INTEGRATIONS.md`, `skills/llm-wiki-brief/SKILL.md` (guard and
-  ledger example). Commit `18af433`. pm-wiki's registry got the column in a
+  ledger example). Commit `73f8448`. pm-wiki's registry got the column in a
   pm-wiki commit the same day.
 - **Status:** active. Upstream candidate, not filed: the maintain skill, the
   Sweep Registry and the completeness guard came from upstream.
@@ -520,7 +520,7 @@ skipped.
   [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md).
 - **Where:** `skills/llm-wiki-brief/SKILL.md` (a new "Daily and Weekly Briefs"
   section, §1, §2), `skills/llm-wiki-maintain/SKILL.md` (step ⑥),
-  `skills/llm-wiki-pm/SKILL.md` (§10). Commit `49a42bf`. pm-wiki's
+  `skills/llm-wiki-pm/SKILL.md` (§10). Commit `5b86481`. pm-wiki's
   `meta/contract.md` got the weekly path in a pm-wiki commit the same day.
 - **Status:** active. Upstream candidate, not filed, except the table's
   "You owe" row, which names pm-wiki's "Pete owes" list and NW1.
@@ -542,8 +542,8 @@ skipped.
   not built.
 - **Where:** `skills/llm-wiki-pm/SKILL.md` (§2),
   `references/ingest-guide.md`, `skills/llm-wiki-maintain/SKILL.md`. Commit
-  `7bb05a2`. `references/crystallize-guide.md`'s "When to Crystallize", page
-  path and example follow the rule: commit `dc62f03`.
+  `bc71aaf`. `references/crystallize-guide.md`'s "When to Crystallize", page
+  path and example follow the rule: commit `abe21a6`.
 - **Status:** active. Upstream candidate, not filed.
 
 #### PATCH-25 — Lint warns on a meeting with no crystallize page
@@ -563,9 +563,9 @@ skipped.
   2; the [Crystallize Coverage Design](crystallize-coverage-design.md).
   pm-wiki shows 43 until the backfill (part 3).
 - **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `hooks/session-start.sh`,
-  `tests/test_lint.py` (commit `c56abd9`);
+  `tests/test_lint.py` (commit `ca4ff81`);
   `references/lint-guide.md`, `references/ingest-guide.md` ①,
-  `hooks/README.md` (commit `d3dc652`).
+  `hooks/README.md` (commit `aac7f7d`).
 - **Status:** active. Upstream candidate, not filed.
 
 #### PATCH-26 — Briefs stay out of `index.md`
@@ -583,7 +583,7 @@ skipped.
 - **Where:** `skills/llm-wiki-maintain/SKILL.md` (Brief lifecycle convention),
   `skills/llm-wiki-brief/SKILL.md` (Daily and Weekly Briefs, filing),
   `skills/llm-wiki-pm/references/schema-guide.md` (`dated-digest`). Commit
-  `663bdbf`. pm-wiki's `index.md` and its brief-filing memory changed to match.
+  `6041ad8`. pm-wiki's `index.md` and its brief-filing memory changed to match.
 - **Status:** active. Upstream candidate, not filed.
 
 ### Repository-only files
