@@ -13,6 +13,11 @@ order of the two, how much to backfill, cost, logging and commits.
 ## Revision History
 
 revised on: 2026-10-28
+All eight choices approved, with option C. Batch 2, the smallest, now runs
+first to measure usage before the other three, so the lint count drops
+43 → 35 → 20 → 10 → 0.
+
+revised on: 2026-10-28
 Ingest ① now routes material by what it is, pasted or fetched, with signs
 for meetings, chat threads and talk or podcast transcripts, and asks when
 unclear (choice 3, approved). Added "How much to backfill" with options A to
@@ -22,9 +27,8 @@ Claude's time, apart from yours.
 
 ## Status
 
-Status: proposed 2026-10-28. Choices 3 and 5 (option C, all 43) approved the
-same day; the other six under To approve are waiting. Nothing built, and
-pm-wiki not changed.
+Status: approved 2026-10-28, all eight choices under To approve (option C,
+all 43). Not built yet, and pm-wiki not changed.
 
 ## About This Document
 
@@ -269,9 +273,10 @@ lint doesn't flag it. Optional add if you want it.
 
 ### Batches
 
-Four batches by meeting date, each one session run in order. Running them in
-parallel would put two sessions on the same pages: one concept page takes 11
-of the links.
+Four batches by meeting date, each one session, one after another: batch 2
+first, the smallest, to measure usage (see Cost), then 1, 3 and 4. Running
+them in parallel would put two sessions on the same pages: one concept page
+takes 11 of the links.
 
 | Batch | Meetings | Pages created |
 |---|---|---|
@@ -339,7 +344,8 @@ Part 2 first, then part 3, ideally the same day or the next.
 
 - Lint gives the exact, current list for sign-off, rather than this doc's
   snapshot going stale.
-- Each batch checks itself: the count drops 43 → 28 → 20 → 10 → 0.
+- Each batch checks itself: the count drops 43 → 35 → 20 → 10 → 0 (batch 2
+  first, then 1, 3 and 4).
 - Until the backfill ends, session-start's health total includes the
   remaining count (156 today). That's the progress meter, not new damage.
 
@@ -463,22 +469,23 @@ already reads a meeting's crystallize page when there is one;
 
 ## To approve
 
+All approved 2026-10-28:
+
 1. **Lint check scope:** every `raw/transcripts/` record, covered by any
-   `queries/crystallize-*` page declaring it; 🟡; no R number (R15 if you
-   want one).
+   `queries/crystallize-*` page declaring it; 🟡; no R number.
 2. **No date cutoff and no exemptions.**
-3. **Approved 2026-10-28: ingest ① routes by what the material is,** pasted
-   or fetched: meetings to `raw/transcripts/`, chat threads to the chat
-   route, talk, video or podcast transcripts to `raw/articles/`, with signs
-   for each; when unclear, ask (interactive) or go by the source (unattended).
+3. **Ingest ① routes by what the material is,** pasted or fetched: meetings
+   to `raw/transcripts/`, chat threads to the chat route, talk, video or
+   podcast transcripts to `raw/articles/`, with signs for each; when unclear,
+   ask (interactive) or go by the source (unattended).
 4. **Session-start:** a Health Summary row and list, counted in the health
    total, named in the context line only when above zero.
-5. **Approved 2026-10-28: option C,** backfill all 43, March and June
-   included, with no lint cutoff. Leave out the March `raw/internal/`
-   extract.
+5. **Option C:** backfill all 43, March and June included, with no lint
+   cutoff. Leave out the March `raw/internal/` extract.
 6. **Page form:** `queries/crystallize-<record ID>.md` from the raw record only,
    action items `not tracked`, backlinks in the matching dated section, no
    concept-page re-ingest, no `overview.md` change.
 7. **Four sequential batches,** one commit and one log entry each, with the
    "not new material" line.
-8. **Order:** part 2 first, sign-off on lint's list, then the batches.
+8. **Order:** part 2 first, sign-off on lint's list, then the batches, batch
+   2 first to measure usage.
