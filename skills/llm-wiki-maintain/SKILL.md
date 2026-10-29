@@ -122,6 +122,9 @@ run?") and proceed on the answer; default to interactive.
   breaks links to them.
 - Briefs are orphans by design; the `dated-digest` flag keeps them out of lint's
   orphan count. Never link-spam pages just to de-orphan a brief.
+- Briefs are not listed in `index.md`: lint skips them in its index check, and
+  the index holds one fixed line pointing to `briefings/`. Don't add a brief to
+  the index.
 
 ## What this skill does NOT do
 

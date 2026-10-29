@@ -113,7 +113,9 @@ If the window has no entries, say so.
 **If you file the brief as a page** (e.g. `briefings/YYYY-MM-DD.md`), stamp
 `lifecycle: dated-digest` in its frontmatter. These are orphans by design;
 the flag keeps them out of the lint orphan count (see schema-guide). Without
-it, every daily brief permanently inflates the orphan metric.
+it, every daily brief permanently inflates the orphan metric. Don't add the
+brief to `index.md`: lint skips briefs in its index check, and the index holds
+one fixed line pointing to `briefings/`.
 
 ---
 
