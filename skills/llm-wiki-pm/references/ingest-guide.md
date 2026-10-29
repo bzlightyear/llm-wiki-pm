@@ -11,7 +11,20 @@ and laundered secondhand claims.
 - PDF, or another document file (HTML report, slides) → extract text →
   `raw/papers/<slug>.md` (keep the original in `raw/assets/`, named in the
   record's `asset:`)
-- Paste/transcript → `raw/transcripts/<slug>.md`
+- **Pasted or fetched text: route by what it is, not how it arrived.**
+  `raw/transcripts/` holds meetings only: lint treats every record there as
+  a meeting that needs a crystallize page (⑥).
+  - Meeting transcript or notes → `raw/transcripts/<slug>.md`. Signs: several
+    people in one call or room, speaker turns or notes from one session,
+    often attendees, decisions and action items; or a meeting page found in a
+    sweep.
+  - Chat thread → the chat route below. Signs: short messages with names and
+    times, replies, a channel or thread; or a thread read through a chat tool.
+  - Talk, video or podcast transcript → `raw/articles/<slug>.md`, as a
+    publication. Signs: one speaker, or a host and guest, made for an
+    audience, usually public, often a link.
+  - Still unclear (a few pasted lines with no names): interactive, ask the
+    user; unattended, go by where the material came from.
 - **Chat thread (any messaging tool — Slack, Teams, Discord, etc.)**: copy thread
   messages → `raw/internal/<channel>-<date>.md`. Add frontmatter:
   `source_channel: "<tool>:#channel-name"` (e.g. `"Slack:#product-strategy"`),

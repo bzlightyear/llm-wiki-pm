@@ -24,8 +24,10 @@ The link and orphan counts come from `lint.py --json`, which writes nothing to
 the wiki. So do the counts of pages whose frontmatter, `sources:` or
 `[source: ...]` citations break the rules in `references/citation-spec.md`,
 and the list of pages resting only on conversation records, which `_status.md`
-shows under "Secondhand, unverified". If lint fails, the summary says "health
-unknown" rather than reporting zeros.
+shows under "Secondhand, unverified". So does the list of `raw/transcripts/`
+records no crystallize page declares, shown under "Meetings with no
+crystallize page" and counted in the health total. If lint fails, the summary
+says "health unknown" rather than reporting zeros.
 
 **pre-write.sh**
 Runs before every write to the wiki, from the built-in tools (`Write`, `Edit`, `MultiEdit`) and the wiki-search MCP (`vault` create, create_from_template, update and delete, and `edit` unless `dryRun` is set; reads are ignored). Before a session's first write anywhere in the wiki, it commits the wiki's uncommitted changes through lint's `checkpoint()` and tells the agent which commit restores the state the session started from. `checkpoint()` leaves out `_status.md`, commits only when the wiki is the top of a git work tree with no merge, rebase, cherry-pick or revert in progress, and skips quietly if git fails. A marker file per session ID in the temp folder keeps it to once per session. At that same first write, it lists the markers `post-validate.sh` keeps for other sessions and, for each one touched in the last 30 minutes, adds "Session `<id>` wrote to the wiki N minutes ago. Re-read a page before changing it." Only the later session to write is told, and only of tool writes; Bash writes leave no marker. Files under a directory page's `assets/` subfolder skip the freshness gate. A change to an existing `raw/` record gets a warning that records are write-once. The freshness gate reminds the agent to sweep live tools when the page, as it will be after the write, has no primary source and no inline `[source: ...]` marker; `Edit` and `MultiEdit` are applied to the disk text first, MCP `edit` operations aren't simulated, and pages marked `lifecycle: dated-digest` are exempt. The hook always exits 0 and never blocks a write.

@@ -37,6 +37,12 @@ These block the wiki's search/navigation/discipline. Fix immediately.
   are exempt: they describe the wiki as of their date.
 - **Unresolved contradictions**: flagged in frontmatter but never closed.
   Revisit with latest info.
+- **Meetings with no crystallize page**: a record in `raw/transcripts/` that
+  no `queries/crystallize-*` page declares in `sources:`. Every meeting gets
+  its own page (`ingest-guide.md` ⑥), and ingest ① files only meetings
+  there. Create `queries/crystallize-<record ID>.md` from the record. A record
+  that isn't a meeting was misrouted: raise it with the user. Session-start
+  lists these in `_status.md`.
 - **Sources and citations that don't resolve** (R3, R4, R6, R7) and
   **frontmatter outside the profile** (R12): see
   [Sources and citations](#sources-and-citations) below.
@@ -148,6 +154,7 @@ NOT auto-fixed (requires human judgement):
 - Stale pages (fine vs out of date)
 - Unresolved contradictions
 - Sources and citations that don't resolve (R3, R6)
+- Meetings with no crystallize page (need a crystallize run)
 
 Always re-run without `--auto-fix` after to confirm cleanup. Lint reports
 themselves (`queries/lint-*.md`) are excluded from scans.
@@ -158,8 +165,9 @@ themselves (`queries/lint-*.md`) are excluded from scans.
   each ID it cites resolved against every record and page, and lists IDs that
   resolve to nothing. Writes nothing. The split procedure uses it.
 - `--json`: prints counts and lists (broken links, orphans, index gaps,
-  missing fields, secondhand pages, and pages breaking the frontmatter, source
-  and citation rules) and writes nothing. Session-start and
+  missing fields, secondhand pages, meetings with no crystallize page, and
+  pages breaking the frontmatter, source and citation rules) and writes
+  nothing. Session-start and
   `worker-link-validator` read it.
 
 ## Interpreting Trends
