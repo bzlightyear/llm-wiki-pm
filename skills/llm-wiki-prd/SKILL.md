@@ -19,7 +19,7 @@ Does not activate for wiki operations (ingest, update, lint, query). Those route
 
 ## Orient Before Any Artifact
 
-Per AGENTS.md, orient before any write. PRD generation requires knowing what pages exist to avoid duplication and ensure grounding.
+Per core `llm-wiki-pm` (Orient Every Session), orient before any write. PRD generation requires knowing what pages exist to avoid duplication and ensure grounding.
 
 **Orient steps (mandatory):**
 
@@ -121,7 +121,7 @@ All artifacts:
 
 ## Behavioral Constraints
 
-Inherited from AGENTS.md. The following apply specifically to artifact generation:
+Inherited from core `llm-wiki-pm`'s Pitfalls. The following apply specifically to artifact generation:
 
 **No fabrication.** Every claim must cite a wiki page. If no page exists, the claim goes to gaps or open questions.
 

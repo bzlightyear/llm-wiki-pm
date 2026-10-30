@@ -142,7 +142,7 @@ code_switching: []      # e.g. ["second language in casual chat DMs"]
 ---
 ```
 
-## Behavioral Constraints (per AGENTS.md)
+## Behavioral Constraints (with core `llm-wiki-pm`'s Pitfalls)
 
 - **No writes without orient.** Persona pages require full orient + SCHEMA.md compliance.
 - **No fabricated channels.** Only profile channels with real source material.

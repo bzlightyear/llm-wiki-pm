@@ -31,7 +31,7 @@ This skill is read-only by default, apart from each daily or weekly brief's own 
 1. Read `$WIKI/_status.md` if it exists — surface any pre-computed warnings immediately
 2. Read last 20-30 lines of `$WIKI/log.md` — know what's recent before summarizing
 
-Full orient (AGENTS.md 4-step protocol) only required if filing output as a wiki page.
+Full orient (core `llm-wiki-pm` Orient Every Session, steps ①-④) only required if filing output as a wiki page.
 
 ## Source-Completeness Guard (when briefs sweep live sources)
 
@@ -143,7 +143,7 @@ into the next brief's carry-forward, while same-day corrections are fine.
 
 ⑦ Output: the Weekly column of "What each brief holds", under `## Weekly Brief: YYYY-MM-DD to YYYY-MM-DD` (its period).
 
-⑧ Offer to file as `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, with `lifecycle: dated-digest`. If yes, run full orient per AGENTS.md before writing.
+⑧ Offer to file as `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, with `lifecycle: dated-digest`. If yes, run full orient per core `llm-wiki-pm` before writing.
 
 **Run from `llm-wiki-maintain`:** add the Source Coverage ledger for the run's sweep, and put the run's queued items in Needs Review. Maintain files the brief at its weekly path, so skip the offer in ⑧.
 
@@ -242,7 +242,7 @@ For everything else — ingest, update, query, lint, archive, persona, pre-meeti
 
 > "For full ingest/update/query operations, the core llm-wiki-pm skill handles those."
 
-## Behavioral Constraints (per AGENTS.md)
+## Behavioral Constraints (with core `llm-wiki-pm`'s Pitfalls)
 
 - **No writes without orient.** Filing a brief requires full orient + SCHEMA.md compliance.
 - **No schema drift.** Filed query pages use taxonomy tags only.

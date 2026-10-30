@@ -13,7 +13,7 @@ Sub-skill of llm-wiki-pm. Handles research sprints, competitive deep dives, and 
 
 ## Orient First
 
-Orient per AGENTS.md before any writes:
+Orient per core `llm-wiki-pm` (Orient Every Session) before any writes:
 
 1. Read `$WIKI/SCHEMA.md`
 2. Read `$WIKI/index.md`
