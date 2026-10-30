@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-30) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-31) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -274,6 +274,32 @@ the entries summarize. Step 11 (PATCH-30), which promotes R3, R6 and R12 to
   The suite passed: 468 passed, 2 skipped.
 - **Status:** active. Upstream candidate with PATCH-6 to PATCH-12, not filed;
   a major (3.0.0) change there, since existing wikis start reporting errors.
+
+#### PATCH-31 — Cited sources get declared, and content fixes run unattended
+
+- **What:** core skill §2 ⑤ and `crystallize-guide.md` ⑤ (concept pages)
+  say to declare each cited record's path in `sources:` in the same edit.
+  `--auto-fix=content` gains an R3 fix that declares a cited ID naming exactly
+  one file, skipping markers R7 can't repair, self-citations and dated
+  digests created before today. If the content fixes (R3, R7, R12) would
+  change more than 10 pages, it changes none and says so in a 🟡 warning.
+  Maintain ⑤ runs `--auto-fix=content` in autonomous mode and offers it in
+  interactive mode, puts a capped run in Needs Review, and ⑥ reports how many
+  fixes were applied.
+- **Why:** `post-validate.sh` reported R3 214 times on 9 days in October: 136
+  citations, every one naming exactly one file, each fixed by hand. The
+  wording gap was the cause. The unattended fix is the safety net. It revises
+  review F5 (content fixes never unattended) and plan review P22 (no R3
+  auto-fix). Backlog NW18; the
+  [Unattended Lint Fixes Brief](unattended-lint-fixes-brief.md).
+- **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `tests/test_lint.py` (6
+  tests), `skills/llm-wiki-pm/SKILL.md` (§2 ⑤, §5),
+  `references/crystallize-guide.md`, `references/lint-guide.md`,
+  `skills/llm-wiki-maintain/SKILL.md` (⑤, ⑥). Commit `35cff87`. On a scratch
+  copy of pm-wiki it changes nothing today. The suite passed: 474 passed, 2
+  skipped. pm-wiki's "Auto-fix and checkpoints OK" memory now names
+  `--auto-fix=content`.
+- **Status:** active. Upstream candidate with PATCH-30, not filed.
 
 ### Page names
 

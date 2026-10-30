@@ -8,6 +8,12 @@ lint rules, hooks, migration and implementation plan that enforce it.
 
 ## Revision History
 
+revised on: 2026-10-30 (later)
+Section 5.15's R3 auto-fix column: `--auto-fix=content` now declares a cited
+ID that names exactly one file, and the maintain loop runs content fixes
+unattended, changing nothing above 10 pages. This revises review F5 and plan
+review P22 (backlog NW18, fork changelog PATCH-31).
+
 revised on: 2026-10-30
 Completed step 11: lint reports R3, R6 and R12 as 🔴 (fork changelog PATCH-30,
 backlog NW17). Section 8 records the result. Every step is now done or
@@ -1199,7 +1205,7 @@ review. "Now" is the tier after plan step 6; "3.0" is the tier after plan step
 |---|---|---|---|---|---|---|
 | R1 | A list item on the same line as its key (`tags: - x`) | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No |
 | R2 | Block list items under an already-closed `[...]` list | I1 | Exists; becomes a message of R12 | 🔴 | 🔴 | No. The merge suggested in the lint-checks design was never built, and R2 has no violations today (plan review P22) |
-| R3 | An inline citation ID that equals the `slug()` of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | No; the message names the path to declare, and a human adds it (M5 for the migration; plan review P22) |
+| R3 | An inline citation ID that equals the `slug()` of no `sources:` entry on the same page | I3 | Exists (🔵, loose substring match); **rewritten** as an exact match | 🟡 | 🔴 | Since NW18 (PATCH-31), under `--auto-fix=content`: declares a cited ID that names exactly one file. Was: no, the message names the path (M5 for the migration; plan review P22) |
 | R4 | A page with 5+ sources citing fewer than half of them inline | none (heuristic) | Exists, kept; also the backstop for splits (the `split_from` escalation was dropped, review F9). Counts a source as cited by exact `slug()` match once R3 is rewritten (plan review P18) | 🟡 | 🟡 | No |
 | R5 | The same frontmatter key twice | I1 | Exists, kept | 🔴 | 🔴 | No |
 | R6 | A `sources:` entry that isn't a canonical path to an existing file | I2 | New | 🟡 | 🔴 | No |

@@ -330,26 +330,6 @@ points: the two findings below, and I8's revisit mechanism.
   2026-10-02. Field disagreement measured, and a missed reverse update seen
   during an ingest, also 2026-10-02.
 
-**NW18. Run the mechanical lint fixes unattended.**
-- **What:** after the migration, let the unattended lint run (the maintain
-  loop, not session start) apply every fix that needs no judgement: plain
-  `--auto-fix` (already unattended), the `--auto-fix=content` repairs
-  (mechanical citation markers, midnight dates), and a new R3 auto-fix that
-  declares a cited ID in `sources:` when it names exactly one file.
-  `migrate_sources.py --declare-cited` already holds that logic.
-- **Why:** you want mechanical errors fixed without your involvement, and
-  only judgement calls surfaced. Now that R3, R6 and R12 are 🔴 (NW17), a
-  mechanical one shows up as an error until someone runs the fix.
-- **What it revises:** review F5, which kept content fixes out of unattended
-  runs because, before the migration, they would have rewritten about 41
-  pages without its dry run and sign-off, and plan review P22, which ruled
-  out an R3 auto-fix. After the migration F5's concern mostly goes away.
-- **Scope:** a short proposal first: where the R3 fix lives, which run
-  applies what, how fixes are reported in the brief, and tests.
-- **Related:** NW17 (the errors these fixes would clear).
-- **Found in:** an idea raised 2026-09-30 during design step 7, held for step
-  11, and split out of NW17 on 2026-10-30.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -1091,3 +1071,28 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 - **Why it's here:** the design's status still reads "steps 0–9, 10a and 10b
   done", and no backlog item tracked the last step.
 - **Found in:** the 2026-10-29 backlog review.
+
+**NW18. Run the mechanical lint fixes unattended.**
+- **Status: done 2026-10-30.** Changelog PATCH-31, per the
+  [Unattended Lint Fixes Brief](unattended-lint-fixes-brief.md): a wording
+  fix so agents declare what they cite, and an R3 fix in `--auto-fix=content`
+  that maintain runs unattended, changing nothing above 10 pages. The text
+  below is as captured.
+- **What:** after the migration, let the unattended lint run (the maintain
+  loop, not session start) apply every fix that needs no judgement: plain
+  `--auto-fix` (already unattended), the `--auto-fix=content` repairs
+  (mechanical citation markers, midnight dates), and a new R3 auto-fix that
+  declares a cited ID in `sources:` when it names exactly one file.
+  `migrate_sources.py --declare-cited` already holds that logic.
+- **Why:** you want mechanical errors fixed without your involvement, and
+  only judgement calls surfaced. Now that R3, R6 and R12 are 🔴 (NW17), a
+  mechanical one shows up as an error until someone runs the fix.
+- **What it revises:** review F5, which kept content fixes out of unattended
+  runs because, before the migration, they would have rewritten about 41
+  pages without its dry run and sign-off, and plan review P22, which ruled
+  out an R3 auto-fix. After the migration F5's concern mostly goes away.
+- **Scope:** a short proposal first: where the R3 fix lives, which run
+  applies what, how fixes are reported in the brief, and tests.
+- **Related:** NW17 (the errors these fixes would clear).
+- **Found in:** an idea raised 2026-09-30 during design step 7, held for step
+  11, and split out of NW17 on 2026-10-30.
