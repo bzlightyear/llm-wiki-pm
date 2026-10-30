@@ -48,7 +48,7 @@ the original analysis's findings that nothing picked up, and a priority order.
 | NW4 | Merge into NW1 | The file was last edited 2026-09-04. Briefs' "You owe" replaced it in practice |
 | NW7 | Relevant, needs rewriting | M1 still does harm. Snapshots are gone, so M1 is the only collision, and lint could prevent the next one |
 | NW9 | Still relevant as written, and worse | Reverse-link gaps grew from 3 to 5. The SCHEMA org chart hasn't changed since 2026-08-07 |
-| NW11 | Relevant, needs rewriting, much smaller | Core `SKILL.md` now carries every AGENTS.md behavioral rule. What's left is dangling references and a stale `.wiki-path` block |
+| NW11 | Relevant, needs rewriting, much smaller | Core `SKILL.md` now carries every AGENTS.md behavioral rule. What's left is dangling references |
 
 ---
 
@@ -400,9 +400,10 @@ worry was that rules stated only in `AGENTS.md` never reach wiki sessions.
   research 16, brief 34, 146 and 245, persona 145, prd 22 and 124.
   `citation-spec.md` line 5 also names it, but that line is accurate, since
   `AGENTS.md`'s Source Attribution does point to the spec.
-- **`AGENTS.md` is stale.** Lines 8–9 still resolve the wiki path from
-  `.wiki-path`, which NW5 removed. This file loads as project instructions in
-  every session in your fork's folder, this one included.
+- **`AGENTS.md`'s Wiki Path Resolution is current** (corrected 2026-10-30).
+  This review first called its `.wiki-path` lines stale. NW5 removed the
+  projects' `.wiki-path` files, but `.wiki-path` still marks a project that
+  uses another wiki, and the core skill and hooks read it the same way.
 
 ### Verdict
 
@@ -419,12 +420,11 @@ that duplicate the skill.
    - "Behavioral Constraints (per AGENTS.md)" → "(per core `llm-wiki-pm`
      Rules)".
    - Leave `citation-spec.md` as it is.
-2. **Fix `AGENTS.md`'s Wiki Path Resolution** to `$WIKI_PATH`, with the
-   current "no wiki path" message.
-3. **Drop the Orient-reads-AGENTS proposal.**
+2. **Drop the Orient-reads-AGENTS proposal.**
 
-- **Cost:** about 10 line edits. No code or tests.
+- **Cost:** 7 line edits. No code or tests.
 - **Interactions:** none.
+- **Done 2026-10-30:** changelog PATCH-29.
 
 ---
 
@@ -461,9 +461,8 @@ The items below weren't on the backlog:
 
 ## Priority Order
 
-1. **NW11 (rewritten).** Minutes of work. It removes a stale `.wiki-path`
-   instruction loaded into every fork session, and references that lead
-   nowhere.
+1. **NW11 (rewritten).** Minutes of work. It fixes references that lead
+   nowhere in wiki sessions.
 2. **NW1a with NW4 merged: the action-item tracker.** It has the highest daily
    impact. "You owe" and "Pete owes" are what you act on, and they are
    re-accreting. It needs your two decisions, then a short design, then doc

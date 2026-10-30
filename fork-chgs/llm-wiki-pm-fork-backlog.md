@@ -330,92 +330,6 @@ points: the two findings below, and I8's revisit mechanism.
   2026-10-02. Field disagreement measured, and a missed reverse update seen
   during an ingest, also 2026-10-02.
 
-**NW11. Skills cite an `AGENTS.md` that wiki sessions never load.**
-- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
-  much smaller. The text after this bullet is as captured; where it differs,
-  this bullet wins.
-  - Every Behavioral Constraint in `AGENTS.md` now has a counterpart in core
-    `SKILL.md`, and "Snapshot before destructive ops" became "Checkpoint before
-    destructive ops" in both, so the rules do reach wiki sessions. "Ruled out:
-    folding the rules into core `SKILL.md`" has in effect happened.
-  - **New scope:** retarget the 7 "per AGENTS.md" references (research 16;
-    brief 34, 146 and 245; persona 145; prd 22 and 124) to core
-    `llm-wiki-pm`'s Orient Every Session and Rules, and fix `AGENTS.md`'s Wiki
-    Path Resolution, which still reads `.wiki-path` (lines 8–9), to use
-    `$WIKI_PATH`. `citation-spec.md` line 5 is accurate and stays.
-  - **Dropped:** the proposal to read `AGENTS.md` during Orient.
-- **What happens:** `AGENTS.md` is the plugin repo's behavioral contract. It
-  loads only in sessions whose working folder is the plugin repo. Setup copies
-  only the files in `skills/llm-wiki-pm/templates/` into a new wiki, and none
-  of them is an `AGENTS.md` or `CLAUDE.md`. pm-wiki has neither. Yet several
-  skills defer to it:
-  - `llm-wiki-research`: "Orient per AGENTS.md before any writes".
-  - `llm-wiki-brief`: "Full orient (AGENTS.md 4-step protocol)", and
-    "Behavioral Constraints (per AGENTS.md)".
-  - `llm-wiki-persona`: "Behavioral Constraints (per AGENTS.md)".
-  - `llm-wiki-prd`: "Per AGENTS.md, orient before any write", and "Inherited
-    from AGENTS.md".
-  - `citation-spec.md` names AGENTS.md among the files that point to it.
-  In a pm-wiki session these references lead nowhere. Rules stated only in
-  `AGENTS.md`, such as the full "Snapshot before destructive ops", never
-  reach the agent.
-- **Likely cause:** upstream wrote `AGENTS.md` as a portable contract for
-  porting the plugin to other agents (README: "the portable reference if you
-  want to port to another agent"). It expected Claude Code to get the rules
-  from the skills and hooks. The "per AGENTS.md" lines were probably written
-  in the plugin repo, where the file does load.
-- **Why it matters:** the skills' references resolve to nothing, and the
-  contract isn't in context in wiki sessions.
-  It would not have prevented NW10's missed snapshots, since that rule was in
-  context from the core skill.
-- **Proposal: read the contract during Orient.**
-  - Add a step to core skill "Orient Every Session" that reads the fork's
-    `AGENTS.md`. The skill finds it relative to its own folder
-    (`${CLAUDE_SKILL_DIR}/../../AGENTS.md`), which holds for the symlinked
-    install and for a plugin install, since both carry the whole repo. Orient
-    already reads `$WIKI/SCHEMA.md` and the other root files by path, so the
-    step works whichever project the session starts in.
-  - The "per AGENTS.md" references in the sub-skills then point at something
-    the agent has read. They can stay as they are.
-  - There's one copy, so nothing can drift, and nothing has to be added to
-    pm-wiki or to setup.
-  - Clean up `AGENTS.md` first, since every Orient would read it (about 718
-    words):
-    - Its Wiki Path Resolution still reads `.wiki-path`, which NW5 removed.
-    - Model Routing, Skill Architecture and Agent Surfaces are about the
-      plugin, not wiki work. Move them to a plugin-side file or trim them.
-    - The plugin repo's own development sessions load the same file as
-      their project instructions, so keep a version that suits wiki
-      sessions.
-  - Like the rest of Orient, it's read once per session, so it can still be
-    lost to compaction in a long session.
-  - **Read only the Behavioral Constraints section.** Measured in pm-wiki on
-    2026-10-02, Orient already loads about 15,400 words: core `SKILL.md`
-    3,441, `overview.md` 8,626, `SCHEMA.md` 2,555, `index.md` 591, and the
-    last 30 lines of `log.md` 171. The whole `AGENTS.md` (718 words) would
-    add about 5%, and about 3% after the cleanup above. Most of what's left
-    after the cleanup (the Orient protocol and source attribution) repeats
-    the core skill. Behavioral Constraints (245 words) is the part the
-    skills don't carry, so reading only that section adds about 1.5%.
-    Trimming `overview.md` under NW1 would save far more than this costs.
-- **Ruled out: a pm-wiki `CLAUDE.md`** importing `AGENTS.md`. It loads only
-  in sessions started inside pm-wiki. The wiki is used from other projects
-  (`$WIKI_PATH` since NW5), and Claude Code doesn't load a `CLAUDE.md` from
-  an unrelated folder when a file there is read. That was tested on
-  2026-10-02: reading a page in a scratch folder outside the session's
-  working folder didn't load that folder's `CLAUDE.md`. Reads through Bash or
-  the wiki-search MCP don't trigger loading at all. It could still be added
-  for sessions started in pm-wiki, but it isn't the fix.
-- **Ruled out: folding the rules into core `SKILL.md`** and dropping the
-  "per AGENTS.md" references. That's simpler, but it duplicates rules and
-  gives up `AGENTS.md` as the single contract.
-- **Upstream:** changing Orient's reading list is a "discuss first" item in
-  upstream's CONTRIBUTING (as in NW9). It doesn't block the fork.
-- **Related:** NW10 (the snapshot rule lives in `AGENTS.md`), NW1 and NW9
-  (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
-  from any project).
-- **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
-
 **NW17. Promote the source rules to errors (design step 11).**
 - **What:** step 11 in section 8 of the
   [Sources and References Design](sources-and-references-design.md): promote
@@ -1063,3 +977,95 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 
   They aren't exclusive: option 1 now, and option 2 once NW1 solves that.
 - **Found in:** the design review (F15).
+
+**NW11. Skills cite an `AGENTS.md` that wiki sessions never load.**
+- **Status: done 2026-10-30.** Changelog PATCH-29: the seven sub-skill
+  references now point at core `llm-wiki-pm`. The review bullet below was
+  wrong about `AGENTS.md`'s Wiki Path Resolution: NW5 removed the projects'
+  `.wiki-path` files, but `.wiki-path` still marks a project that uses another
+  wiki, and the core skill and hooks read it the same way. That part needed
+  no change. The text below is as captured.
+- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
+  much smaller. The text after this bullet is as captured; where it differs,
+  this bullet wins.
+  - Every Behavioral Constraint in `AGENTS.md` now has a counterpart in core
+    `SKILL.md`, and "Snapshot before destructive ops" became "Checkpoint before
+    destructive ops" in both, so the rules do reach wiki sessions. "Ruled out:
+    folding the rules into core `SKILL.md`" has in effect happened.
+  - **New scope:** retarget the 7 "per AGENTS.md" references (research 16;
+    brief 34, 146 and 245; persona 145; prd 22 and 124) to core
+    `llm-wiki-pm`'s Orient Every Session and Rules, and fix `AGENTS.md`'s Wiki
+    Path Resolution, which still reads `.wiki-path` (lines 8–9), to use
+    `$WIKI_PATH`. `citation-spec.md` line 5 is accurate and stays.
+  - **Dropped:** the proposal to read `AGENTS.md` during Orient.
+- **What happens:** `AGENTS.md` is the plugin repo's behavioral contract. It
+  loads only in sessions whose working folder is the plugin repo. Setup copies
+  only the files in `skills/llm-wiki-pm/templates/` into a new wiki, and none
+  of them is an `AGENTS.md` or `CLAUDE.md`. pm-wiki has neither. Yet several
+  skills defer to it:
+  - `llm-wiki-research`: "Orient per AGENTS.md before any writes".
+  - `llm-wiki-brief`: "Full orient (AGENTS.md 4-step protocol)", and
+    "Behavioral Constraints (per AGENTS.md)".
+  - `llm-wiki-persona`: "Behavioral Constraints (per AGENTS.md)".
+  - `llm-wiki-prd`: "Per AGENTS.md, orient before any write", and "Inherited
+    from AGENTS.md".
+  - `citation-spec.md` names AGENTS.md among the files that point to it.
+  In a pm-wiki session these references lead nowhere. Rules stated only in
+  `AGENTS.md`, such as the full "Snapshot before destructive ops", never
+  reach the agent.
+- **Likely cause:** upstream wrote `AGENTS.md` as a portable contract for
+  porting the plugin to other agents (README: "the portable reference if you
+  want to port to another agent"). It expected Claude Code to get the rules
+  from the skills and hooks. The "per AGENTS.md" lines were probably written
+  in the plugin repo, where the file does load.
+- **Why it matters:** the skills' references resolve to nothing, and the
+  contract isn't in context in wiki sessions.
+  It would not have prevented NW10's missed snapshots, since that rule was in
+  context from the core skill.
+- **Proposal: read the contract during Orient.**
+  - Add a step to core skill "Orient Every Session" that reads the fork's
+    `AGENTS.md`. The skill finds it relative to its own folder
+    (`${CLAUDE_SKILL_DIR}/../../AGENTS.md`), which holds for the symlinked
+    install and for a plugin install, since both carry the whole repo. Orient
+    already reads `$WIKI/SCHEMA.md` and the other root files by path, so the
+    step works whichever project the session starts in.
+  - The "per AGENTS.md" references in the sub-skills then point at something
+    the agent has read. They can stay as they are.
+  - There's one copy, so nothing can drift, and nothing has to be added to
+    pm-wiki or to setup.
+  - Clean up `AGENTS.md` first, since every Orient would read it (about 718
+    words):
+    - Its Wiki Path Resolution still reads `.wiki-path`, which NW5 removed.
+    - Model Routing, Skill Architecture and Agent Surfaces are about the
+      plugin, not wiki work. Move them to a plugin-side file or trim them.
+    - The plugin repo's own development sessions load the same file as
+      their project instructions, so keep a version that suits wiki
+      sessions.
+  - Like the rest of Orient, it's read once per session, so it can still be
+    lost to compaction in a long session.
+  - **Read only the Behavioral Constraints section.** Measured in pm-wiki on
+    2026-10-02, Orient already loads about 15,400 words: core `SKILL.md`
+    3,441, `overview.md` 8,626, `SCHEMA.md` 2,555, `index.md` 591, and the
+    last 30 lines of `log.md` 171. The whole `AGENTS.md` (718 words) would
+    add about 5%, and about 3% after the cleanup above. Most of what's left
+    after the cleanup (the Orient protocol and source attribution) repeats
+    the core skill. Behavioral Constraints (245 words) is the part the
+    skills don't carry, so reading only that section adds about 1.5%.
+    Trimming `overview.md` under NW1 would save far more than this costs.
+- **Ruled out: a pm-wiki `CLAUDE.md`** importing `AGENTS.md`. It loads only
+  in sessions started inside pm-wiki. The wiki is used from other projects
+  (`$WIKI_PATH` since NW5), and Claude Code doesn't load a `CLAUDE.md` from
+  an unrelated folder when a file there is read. That was tested on
+  2026-10-02: reading a page in a scratch folder outside the session's
+  working folder didn't load that folder's `CLAUDE.md`. Reads through Bash or
+  the wiki-search MCP don't trigger loading at all. It could still be added
+  for sessions started in pm-wiki, but it isn't the fix.
+- **Ruled out: folding the rules into core `SKILL.md`** and dropping the
+  "per AGENTS.md" references. That's simpler, but it duplicates rules and
+  gives up `AGENTS.md` as the single contract.
+- **Upstream:** changing Orient's reading list is a "discuss first" item in
+  upstream's CONTRIBUTING (as in NW9). It doesn't block the fork.
+- **Related:** NW10 (the snapshot rule lives in `AGENTS.md`), NW1 and NW9
+  (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
+  from any project).
+- **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.

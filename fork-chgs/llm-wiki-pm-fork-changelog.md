@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-28) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-29) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -324,6 +324,22 @@ the set would go upstream with the migration script, isn't done.
   `raw/attachments/` folder.
 - **Where:** `references/ingest-guide.md`. Commit `74a1ad7`.
 - **Status:** active. Upstream candidate.
+
+#### PATCH-29 — Sub-skills point at the core skill, not `AGENTS.md`
+
+- **What:** the seven "per AGENTS.md" references in the brief (3), persona
+  (1), prd (2) and research (1) skills now name core `llm-wiki-pm`'s Orient
+  Every Session or Pitfalls. `citation-spec.md`'s mention of `AGENTS.md`
+  stays, since `AGENTS.md` does point to the spec. Prose only.
+- **Why:** `AGENTS.md` loads only in sessions started in the fork's folder,
+  so in wiki sessions the references led nowhere. Every rule they deferred to
+  is in the core skill, which every wiki session loads. Backlog NW11, as
+  rescoped by the [NW Backlog Review](nw-backlog-review.md).
+- **Where:** `skills/llm-wiki-brief/SKILL.md`, `skills/llm-wiki-persona/SKILL.md`,
+  `skills/llm-wiki-prd/SKILL.md`, `skills/llm-wiki-research/SKILL.md`, commit
+  `350cea6`.
+- **Status:** active. Upstream candidate, not filed: the references are
+  upstream's.
 
 ### Install
 
@@ -697,7 +713,8 @@ Not patches to upstream's code, and not offered upstream:
   edit to one of them may land under the wrong number. Step ①'s routing of
   pasted text changed in PATCH-25.
 - The research and PRD skills, wherever upstream names folder pages
-  `README.md` (PATCH-13).
+  `README.md` (PATCH-13), and the brief, persona, prd and research skills'
+  "per AGENTS.md" lines (PATCH-29).
 - `README.md`, `hooks/README.md`, `CONTRIBUTING.md`, `GETTING_STARTED.md`.
 
 **After a merge:**
