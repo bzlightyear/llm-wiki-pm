@@ -73,7 +73,8 @@ this touch? (Skip in automated/batch contexts.)
 ## ③ Check existing pages
 
 `grep -r` for every entity/concept mentioned. Read existing pages before deciding
-create vs update.
+create vs update. A brief (`lifecycle: dated-digest`) filed before today is
+never one to update: the next brief picks up the change.
 
 ## ④ Apply Page Thresholds (from SCHEMA.md)
 

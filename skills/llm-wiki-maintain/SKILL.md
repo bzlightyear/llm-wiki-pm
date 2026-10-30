@@ -99,8 +99,11 @@ run?") and proceed on the answer; default to interactive.
    Both are dated by the run and get `lifecycle: dated-digest` (keeps them out
    of the orphan count). Either brief MUST include the Source Coverage ledger
    (one row per registered source, each with its window:
-   `- Notion: hits (4 items), <from> → <to>`) and, in autonomous mode, a
-   **Needs Review** section.
+   `- Notion: hits (4 items), <from> → <to>`). Either brief starts from the
+   latest brief's Needs Review, marking each item resolved, with where it
+   went, or carried forward (`llm-wiki-brief` → Needs Review carry-forward).
+   Its **Needs Review** section holds the carried items and this run's queue,
+   in either mode, and is left out only when both are empty.
 
 ⑤ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
    the export-surface (shareable) audit, and any new orphans/broken links.

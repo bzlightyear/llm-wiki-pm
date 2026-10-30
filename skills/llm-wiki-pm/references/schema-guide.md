@@ -87,7 +87,10 @@ a flag they ratchet the orphan count up every single day you do the job
 (orphans climbing 7→14 over a few days of normal use is the symptom). Stamp
 these `lifecycle: dated-digest` when you create them; `lint.py` exempts them
 from the orphan warning the same way as intentional stubs, and from the
-`index.md` completeness check, so they need no index entry. (Generated
+`index.md` completeness check, so they need no index entry. A dated digest isn't
+edited after the day it was filed: a later correction goes on the page that
+owns the fact (and, for a brief, into the next brief's Needs Review
+carry-forward), while same-day corrections are fine. (Generated
 `lint-*.md` reports are already skipped by lint entirely.)
 
 ## Domain pivots

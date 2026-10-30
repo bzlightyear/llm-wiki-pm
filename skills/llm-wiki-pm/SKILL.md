@@ -230,7 +230,8 @@ In brief:
 ① **Capture raw** to `raw/` (immutable), behind the privacy filter. Pages are
    private by default; add `shareable: true` only to genuinely public-safe pages.
 ② **Surface takeaways** before writing (skip in batch contexts).
-③ **Check existing pages** — decide create vs update.
+③ **Check existing pages** — decide create vs update. A brief filed before
+   today is never one to update.
 ④ **Apply page thresholds** (2+ sources or central) and **enrich from connected
    tools BEFORE writing** (Freshness-first) — never build a page from other pages' prose.
 ⑤ **Write/update** with required frontmatter, taxonomy tags, ≥2 `[[wikilinks]]`,
@@ -283,13 +284,14 @@ checkpoint: commit the wiki first.
 ① **Identify all affected pages** — three-way search: `backlinks.py` (structural),
    `view(action=semantic_search)` (paraphrases), `grep -r` (exact tokens). Don't
    fix one page and leave three with the stale claim. Leave `_archive/` hits
-   alone: they're retired pages.
+   alone: they're retired pages. Leave a dated digest (a brief) filed before
+   today alone too: it records its day.
 ② **Show diff BEFORE writing**: old text, new text, reason. Confirm for any claim
    touching 5+ pages or changing stated strategy.
 ③ **Cite source**: every update names the raw source justifying it, in the body and log.
    A fact not yet in `raw/` gets a record first: §2 ①, or `capture.py` for a statement
    (`references/citation-spec.md`). Never coin an ID for a record that doesn't exist.
-④ **Stale-claim sweep**: after the update, re-search and fix all instances in the same pass.
+④ **Stale-claim sweep**: after the update, re-search and fix all instances in the same pass, skipping the hits ① leaves alone.
 ⑤ **Bump `updated:`** on every page touched.
 ⑥ **Log**: `## [YYYY-MM-DD] update | <claim/page> | source: raw/...`, listing every file.
 ⑦ **Write verification**: re-read after writing; if frontmatter is malformed or the

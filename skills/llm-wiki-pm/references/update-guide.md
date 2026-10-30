@@ -35,7 +35,10 @@ grep -r "claim keyword" "$WIKI" --include="*.md"
 
 Use all three. Backlinks catches structural references, wiki-search catches
 paraphrases, grep catches literals. Miss any and you leave stale variants. A
-hit under `_archive/` is a retired page: leave it as it is.
+hit under `_archive/` is a retired page: leave it as it is. Leave a hit in a
+dated digest (`lifecycle: dated-digest`, such as a brief) filed before today
+as it is too: it records its day, and the correction goes on the page that
+owns the fact.
 
 Don't update one page and leave stale variants. If the claim appears in:
 - `entities/competitor-x.md`
@@ -97,7 +100,8 @@ After updating the primary page, re-grep for variants:
 - Numeric variants ("$500", "$500/seat", "five hundred")
 - Related claims that depended on the stale one
 
-Fix all in the same pass. Don't leave landmines.
+Fix all in the same pass, except the hits step 1 leaves alone. Don't leave
+landmines.
 
 ### 5. Bump dates everywhere
 
