@@ -17,7 +17,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW19 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW20 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -329,6 +329,33 @@ points: the two findings below, and I8's revisit mechanism.
 - **Found in:** a session on 2026-09-26, recorded inside NW1. Split out
   2026-10-02. Field disagreement measured, and a missed reverse update seen
   during an ingest, also 2026-10-02.
+
+**NW19. A second daily run on the same day has no rule for its brief.**
+- **What happens:** maintain files a daily brief at `briefings/YYYY-MM-DD.md`,
+  dated by the run, so a second run that day targets the file the first run
+  wrote. No skill says whether to replace it, add to it or file elsewhere,
+  and brief's "same-day corrections are fine" allows a rewrite. The second
+  brief's window starts where the first one ended, so if the agent replaces
+  the file, a few hours' brief takes the place of the morning's full one. The
+  pre-write hook's checkpoint keeps the first brief in git, but the page
+  loses it. Maintain's brief step files "without offering", so the
+  no-silent-overwrites diff isn't reliable here either.
+- **Why it matters:** the filed daily brief is the day's record and the
+  next brief's starting point (window and Needs Review carry-forward). It
+  hasn't happened yet: pm-wiki's `log.md` has 7 daily brief entries, none
+  on the same date.
+- **Options:** add a section per run to the same file; file the later run
+  separately (e.g. `YYYY-MM-DD-2.md`); or re-cover the whole day from the
+  previous day's brief and replace the file.
+- **Scope:** a short brief first, choosing an option and covering what it
+  touches: the brief windows and log line, Needs Review carry-forward when
+  the latest brief is in the same file, the same question for weekly briefs,
+  the "frozen after its day" rule, lint and the `briefings/` index line, and
+  maintain's report and lint delta. Then wording in `llm-wiki-brief` and
+  `llm-wiki-maintain`, and tests where lint is affected.
+- **Related:** NW15 (the brief rules this extends), PATCH-27 (briefs are
+  frozen after their day).
+- **Found in:** a question in a session on 2026-10-30.
 
 ## Closed
 
