@@ -106,7 +106,15 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 `directory` filter can't exclude a folder. NW12 dropped snapshots on
 2026-10-13 instead, so it gives no reason to fork.
 
-**NW3. Lint log entries crowd out `log.md`.** Every lint run outside `--json`
+**NW3. Lint log entries crowd out `log.md`.**
+**Status: re-assessed 2026-10-29, not approved.** The
+[Log Lint Entries Brief](log-lint-entries-brief.md) recommends logging only
+lint runs that change pages (its option 3), and having `session-stop.sh` keep
+the last 30 days in `log.md` at rotation (R2), so brief windows (PATCH-23) and
+Orient survive a rotation. Measured then: 57 of 111 entries since the
+2026-10-06 rotation were lint runs. The append is now at `lint.py:1036-1044`.
+F14's migration risk no longer applies: step 10b ran on 2026-09-30.
+The text below is as captured. Every lint run outside `--json`
 mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
 are 257 of the log's 480 entries, with up to 37 on a single day. That buries the
 entries recording actual wiki work, and pushes the log toward `session-stop.sh`'s
