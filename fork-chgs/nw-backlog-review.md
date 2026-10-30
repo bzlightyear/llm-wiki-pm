@@ -16,7 +16,8 @@ the original analysis's findings that nothing picked up, and a priority order.
 - **Closed:** NW2 (dropped) and NW4 (merged into NW1a).
 - **Added:** NW17 (design step 11).
 - **Decided 2026-10-30:** NW9 phase 2 drops the map's Org Chart table.
-- **Still open:** the NW1a decisions, and the pm-wiki memory's stale reason.
+- **Done 2026-10-30:** the pm-wiki memory's reasons were rewritten.
+- **Still open:** the NW1a decisions.
 
 ## About This Document
 
