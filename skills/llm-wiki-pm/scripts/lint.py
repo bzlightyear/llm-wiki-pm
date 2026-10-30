@@ -290,9 +290,9 @@ def check_frontmatter_structure(rel_path, fm_block_text):
 
 def check_frontmatter_profile(rel_path, fm, fm_errors):
     """R12: the rest of the frontmatter profile (references/citation-spec.md),
-    as wikifm reports it: value shapes, keys, dates. Returns a 🟡 warning or
-    None. Missing frontmatter and missing required keys are R12 too, and stay
-    🔴 in main()."""
+    as wikifm reports it: value shapes, keys, dates. Returns a 🔴 error or
+    None. Missing frontmatter and missing required keys are R12 too, and are
+    reported in main()."""
     r12 = [e for e in fm_errors if e.rule == "R12"]
     if not r12:
         return None
@@ -312,7 +312,7 @@ def check_frontmatter_profile(rel_path, fm, fm_errors):
 
 def check_sources(rel_path, sources, wiki, files):
     """R6: sources: entries that aren't the path of an existing record or
-    page. Returns (🟡 warning or None, the Resolution of each entry). A path
+    page. Returns (🔴 error or None, the Resolution of each entry). A path
     to a missing file names the file with the same ID, if there is one."""
     resolved = [wikifm.resolve(s, wiki) for s in sources]
     bad = []
@@ -334,7 +334,8 @@ def check_sources(rel_path, sources, wiki, files):
 
 def check_provenance_cross_reference(rel_path, text, sources, files=None):
     """R3 (a citation whose ID is the slug of no sources: entry on the page)
-    and R4 (bulk uncited sources). Returns {"info": [...], "warnings": [...]}.
+    and R4 (bulk uncited sources). Returns {"errors": [...], "warnings":
+    [...]}: R3 is 🔴, R4 🟡.
 
     Resolution is exact and page-local (references/citation-spec.md): no
     substring matching and no exemption for conversations. With `files`, the
@@ -342,7 +343,7 @@ def check_provenance_cross_reference(rel_path, text, sources, files=None):
     that names one file. Frontmatter sources: legitimately lists more than
     the body cites (ingest-guide ⑤), so R4 is a ratio check, not set
     equality."""
-    notes = {"info": [], "warnings": []}
+    notes = {"errors": [], "warnings": []}
     fm_m = FRONTMATTER_RE.match(text)
     body = text[fm_m.end():] if fm_m else text
     cited_ids = [c.id for c in wikifm.citations(body) if c.id]
@@ -356,7 +357,7 @@ def check_provenance_cross_reference(rel_path, text, sources, files=None):
         for cid in dict.fromkeys(unresolved):  # each ID once, first-cited order
             matches = (files or {}).get(cid, [])
             ids.append(f"'{cid}'" + (f" (declare {matches[0]})" if len(matches) == 1 else ""))
-        notes["warnings"].append(
+        notes["errors"].append(
             f"{len(unresolved)} citation(s) of IDs not declared in sources: "
             f"(R3): {rel_path} — " + ", ".join(ids)
         )
@@ -685,7 +686,7 @@ def main():
             errors.extend(check_frontmatter_structure(rel, fm_block_m.group(1)))
         profile_note = check_frontmatter_profile(rel, fm, fm_errors)
         if profile_note:
-            warnings.append(profile_note)
+            errors.append(profile_note)
 
         missing = REQUIRED_FRONTMATTER - set(fm.keys())
         if missing:
@@ -740,7 +741,7 @@ def main():
             # R6: every entry is the path of an existing record or page
             sources_note, resolved = check_sources(rel, srcs, wiki, files)
             if sources_note:
-                warnings.append(sources_note)
+                errors.append(sources_note)
                 invariant_pages["I2"].add(rel)
             # an entry naming a record is primary, one naming a page is
             # secondary, whether or not the file exists (R6 reports that)
@@ -770,9 +771,9 @@ def main():
                 )
             # provenance cross-reference (R3 undeclared citation, R4 bulk uncited)
             prov = check_provenance_cross_reference(rel, text, srcs, files)
-            info.extend(prov["info"])
+            errors.extend(prov["errors"])
             warnings.extend(prov["warnings"])
-            if any("(R3)" in w for w in prov["warnings"]):
+            if prov["errors"]:
                 invariant_pages["I3"].add(rel)
             fm_m = FRONTMATTER_RE.match(text)
             body = text[fm_m.end():] if fm_m else text

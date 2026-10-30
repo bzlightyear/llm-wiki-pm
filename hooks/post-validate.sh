@@ -144,7 +144,7 @@ def check_page(page, rel, text):
             if note:
                 problems.append(note)
             prov = lint.check_provenance_cross_reference(rel, text, srcs, idx["files"])
-            problems.extend(w for w in prov["warnings"] if "(R3)" in w)
+            problems.extend(prov["errors"])
             body = text[m.end():] if m else text
             note = lint.check_citation_grammar(rel, wikifm.citations(body), idx["files"])
             if note:

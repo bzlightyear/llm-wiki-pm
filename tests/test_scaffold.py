@@ -121,7 +121,7 @@ def test_template_type_enum_matches_schema():
 
 def test_note_template_is_a_page_lint_flags_until_its_source_is_filled(tmp_path):
     """Filled in except for sources: and the body text, the skeleton has
-    every required key and no error, and R6 reports the placeholder entry."""
+    every required key, and its one error is R6 reporting the placeholder entry."""
     page = (
         note_template()
         .replace("{{Title}}", "Usage pricing")
@@ -138,8 +138,7 @@ def test_note_template_is_a_page_lint_flags_until_its_source_is_filled(tmp_path)
     write(wiki, "concepts/usage-pricing.md", page)
     write(wiki, "concepts/neighbor.md", wiki_page(body="# n\n[[usage-pricing]]\n"))
     result = findings(wiki)
-    assert not any("usage-pricing" in e for e in result["errors"])
-    assert any(
-        "(R6): concepts/usage-pricing.md" in w and "raw/{{folder}}/{{record-id}}.md" in w
-        for w in result["warnings"]
-    )
+    flagged = [e for e in result["errors"] if "usage-pricing" in e]
+    assert len(flagged) == 1
+    assert "(R6): concepts/usage-pricing.md" in flagged[0]
+    assert "raw/{{folder}}/{{record-id}}.md" in flagged[0]

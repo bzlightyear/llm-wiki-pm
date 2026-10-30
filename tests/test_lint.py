@@ -182,7 +182,7 @@ def provenance(sources, body, files=None):
 def test_r3_slug_plus_section_name_resolves():
     raw = "raw/internal/customer-a-product-update-customer-feedback-2026-09-10.md"
     notes = provenance([raw], f"[source: {lint.slug(raw)}, Recently Shipped]")
-    assert notes == {"info": [], "warnings": []}
+    assert notes == {"errors": [], "warnings": []}
 
 
 def test_r3_flags_a_conversation_citation_with_no_record():
@@ -191,7 +191,7 @@ def test_r3_flags_a_conversation_citation_with_no_record():
         ["This conversation, 2026-08-25"],
         "[source: user, conversation (planning meeting), 2026-08-12]",
     )
-    assert notes["warnings"] == [
+    assert notes["errors"] == [
         "1 citation(s) of IDs not declared in sources: (R3): p.md — 'user'"
     ]
 
@@ -199,7 +199,7 @@ def test_r3_flags_a_conversation_citation_with_no_record():
 def test_r3_checks_each_citation_in_a_marker():
     raw = "raw/internal/cost-sharing-request-2026-08-25.md"
     notes = provenance([raw], f"[source: user, conversation, 2026-08-25;\n{raw}]")
-    assert notes["warnings"] == [
+    assert notes["errors"] == [
         "1 citation(s) of IDs not declared in sources: (R3): p.md — 'user'"
     ]
 
@@ -210,7 +210,7 @@ def test_r3_matches_ids_exactly():
         ["raw/articles/competitor-x-pricing-2026-01-15.md"],
         "[source: competitor-x-pricing] [source: competitor-x-pricing-2026-01-15-v2]",
     )
-    assert notes["warnings"] == [
+    assert notes["errors"] == [
         "2 citation(s) of IDs not declared in sources: (R3): p.md — "
         "'competitor-x-pricing', 'competitor-x-pricing-2026-01-15-v2'"
     ]
@@ -219,7 +219,7 @@ def test_r3_matches_ids_exactly():
 def test_r3_names_the_path_to_declare():
     files = {"competitor-x-pricing-2026-01-15": ["raw/articles/competitor-x-pricing-2026-01-15.md"]}
     notes = provenance([], "[source: competitor-x-pricing-2026-01-15, p.3] [source: user]", files)
-    assert notes["warnings"] == [
+    assert notes["errors"] == [
         "2 citation(s) of IDs not declared in sources: (R3): p.md — "
         "'competitor-x-pricing-2026-01-15' (declare "
         "raw/articles/competitor-x-pricing-2026-01-15.md), 'user'"
@@ -231,7 +231,7 @@ def test_r3_resolves_a_citation_by_what_it_names():
     not R3's."""
     raw = "raw/articles/competitor-x-pricing-2026-01-15.md"
     notes = provenance([raw], f"[source: {raw}] [source: competitor-x-\npricing-2026-01-15]")
-    assert notes == {"info": [], "warnings": []}
+    assert notes == {"errors": [], "warnings": []}
 
 
 def test_r4_fires_on_22_listed_3_cited():
@@ -332,7 +332,7 @@ def test_r6_names_each_entry_that_isnt_an_existing_record_or_page(tmp_path):
         "raw/articles/competitor-x-pricing-2026-01-15.md), "
         "'user, conversation, 2026-01-15' (not a path), "
         "'SCHEMA.md' (a root file isn't a source)"
-    ) in findings(wiki)["warnings"]
+    ) in findings(wiki)["errors"]
 
 
 def test_r7_counts_markers_by_defect(tmp_path):
@@ -345,15 +345,15 @@ def test_r7_counts_markers_by_defect(tmp_path):
         "Three [source: https://example.com/pricing].\n"
         "Four [source: competitor-x-pricing-2026-01-15, p.4].\n",
     ))
-    warnings = findings(wiki)["warnings"]
+    tiers = findings(wiki)
     assert (
         "3 [source:] marker(s) outside the citation grammar (R7): concepts/p.md — "
         "1 wrapped, 1 path, 1 url (2 repairable with --auto-fix=content)"
-    ) in warnings
+    ) in tiers["warnings"]
     assert (
         "1 citation(s) of IDs not declared in sources: (R3): concepts/p.md — "
         "'https://example.com/pricing'"
-    ) in warnings
+    ) in tiers["errors"]
 
 
 def test_r9_every_id_names_one_file(tmp_path):
@@ -418,7 +418,7 @@ def test_r11_flags_the_mcps_default_contract_until_it_is_edited(tmp_path):
     assert not any("(R11)" in w for w in findings(wiki)["warnings"])
 
 
-def test_r12_warns_on_the_profile_and_errs_on_missing_keys(tmp_path):
+def test_r12_errs_on_the_profile_and_on_missing_keys(tmp_path):
     wiki = make_wiki(tmp_path)
     write(wiki, "concepts/stamped.md", wiki_page().replace(
         f"created: '{TODAY}'", "created: 2026-01-15T00:00:00.000Z"
@@ -430,10 +430,9 @@ def test_r12_warns_on_the_profile_and_errs_on_missing_keys(tmp_path):
         "frontmatter outside the profile (R12): concepts/stamped.md — line 3: 'created' "
         "isn't a YYYY-MM-DD date: '2026-01-15T00:00:00.000Z' (--auto-fix=content "
         "rewrites midnight timestamps as 'YYYY-MM-DD')"
-    ) in tiers["warnings"]
+    ) in tiers["errors"]
     assert "frontmatter missing ['created', 'sources', 'updated'] (R12): concepts/no-keys.md" in tiers["errors"]
     assert "missing frontmatter (R12): concepts/no-frontmatter.md" in tiers["errors"]
-    assert not any("stamped" in e for e in tiers["errors"])
 
 
 def test_content_fix_repairs_markers_and_dates_after_a_checkpoint(tmp_path):
@@ -534,7 +533,7 @@ def test_grounding_counts_only_records_as_primary(tmp_path):
     # a conversation entry isn't a record; a missing record path still names
     # one (R6 reports that it's missing)
     assert any("self-referential" in e and "entities/said.md" in e for e in errors)
-    assert not any("entities/typo.md" in e for e in errors)
+    assert not any("self-referential" in e and "entities/typo.md" in e for e in errors)
 
 
 def test_dated_digests_skip_grounding_staleness_and_the_index(tmp_path):

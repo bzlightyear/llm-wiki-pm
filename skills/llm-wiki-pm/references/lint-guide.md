@@ -92,11 +92,11 @@ ID is the slug of the file it names.
 
 | Rule | Finds | Tier | Fix |
 |---|---|---|---|
-| R3 | A citation whose ID is the slug of no `sources:` entry on the same page | 🟡 | Declare the path the message names; for a statement with no record, capture one (`capture.py`) |
+| R3 | A citation whose ID is the slug of no `sources:` entry on the same page | 🔴 | Declare the path the message names; for a statement with no record, capture one (`capture.py`) |
 | R4 | A page with 5+ sources that cites fewer than half of them | 🟡 | Trim `sources:` to what the page cites or is built from |
-| R6 | A `sources:` entry that isn't the path of an existing record or page (a bare name, a root file like SCHEMA.md, an asset, a missing file) | 🟡 | Declare `raw/<folder>/<id>.md` or the page's path; capture a record for anything else |
+| R6 | A `sources:` entry that isn't the path of an existing record or page (a bare name, a root file like SCHEMA.md, an asset, a missing file) | 🔴 | Declare `raw/<folder>/<id>.md` or the page's path; capture a record for anything else |
 | R7 | A marker outside the grammar: wrapped over lines, a nested `source:`, "a vs. b", a path, a URL, a wikilink, or text that isn't an ID | 🟡 | `--auto-fix=content` repairs the first four when every ID in the marker names exactly one file; the rest by hand |
-| R12 | Frontmatter outside the profile: value shapes, key names, dates that aren't `YYYY-MM-DD` | 🟡 | By hand; `--auto-fix=content` rewrites midnight timestamps. Missing frontmatter or required keys are 🔴 |
+| R12 | Frontmatter outside the profile: value shapes, key names, dates that aren't `YYYY-MM-DD`, or missing frontmatter or required keys | 🔴 | By hand; `--auto-fix=content` rewrites midnight timestamps |
 
 A citation that breaks the grammar but names a declared source is only R7. One
 that names nothing declared, such as `[source: user, conversation, <date>]`,
