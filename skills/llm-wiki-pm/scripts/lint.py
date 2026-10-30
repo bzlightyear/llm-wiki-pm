@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tiered lint for PM wiki. Writes report to queries/lint-YYYY-MM-DD.md.
+"""Tiered lint for PM wiki. Writes report to queries/lint-YYYY-MM-DD.md, and a
+log.md entry only when --auto-fix changed something.
 
 Usage:
     lint.py <wiki_path>              # report only
@@ -1033,15 +1034,16 @@ def main():
 
     report_path.write_text("\n".join(out) + "\n")
 
-    if log_path.exists():
+    # log.md records changes to the wiki, so only a run that fixed something
+    # gets an entry; the report holds the rest
+    if fixes_applied and log_path.exists():
         with log_path.open("a") as f:
             f.write(
-                f"\n## [{today}] lint | {len(errors)}E {len(warnings)}W "
-                f"{len(info)}I {len(fixes_applied)}F\n"
+                f"\n## [{today}] lint | auto-fix | {len(fixes_applied)} fixes | "
+                f"{len(errors)}E {len(warnings)}W {len(info)}I\n"
             )
+            f.writelines(f"- {fix}\n" for fix in fixes_applied)
             f.write(f"- Report: queries/lint-{today}.md\n")
-            if auto_fix:
-                f.write(f"- Auto-fix applied {len(fixes_applied)} repairs\n")
 
     if not quiet:
         print(f"ok: {report_path.relative_to(wiki)}")

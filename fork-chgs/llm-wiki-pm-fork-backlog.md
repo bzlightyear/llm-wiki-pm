@@ -106,24 +106,6 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 `directory` filter can't exclude a folder. NW12 dropped snapshots on
 2026-10-13 instead, so it gives no reason to fork.
 
-**NW3. Lint log entries crowd out `log.md`.**
-**Status: re-assessed 2026-10-29, not approved.** The
-[Log Lint Entries Brief](log-lint-entries-brief.md) recommends logging only
-lint runs that change pages (its option 3), and having `session-stop.sh` keep
-the last 30 days in `log.md` at rotation (R2), so brief windows (PATCH-23) and
-Orient survive a rotation. Measured then: 57 of 111 entries since the
-2026-10-06 rotation were lint runs. The append is now at `lint.py:1036-1044`.
-F14's migration risk no longer applies: step 10b ran on 2026-09-30.
-The text below is as captured. Every lint run outside `--json`
-mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
-are 257 of the log's 480 entries, with up to 37 on a single day. That buries the
-entries recording actual wiki work, and pushes the log toward `session-stop.sh`'s
-500-entry rotation roughly twice as fast. The rotation is what forces migration
-step M2 to read rotated `log-*.md` files (review finding F14). Options: append
-at most one lint entry per day, updating it in place, or stop appending and rely
-on the per-day report in `queries/`. Found in the design review
-([Sources and References Review](sources-and-references-review.md), F14).
-
 **NW4. The action-items file is outside the plugin's rules.**
 - **What it is:** a root-level markdown file of open action items, ranked by
   urgency (about 400 lines, about 90 items). An agent created it at the user's
@@ -950,3 +932,22 @@ on the per-day report in `queries/`. Found in the design review
   "Pete owes" list).
 - **Found in:** a session on 2026-10-28 analyzing how briefs are created,
   stored and used.
+
+**NW3. Lint log entries crowd out `log.md`.**
+**Status: done 2026-10-29.** Changelog PATCH-28: lint logs only runs that
+change pages, and rotation keeps the last 30 days in `log.md`, so brief
+windows (PATCH-23) and Orient survive a rotation. Options 3, R2 and R1 of the
+[Log Lint Entries Brief](log-lint-entries-brief.md), approved 2026-10-29.
+pm-wiki's 57 existing lint entries stay in its log. Measured then: 57 of 111
+entries since the 2026-10-06 rotation were lint runs. The append was at
+`lint.py:1036-1044`. F14's migration risk no longer applied: step 10b ran on
+2026-09-30.
+The text below is as captured. Every lint run outside `--json`
+mode appends an entry to `log.md` (`lint.py:772-780`). As of 2026-09-28 those
+are 257 of the log's 480 entries, with up to 37 on a single day. That buries the
+entries recording actual wiki work, and pushes the log toward `session-stop.sh`'s
+500-entry rotation roughly twice as fast. The rotation is what forces migration
+step M2 to read rotated `log-*.md` files (review finding F14). Options: append
+at most one lint entry per day, updating it in place, or stop appending and rely
+on the per-day report in `queries/`. Found in the design review
+([Sources and References Review](sources-and-references-review.md), F14).

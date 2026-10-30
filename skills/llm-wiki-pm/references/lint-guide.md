@@ -1,7 +1,9 @@
 # Lint Guide
 
 Lint runs programmatically via `scripts/lint.py` and writes a tiered report to
-`wiki/queries/lint-YYYY-MM-DD.md`. Run every 5-10 ingests, or monthly.
+`wiki/queries/lint-YYYY-MM-DD.md`. Run every 5-10 ingests, or monthly. It adds
+a `log.md` entry only when `--auto-fix` changes pages, listing the fixes. Don't
+log lint runs yourself; note lint results in the entry for the work they check.
 
 ## Severity Tiers
 

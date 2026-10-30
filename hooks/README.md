@@ -39,7 +39,7 @@ Runs after every write to the wiki, from the same tools as `pre-write.sh` (`vaul
 The broken-link check that `post-validate.sh` replaced. It stays in the repo, unregistered, with its tests.
 
 **session-stop.sh**
-Guards log rotation at the end of each session. When `log.md` exceeds 500 entries (lines starting with `## [`) it renames the file to `log-YYYY.md` (or `log-YYYY-part-N.md` if that already exists) and creates a fresh `log.md` with a rotation header.
+Guards log rotation at the end of each session. When `log.md` exceeds 500 entries (lines starting with `## [`) it moves entries older than 30 days to `log-YYYY.md` (or `log-YYYY-part-N.md` if that already exists) and keeps the rest, at most the last 250, in a fresh `log.md` with a rotation header. Keeping recent entries lets Orient and the briefs' windows find them after a rotation. On an error nothing moves, and the next session end tries again.
 
 ---
 

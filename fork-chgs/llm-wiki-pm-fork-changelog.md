@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-27) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-28) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -619,6 +619,41 @@ skipped.
 - **Status:** active. Upstream candidate, not filed, except the "You owe"
   mention, which follows PATCH-23's table.
 
+### Log
+
+#### PATCH-28 — Lint logs only fixing runs; rotation keeps the last 30 days
+
+- **What:** `lint.py` appends a `log.md` entry only when `--auto-fix` changed
+  something: `## [date] lint | auto-fix | <N> fixes | <N>E <N>W <N>I`, one line
+  per fix, then the report path. A report-only run writes its report and
+  nothing else. `session-stop.sh`, past 500 entries, moves only entries older
+  than 30 days into `log-YYYY.md` (or `-part-N`) and keeps the rest, at most the
+  last 250, in the new `log.md`, splitting at the first entry dated in the
+  window so later back-dated entries stay. It writes the rotated file first,
+  then replaces `log.md` through a temp file; on any error nothing moves. The
+  header reads "Rotated from log.md to `<name>` on `<date>`. Entries from
+  `<date>` on stay here." The brief skill's window rule looks in the rotated
+  logs, newest first, when `log.md` has no brief line of the kind needed. The
+  core skill and `lint-guide.md` say not to log lint runs by hand,
+  `worker-lint` no longer says the caller logs its run, and maintain ⑥'s lint
+  health delta compares with the newest earlier `queries/lint-*.md`.
+- **Why:** lint entries were 57 of the 111 entries since the 2026-10-06
+  rotation and 273 of 511 before it, and no reader used their content. Two
+  counted them, toward the rotation; the rest read past them. A whole-log
+  rotation left Orient an empty log and moved the previous brief's line, which
+  PATCH-23 made the start of the next brief's window. Backlog NW3; the
+  [Log Lint Entries Brief](log-lint-entries-brief.md), options 3, R2 and R1.
+- **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `hooks/session-stop.sh`,
+  `hooks/README.md`, `skills/llm-wiki-pm/SKILL.md` (§5, Pitfalls),
+  `references/lint-guide.md`, `templates/log.md`,
+  `skills/llm-wiki-brief/SKILL.md` (Windows), `skills/llm-wiki-maintain/SKILL.md`
+  (⑥), `.claude/agents/worker-lint.md`, `tests/test_lint.py` (2 tests), and a
+  new `tests/test_log_rotation.py` (5 tests); upstream's `TestSessionStop` is
+  unchanged. pm-wiki's existing lint entries stay. The suite passed: 468
+  passed, 2 skipped.
+- **Status:** active. Upstream candidate, not filed: the lint append and
+  rotation are upstream code.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -648,14 +683,16 @@ Not patches to upstream's code, and not offered upstream:
 - `hooks/session-start.sh` (lint parsing, stale scan, scaffold, the removed
   warning, the checkpoint, the removed lock), `hooks/pre-write.sh` (PATCH-5,
   PATCH-6, PATCH-19, PATCH-20; an upstream snapshot change doesn't apply
-  here), `hooks/session-stop.sh` (PATCH-20, the removed lock) and
+  here), `hooks/session-stop.sh` (PATCH-20, the removed lock; PATCH-28, the
+  rotation's 30-day tail) and
   `hooks/hooks.json` (matchers, `post-validate.sh` in place of
   `post-write.sh`).
 - `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
-  template (PATCH-7, PATCH-14, PATCH-27).
+  template (PATCH-7, PATCH-14, PATCH-27); `lint-guide.md` and the `log.md`
+  template (PATCH-28).
 - `llm-wiki-maintain`, `llm-wiki-brief`, `source-discipline.md` and the
-  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23, PATCH-26, PATCH-27).
+  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23, PATCH-26 to PATCH-28).
   `ingest-guide.md`'s steps ⑥–⑪ were renumbered (PATCH-24), so an upstream
   edit to one of them may land under the wrong number. Step ①'s routing of
   pasted text changed in PATCH-25.

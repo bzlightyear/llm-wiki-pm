@@ -48,14 +48,40 @@ if [[ -f "$DEST" ]]; then
   DEST="$WIKI/$BASE_NAME"
 fi
 
-# ⑤ Rotate: move log.md to the archive name
-mv "$LOG_FILE" "$DEST"
+# ⑤ Rotate: move entries older than 30 days to the archive name, and keep the
+# rest (at most 250) in a fresh log.md, so Orient and the briefs' windows still
+# find recent entries. On any error nothing moves, and the next session retries.
+KEPT=$(python3 - "$LOG_FILE" "$DEST" "$BASE_NAME" <<'PY' 2>/dev/null
+import os, re, sys
+from datetime import date, timedelta
+log, dest, name = sys.argv[1:]
+text = open(log).read()
+starts = [m.start() for m in re.finditer(r"^## \[", text, re.M)]
+cutoff = (date.today() - timedelta(days=30)).isoformat()
+# split at the first entry dated in the last 30 days; later back-dated entries stay
+split = next((i for i in starts if text[i + 4:i + 14] >= cutoff), len(text))
+keep = starts[starts.index(split):] if split in starts else []
+if len(keep) > 250:
+    split = keep[-250]
+    keep = keep[-250:]
+header = f"# Wiki Log\n\nRotated from log.md to {name} on {date.today().isoformat()}."
+if keep:
+    header += f" Entries from {text[split + 4:split + 14]} on stay here."
+with open(dest, "x") as f:
+    f.write(text[:split].rstrip("\n") + "\n")
+try:
+    tmp = log + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(header + "\n" + ("\n" + text[split:] if keep else ""))
+    os.replace(tmp, log)
+except Exception:
+    os.remove(dest)  # log.md is unchanged, so don't leave a copy of its entries
+    raise
+print(len(keep))
+PY
+) || exit 0
 
-# ⑥ Create fresh log.md with a rotation header
-TODAY=$(date '+%Y-%m-%d')
-printf '# Wiki Log\n\nRotated from %s on %s.\n' "$BASE_NAME" "$TODAY" > "$LOG_FILE"
-
-# ⑦ Report the rotation to stderr
-echo "Wiki log rotated: log.md -> $BASE_NAME ($ENTRY_COUNT entries)" >&2
+# ⑥ Report the rotation to stderr
+echo "Wiki log rotated: log.md -> $BASE_NAME ($(( ENTRY_COUNT - KEPT )) entries moved, $KEPT kept)" >&2
 
 exit 0

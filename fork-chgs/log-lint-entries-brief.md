@@ -8,11 +8,22 @@ NW3 against your fork as it is now: it measures the entries, lists every reader
 and writer of `log.md`, weighs the two options from the backlog and four new
 ones, and looks at what a log rotation does to brief windows. It recommends
 logging only lint runs that change pages (option 3), and having rotation keep
-the last 30 days in `log.md` (option R2).
+the last 30 days in `log.md` (option R2), with R1's rotated-log sentence in the
+brief skill as well.
+
+## Revision History
+
+revised on: 2026-10-29
+Recorded options 3, R2 and R1 as approved and implemented in your fork
+(changelog PATCH-28), with pm-wiki's existing lint entries left in place. The
+lint tests are two, not three: one test covers both runs that change nothing.
+R1's rotated-log rule in the brief skill is the one addition to the prose
+list.
 
 ## Status
 
-Status: proposal, not approved. Nothing in your fork or pm-wiki has changed.
+Status: options 3, R2 and R1 implemented 2026-10-29 (changelog PATCH-28).
+pm-wiki unchanged; its 57 lint entries stay in its log.
 Backlog item: NW3 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: review finding F14 in the
 [Sources and References Review](sources-and-references-review.md), NW15 (brief
@@ -313,7 +324,8 @@ Option 3 and R2, built together, with one changelog entry.
 - `hooks/README.md` session-stop paragraph: the 30-day tail and the cap.
 - `templates/log.md`: the actions line drops `lint` for `lint (auto-fix
   only)`, and the rotate line names the hook and the 30-day tail.
-- No change to the brief skill: R2 keeps its brief lines in `log.md`.
+- No change to the brief skill is needed for R2, which keeps its brief lines
+  in `log.md`. R1's sentence, approved with it, covers longer gaps.
 
 ### Who runs it
 
@@ -381,7 +393,7 @@ No pm-wiki change.
 
 ## To approve
 
-- Option 3: log only lint runs that change pages.
-- R2: rotation keeps the last 30 days, at most 250 entries.
-- Optionally R1's sentence as well, for brief gaps over 30 days.
-- Leaving the existing lint entries in `log.md`.
+- Option 3: chosen 2026-10-29.
+- R2: chosen 2026-10-29, keeping the last 30 days, at most 250 entries.
+- R1's sentence: chosen 2026-10-29, for brief gaps over 30 days.
+- Leaving the existing lint entries in `log.md`: chosen 2026-10-29.

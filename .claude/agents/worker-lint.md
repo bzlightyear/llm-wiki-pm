@@ -48,4 +48,4 @@ If lint script errors out, return:
 
 - Do not attempt to fix any issues — report only
 - If report already exists for today, re-read it rather than re-running
-- Do not write to `$WIKI/log.md` — the orchestrating session logs the lint run after receiving the worker's status
+- Lint runs aren't logged. Do not write to `$WIKI/log.md`

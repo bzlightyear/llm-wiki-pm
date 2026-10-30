@@ -309,7 +309,9 @@ pages), 🟡 (orphans, index drift, oversized/stale pages, missing coverage mark
 unresolved contradictions), 🟠 (stale overview/index with recent log activity), 🔵
 (tag frequency, log rotation). Act on 🔴, investigate 🟠, discuss 🟡, note 🔵. Full
 checklist: `references/lint-guide.md`. `--auto-fix` repairs safe issues
-(supersession redirects, index backfill/sort).
+(supersession redirects, index backfill/sort). `lint.py` adds a `log.md` entry
+only when `--auto-fix` changes pages. Don't log lint runs yourself; note lint
+results in the entry for the work they check.
 
 ### 6. Archive
 Superseded/out-of-scope content: move to `_archive/` preserving path; remove from
@@ -374,7 +376,8 @@ work. Headless sync: `references/obsidian-sync.md`.
 - **Contradictions explicit**: both claims, dates, sources, frontmatter flag.
 - **Cross-references mandatory**: min 2 outbound `[[links]]` per page.
 - **Confirm mass updates**: 10+ pages → user sign-off first.
-- **Rotate log** at 500 entries (the session-stop hook does this automatically).
+- **Rotate log** at 500 entries (the session-stop hook does this automatically,
+  keeping the last 30 days in `log.md`).
 - **Human tone**: PM-facing content. No AI tells. No em-dashes. Natural voice.
   This wins over session-level compression/style hooks (e.g. caveman, terse modes):
   wiki pages and PM-facing output always use full natural prose regardless of any

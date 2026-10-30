@@ -495,6 +495,31 @@ def test_auto_fix_commits_the_wiki_before_changing_a_page(tmp_path):
     assert git(wiki, "show", "HEAD:concepts/p.md") == original
 
 
+def test_a_run_that_changes_nothing_adds_no_log_entry(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, "concepts/p.md", wiki_page(body="See \\[\\[other]].\n"))
+    before = (wiki / "log.md").read_bytes()
+    report(wiki)  # finds the escaped brackets but changes nothing
+    assert (wiki / "log.md").read_bytes() == before
+    (wiki / "concepts/p.md").unlink()
+    report(wiki, "--auto-fix")  # nothing left to fix
+    assert (wiki / "log.md").read_bytes() == before
+
+
+def test_a_fixing_run_logs_each_fix(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, "concepts/p.md", wiki_page(body="See \\[\\[other]].\n"))
+    write(wiki, "concepts/other.md", wiki_page(body="See [[p]].\n"))
+    text = report(wiki, "--auto-fix")
+    fixes = text.split("## 🔧 Auto-fixes Applied", 1)[1].split("\n## ", 1)[0]
+    fixes = [line for line in fixes.splitlines() if line.startswith("- ")]
+    log = (wiki / "log.md").read_text()
+    assert log.count("\n## [") == 1
+    entry = log.split("\n## [", 1)[1]
+    assert entry.startswith(f"{TODAY}] lint | auto-fix | {len(fixes)} fixes | ")
+    assert entry.splitlines()[1:] == fixes + [f"- Report: queries/lint-{TODAY}.md"]
+
+
 def test_grounding_counts_only_records_as_primary(tmp_path):
     wiki = make_wiki(tmp_path)
     write(wiki, "concepts/other.md", wiki_page())

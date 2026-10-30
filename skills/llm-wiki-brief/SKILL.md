@@ -60,7 +60,7 @@ When a brief is asked to pull from external sources (whatever the user's connect
 **Windows.** A brief's window is the stretch of `log.md` it reports on, by when material was ingested, separate from the sources' sweep windows.
 - **Daily:** from where the latest brief's window ended, daily or weekly, to now. A daily brief after a three-day gap covers three days, with or without a sweep.
 - **Weekly:** from where the latest weekly brief's window ended to now. A two-week gap gives one weekly brief covering two weeks, and a meeting whose notes arrive late is in the next weekly brief.
-- **The previous end** comes from that brief's log line (below). Where no brief of the kind needed has that line yet, an interactive run asks where to start, and an autonomous run starts 7 days back and says so in the brief.
+- **The previous end** comes from that brief's log line (below). When `log.md` has no such line, look in the rotated logs, newest first: the latest year, its highest `log-YYYY-part-N.md`, then `log-YYYY.md`. A window that starts before a rotation reads both files. Where no brief of the kind needed has that line yet, an interactive run asks where to start, and an autonomous run starts 7 days back and says so in the brief.
 - A weekly brief counts as a brief, so the next daily brief starts where it ended.
 - Inside a brief, order and group items by when they happened: a meeting's date from its crystallize page or its raw record.
 
