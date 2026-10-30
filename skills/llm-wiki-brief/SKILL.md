@@ -78,7 +78,7 @@ When a brief is asked to pull from external sources (whatever the user's connect
 | Wiki health | This run's lint warnings | Staleness flags, stubs created in the period, activity by tag |
 | Source Coverage | This run's sweep, one row per source | This run's sweep, if it swept |
 
-**Needs Review carry-forward.** Every brief starts from the Needs Review section of the latest brief, daily or weekly. Check each item against the wiki and `log.md`: if it was settled, list it once as resolved, saying where it went (the page or log entry); if not, carry it forward with the date it was first raised. A brief with carried or new items has a Needs Review section, in interactive and autonomous runs alike. Only Needs Review is carried; "You owe" comes from where the table says.
+**Needs Review carry-forward.** Every brief starts from the Needs Review section of the latest filed brief, daily or weekly. An unfiled brief's Needs Review exists only in chat, so the next brief doesn't read it. Check each item against the wiki and `log.md`: if it was settled, list it once as resolved, saying where it went (the page or log entry); if not, carry it forward with the date it was first raised. A brief with carried or new items has a Needs Review section, in interactive and autonomous runs alike. Only Needs Review is carried; "You owe" comes from where the table says.
 
 **Log line.** Every daily and weekly brief gets its own `log.md` entry, filed or not, including one written inside a maintenance run:
 
@@ -104,7 +104,7 @@ When a brief is asked to pull from external sources (whatever the user's connect
    - Decisions logged (`decision`)
    - Open questions added (`query`, `question`)
 
-   Read the latest brief's Needs Review and mark each item resolved or carried forward (Needs Review carry-forward above).
+   Read the latest filed brief's Needs Review and mark each item resolved or carried forward (Needs Review carry-forward above).
 
 ③ For decision and question entries, read the referenced page to pull the one-line summary or question text. For each meeting in the window, read its crystallize page, or its raw record if it has none.
 
@@ -119,9 +119,13 @@ If the window has no entries, say so.
 the flag keeps them out of the lint orphan count (see schema-guide). Without
 it, every daily brief permanently inflates the orphan metric. Don't add the
 brief to `index.md`: lint skips briefs in its index check, and the index holds
-one fixed line pointing to `briefings/`. Don't edit a filed brief after the
-day it was filed: a later correction goes on the page that owns the fact and
-into the next brief's carry-forward, while same-day corrections are fine.
+one fixed line pointing to `briefings/`. A second brief of the same kind on
+one date never replaces the first: file it at the next free name,
+`YYYY-MM-DD-2.md`, then `-3` (weekly: `weekly-brief-YYYY-MM-DD-2.md`), with
+"(run 2)" after the title's date, and leave the earlier brief as it is. Don't
+edit a filed brief after the day it was filed: a later correction goes on the
+page that owns the fact and into the next brief's carry-forward, while
+same-day corrections are fine.
 
 ---
 
@@ -131,7 +135,7 @@ into the next brief's carry-forward, while same-day corrections are fine.
 
 ① Resolve `$WIKI`. Read `$WIKI/_status.md` if present.
 
-② Read `$WIKI/log.md` across the weekly window (Daily and Weekly Briefs above; the user can name another period). Read the daily briefs in the window when there are any; otherwise work from the crystallize pages, `log.md` and this run's sweep. Read raw records only for a meeting with no crystallize page. Read the latest brief's Needs Review and mark each item resolved or carried forward (Needs Review carry-forward above).
+② Read `$WIKI/log.md` across the weekly window (Daily and Weekly Briefs above; the user can name another period). Read the daily briefs in the window when there are any; otherwise work from the crystallize pages, `log.md` and this run's sweep. Read raw records only for a meeting with no crystallize page. Read the latest filed brief's Needs Review and mark each item resolved or carried forward (Needs Review carry-forward above).
 
 ③ Aggregate counts: pages created, updated, decisions logged, questions added vs resolved.
 
@@ -143,7 +147,7 @@ into the next brief's carry-forward, while same-day corrections are fine.
 
 ⑦ Output: the Weekly column of "What each brief holds", under `## Weekly Brief: YYYY-MM-DD to YYYY-MM-DD` (its period).
 
-⑧ Offer to file as `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, with `lifecycle: dated-digest`. If yes, run full orient per core `llm-wiki-pm` before writing.
+⑧ Offer to file as `briefings/weekly-brief-YYYY-MM-DD.md`, dated by the run, with `lifecycle: dated-digest`; a second weekly brief that day takes the next free `-N` name (filing paragraph in §1). If yes, run full orient per core `llm-wiki-pm` before writing.
 
 **Run from `llm-wiki-maintain`:** add the Source Coverage ledger for the run's sweep, and put the run's queued items in Needs Review. Maintain files the brief at its weekly path, so skip the offer in ⑧.
 

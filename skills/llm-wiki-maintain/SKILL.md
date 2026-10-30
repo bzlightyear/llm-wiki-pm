@@ -95,12 +95,15 @@ run?") and proceed on the answer; default to interactive.
    - **Daily:** the daily brief, filed as `briefings/YYYY-MM-DD.md`.
    - **Weekly:** the weekly brief, filed as
      `briefings/weekly-brief-YYYY-MM-DD.md`.
+   - **A second run that day:** never replaces the first brief of its kind. It
+     files at the next free name, `YYYY-MM-DD-2.md`, then `-3`, and the weekly
+     equivalent (`llm-wiki-brief` §1).
 
    Both are dated by the run and get `lifecycle: dated-digest` (keeps them out
    of the orphan count). Either brief MUST include the Source Coverage ledger
    (one row per registered source, each with its window:
    `- Notion: hits (4 items), <from> → <to>`). Either brief starts from the
-   latest brief's Needs Review, marking each item resolved, with where it
+   latest filed brief's Needs Review, marking each item resolved, with where it
    went, or carried forward (`llm-wiki-brief` → Needs Review carry-forward).
    Its **Needs Review** section holds the carried items and this run's queue,
    in either mode, and is left out only when both are empty.
@@ -126,7 +129,9 @@ run?") and proceed on the answer; default to interactive.
 ## Brief lifecycle convention
 
 - `briefings/YYYY-MM-DD.md` — daily brief; `briefings/weekly-brief-YYYY-MM-DD.md`
-  — weekly brief. Both dated by the run, `lifecycle: dated-digest`. Briefs
+  — weekly brief. Both dated by the run, `lifecycle: dated-digest`. A second
+  brief of a kind on one date takes the next free `-2`, `-3` name and leaves
+  the first as it is. Briefs
   stay in `briefings/` permanently; never move or archive them, since that
   breaks links to them.
 - Briefs are orphans by design; the `dated-digest` flag keeps them out of lint's

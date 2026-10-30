@@ -45,7 +45,7 @@ Optional fields are listed in SCHEMA.md.
 - Files: lowercase, hyphens, no spaces. Page slugs and record IDs match `[a-z0-9][a-z0-9._-]*` and are unique across the wiki
 - Pages: `entities/`, `concepts/`, `comparisons/`, `queries/`, `briefings/`
 - Records: `raw/<folder>/<descriptor>-<YYYY-MM-DD>.md`, written once and never edited
-- Prefixes and dated names as the skill sets them, e.g. `queries/crystallize-<topic>-<date>.md`, `queries/research-<topic>-<date>/research-<topic>-<date>.md`, `briefings/YYYY-MM-DD.md`
+- Prefixes and dated names as the skill sets them, e.g. `queries/crystallize-<topic>-<date>.md`, `queries/research-<topic>-<date>/research-<topic>-<date>.md`, `briefings/YYYY-MM-DD.md`, `briefings/weekly-brief-YYYY-MM-DD.md` (a second brief of a kind on one date adds `-2`, `-3`)
 
 ## Note Template
 
