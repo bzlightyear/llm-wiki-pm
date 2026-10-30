@@ -17,7 +17,7 @@ or a "step" number, refer to that design unless an item says otherwise.
 "Review F4" and the like refer to the
 [Sources and References Review](sources-and-references-review.md).
 
-**Adding an item:** give it the next ID (NW17 next), a bold one-line title, and
+**Adding an item:** give it the next ID (NW18 next), a bold one-line title, and
 as much of this as is known: what happens, why it matters (with measurements and
 dates), the proposal or scope of a fix, related items, and where it was found.
 When an item is done or dropped, add a status line at its top and move it to
@@ -27,7 +27,35 @@ Closed.
 
 ## Open
 
-**NW1. Orient content and `overview.md` freshness (separate design).**
+**NW1. Action items have no living home, and `overview.md` drifts from its
+template (separate design).**
+- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
+  split in two. The text after this bullet is as captured; where it differs,
+  this bullet wins.
+  - **NW1a, action-item tracking (absorbs NW4).** `overview.md` was condensed
+    by hand on 2026-10-06 (pm-wiki `c4b4be6`: 70 KB to 23 KB, 0 inline update
+    markers, no Action Items section), but the cause is unchanged: 74 of 160
+    crystallize pages still carry pending or open action-item rows, 12 show
+    any done marker, and Delivery's "Pete owes" bullet is a run-on list again.
+    **Recommended:** one living tracker page, `queries/open-action-items.md`,
+    as the only place status changes. Crystallize appends items, Update closes
+    them, maintain reconciles after ingest, the brief's "You owe" reads it, and
+    `overview.md` keeps a one-line count and link. Digests' Action Items tables
+    stay point-in-time, labeled "as captured". **Rejected:** status sync across
+    digests (NW4's option 2), and `overview.md`'s "Pete owes" as the source of
+    truth. **To decide:** owner scope (only your items, or all), and back-fill
+    from digests or start fresh.
+  - **NW1b, overview structure, the indexer and freshness signals.**
+    `templates/overview.md` (5 sections) no longer matches pm-wiki's curated 8.
+    **Recommended:** make the template the generalized curated structure;
+    remove `worker-wiki-indexer`'s Overview Regeneration mode (never run, and
+    undoable since NW12); drop session-start's stale count (100 pages every
+    session) or narrow it to Orient ⑥'s rule; retire the 120-day
+    `last_verified` warning, which design section 5.12 left to this item. Do
+    it after NW1a.
+  - Orient now loads about 9,900 words, down from about 15,400 on 2026-10-02,
+    so cost no longer drives what Orient reads, and the org chart (NW9) no
+    longer needs to join it.
 `overview.md` only ever grows (70 KB), its action items and decisions are frozen
 copies from meeting digests, and later updates never flow back into it, so Orient
 loads stale and sometimes wrong information every session. The same design
@@ -83,56 +111,28 @@ points: the two findings below, and I8's revisit mechanism.
   - **For this design:** whatever structure it settles on for `overview.md`, the
     indexer's regeneration mode should produce it, or be removed.
 
-**NW2. Fork `wirux/mcp-markdown-vault`. Deferred (review F4).** The permission
-rule in D9 removes the damaging operations on this install at no cost, so the
-fork is only worth doing if MCP edits are wanted back. The original plan
-follows. The MCP's full-file round-trip causes
-the bracket escaping (#47) and the timestamp dates (#49, N15), and its
-maintainer has not responded since June 2026. The fork would be thin, on top of
-upstream, with one fix per branch and a regression test in the project's vitest
-suite: `CORE_SCHEMA` for #49 first, then text-preserving `frontmatter_set` and
-`string_replace` for #47, and possibly #45 (orphaned server processes). Each fix
-also goes back upstream as a pull request. `wiki-search.sh` then runs a pinned
-build of the fork (a fork-only launcher difference). Costs: owning a
-Node/TypeScript build and its dependency updates, and a small recurring merge fix
-when upstream changes `wiki-search.sh`. If it lands, D9's deny rule can be
-lifted. R12's auto-fix, the escaped-bracket check and the MCP hook matchers stay
-as safety nets. `CORE_SCHEMA` alone isn't enough: it writes dates unquoted, so
-the fork's #49 fix must keep string dates quoted (review F2).
-Since NW5, the MCP runs as one shared server under launchd: a fork build means
-repointing that LaunchAgent and restarting it, and streamable HTTP would go in
-the fork if Claude Code drops SSE.
-NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
-`directory` filter can't exclude a folder. NW12 dropped snapshots on
-2026-10-13 instead, so it gives no reason to fork.
-
-**NW4. The action-items file is outside the plugin's rules.**
-- **What it is:** a root-level markdown file of open action items, ranked by
-  urgency (about 400 lines, about 90 items). An agent created it at the user's
-  request in a chat session, and it is regenerated or partly updated only when the
-  user asks (39 `log.md` entries).
-- **Why it drifts:**
-  - It sits outside every page folder, so lint, the hooks and `index.md` skip it.
-  - It has no frontmatter, sources or links, and no skill defines when or how it
-    is updated.
-  - Wiki pages mention it in prose, but none link to it.
-- **Related work:** it has the same staleness problem as NW1: action-item
-  status is never updated after capture, action items have no real page type,
-  and `overview.md` holds frozen copies of them.
-- **Options:**
-  1. **Make it a first-class page,** for example `queries/open-action-items.md`,
-     with standard frontmatter, sources and links. Define in the maintain skill
-     when it is updated (for example on every run that ingests meetings), and let
-     lint check it.
-  2. **Remove it and generate the list on demand** from the action items in
-     meeting digests, through a brief-skill command. There is no separate file to
-     go stale, but it only works once digests' action items are marked done when
-     resolved, which is NW1's open problem.
-
-  They aren't exclusive: option 1 now, and option 2 once NW1 solves that.
-- **Found in:** the design review (F15).
-
 **NW7. No link search finds every incoming link.**
+- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
+  rescoped. The text after this bullet is as captured; where it differs, this
+  bullet wins.
+  - **M1 still does harm:** the MCP's backlinks give 0 for the live page,
+    grep finds 3 linking wiki files (`index.md`, a briefing and the history
+    page), and `backlinks.py` finds 1. It is the only same-name collision left
+    (`_archive/` holds 6 files), and lint's page set leaves out `_archive/`,
+    so R9 never sees it.
+  - **New scope:**
+    1. `backlinks.py` reads `briefings/` and the root `.md` files except
+       `log*.md` and `_status.md` (859 links there on 2026-10-29).
+    2. R9 reads `_archive/` file names and reports a stem shared with a live
+       page or record (🔴, after step 3). This replaces deciding a naming rule.
+    3. Rename M1's archived copy to `<slug>-archived.md` in its own commit,
+       with one sentence in `citation-spec.md` that a path change isn't a
+       content change.
+    4. §6 Archive says `_archive/<slug>.md` and names `backlinks.py`, as do
+       the Supersede steps. The vault contract says `view.backlinks` can lag
+       and misresolve same-name files.
+  - **Dropped:** the rename investigation (chokidar or a stale cache). With
+    `backlinks.py` as the documented search, it only affects ad-hoc queries.
 - **What happens:** archiving, superseding or renaming a page means updating
   every link to it, but none of the ways to find those links is complete:
   - `backlinks.py` reads `entities/`, `concepts/`, `comparisons/`, `queries/`
@@ -217,6 +217,27 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
   2026-10-01.
 
 **NW9. Org structure is kept in three places.**
+- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
+  still relevant, and worse. The text after this bullet is as captured; where
+  it differs, this bullet wins.
+  - **Re-measured:** 58 pages carry the fields. 14 non-mutual `peers`, 5
+    `reports_to` without a `direct_reports` reverse (was 3), 1 the other way,
+    and 4 values naming no person page. Every line of SCHEMA's org chart dates
+    from 2026-08-05 to 2026-08-07.
+  - **Changed proposal:** with Orient down to about 9,900 words, Orient
+    doesn't need to read the map. Replacing SCHEMA's org chart with a pointer
+    is enough, and it leaves Orient's reading list alone.
+  - **Phase 1:** the lint reciprocity check (🟡, auto-fix fills in only a
+    missing `direct_reports` or `peers` reverse), the §2 ⑫, persona and
+    template wording, and the SCHEMA pointer.
+  - **Phase 2, decided 2026-10-30: drop the map's Org Chart table.** Nobody
+    reads it, and the person-page fields become the only copy of reporting
+    lines. Generating it was rejected: it needs a script, a `role:` field no
+    person page has, and a machine-owned section inside a hand-edited page.
+    The map keeps its other sections. The persona skill's map format, §2 ⑫,
+    the SCHEMA template and §9 (which reads the map for org context) change
+    to match. The 6 cells with history prose move to the person pages' bodies.
+    A generator can still rebuild the table from the fields later.
 - **What happens:** three copies of who reports to whom, and nothing keeps them
   in step:
   - **SCHEMA.md's Domain section,** an org chart written by hand when the wiki
@@ -310,6 +331,19 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
   during an ingest, also 2026-10-02.
 
 **NW11. Skills cite an `AGENTS.md` that wiki sessions never load.**
+- **Reviewed 2026-10-29** ([NW Backlog Review](nw-backlog-review.md)):
+  much smaller. The text after this bullet is as captured; where it differs,
+  this bullet wins.
+  - Every Behavioral Constraint in `AGENTS.md` now has a counterpart in core
+    `SKILL.md`, and "Snapshot before destructive ops" became "Checkpoint before
+    destructive ops" in both, so the rules do reach wiki sessions. "Ruled out:
+    folding the rules into core `SKILL.md`" has in effect happened.
+  - **New scope:** retarget the 7 "per AGENTS.md" references (research 16;
+    brief 34, 146 and 245; persona 145; prd 22 and 124) to core
+    `llm-wiki-pm`'s Orient Every Session and Rules, and fix `AGENTS.md`'s Wiki
+    Path Resolution, which still reads `.wiki-path` (lines 8–9), to use
+    `$WIKI_PATH`. `citation-spec.md` line 5 is accurate and stays.
+  - **Dropped:** the proposal to read `AGENTS.md` during Orient.
 - **What happens:** `AGENTS.md` is the plugin repo's behavioral contract. It
   loads only in sessions whose working folder is the plugin repo. Setup copies
   only the files in `skills/llm-wiki-pm/templates/` into a new wiki, and none
@@ -381,6 +415,20 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
   (other changes to what Orient reads), NW5 (`.wiki-path` removed, wiki used
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
+
+**NW17. Promote the source rules to errors (design step 11).**
+- **What:** step 11 in section 8 of the
+  [Sources and References Design](sources-and-references-design.md): promote
+  R3 and R6 to 🔴, and R12 once migration M8 shows 0 violations. It is a
+  3.0.0 change if offered upstream (D7, D10).
+- **Ready:** on a scratch copy of pm-wiki on 2026-10-29, lint over 383 pages
+  gave I1–I3 = 0, 0 errors and no R3, R6 or R12 hits. The only source-rule
+  output was 8 R10 🔵 secondhand pages.
+- **Also decide here:** whether mechanical content auto-fixes and R3
+  declarations run unattended after the migration.
+- **Why it's here:** the design's status still reads "steps 0–9, 10a and 10b
+  done", and no backlog item tracked the last step.
+- **Found in:** the 2026-10-29 backlog review.
 
 ## Closed
 
@@ -951,3 +999,67 @@ step M2 to read rotated `log-*.md` files (review finding F14). Options: append
 at most one lint entry per day, updating it in place, or stop appending and rely
 on the per-day report in `queries/`. Found in the design review
 ([Sources and References Review](sources-and-references-review.md), F14).
+
+**NW2. Fork `wirux/mcp-markdown-vault`. Deferred (review F4).**
+- **Status: dropped 2026-10-29**
+  ([NW Backlog Review](nw-backlog-review.md)). D9's deny rule on
+  `edit`, the `ask` rule on `vault`, the MCP hook matchers and NW12's checkpoint
+  commits cover what a fork would fix, and no page holds an escaped `\[[`.
+  Upstream released 2.3.1 on 2026-10-03 and merged an outside PR, but #45, #47
+  and #49 have no maintainer reply. **Reopen if** upstream fixes #47 and #49:
+  then lift D9's deny rule, a settings change with no fork. The text below is
+  as captured.
+The permission
+rule in D9 removes the damaging operations on this install at no cost, so the
+fork is only worth doing if MCP edits are wanted back. The original plan
+follows. The MCP's full-file round-trip causes
+the bracket escaping (#47) and the timestamp dates (#49, N15), and its
+maintainer has not responded since June 2026. The fork would be thin, on top of
+upstream, with one fix per branch and a regression test in the project's vitest
+suite: `CORE_SCHEMA` for #49 first, then text-preserving `frontmatter_set` and
+`string_replace` for #47, and possibly #45 (orphaned server processes). Each fix
+also goes back upstream as a pull request. `wiki-search.sh` then runs a pinned
+build of the fork (a fork-only launcher difference). Costs: owning a
+Node/TypeScript build and its dependency updates, and a small recurring merge fix
+when upstream changes `wiki-search.sh`. If it lands, D9's deny rule can be
+lifted. R12's auto-fix, the escaped-bracket check and the MCP hook matchers stay
+as safety nets. `CORE_SCHEMA` alone isn't enough: it writes dates unquoted, so
+the fork's #49 fix must keep string dates quoted (review F2).
+Since NW5, the MCP runs as one shared server under launchd: a fork build means
+repointing that LaunchAgent and restarting it, and streamable HTTP would go in
+the fork if Claude Code drops SSE.
+NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
+`directory` filter can't exclude a folder. NW12 dropped snapshots on
+2026-10-13 instead, so it gives no reason to fork.
+
+**NW4. The action-items file is outside the plugin's rules.**
+- **Status: merged into NW1a 2026-10-29**
+  ([NW Backlog Review](nw-backlog-review.md)). Option 1
+  is NW1a's recommended tracker, and option 2 its rejected status sync. The
+  file's last commit was 2026-09-04, and briefs' "You owe" took over its job.
+  Once NW1a seeds the tracker, the file moves to `_archive/` under NW7's
+  name-clash check, or is deleted. The text below is as captured.
+- **What it is:** a root-level markdown file of open action items, ranked by
+  urgency (about 400 lines, about 90 items). An agent created it at the user's
+  request in a chat session, and it is regenerated or partly updated only when the
+  user asks (39 `log.md` entries).
+- **Why it drifts:**
+  - It sits outside every page folder, so lint, the hooks and `index.md` skip it.
+  - It has no frontmatter, sources or links, and no skill defines when or how it
+    is updated.
+  - Wiki pages mention it in prose, but none link to it.
+- **Related work:** it has the same staleness problem as NW1: action-item
+  status is never updated after capture, action items have no real page type,
+  and `overview.md` holds frozen copies of them.
+- **Options:**
+  1. **Make it a first-class page,** for example `queries/open-action-items.md`,
+     with standard frontmatter, sources and links. Define in the maintain skill
+     when it is updated (for example on every run that ingests meetings), and let
+     lint check it.
+  2. **Remove it and generate the list on demand** from the action items in
+     meeting digests, through a brief-skill command. There is no separate file to
+     go stale, but it only works once digests' action items are marked done when
+     resolved, which is NW1's open problem.
+
+  They aren't exclusive: option 1 now, and option 2 once NW1 solves that.
+- **Found in:** the design review (F15).
