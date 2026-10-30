@@ -649,7 +649,7 @@ skipped.
   `skills/llm-wiki-brief/SKILL.md` (Windows), `skills/llm-wiki-maintain/SKILL.md`
   (⑥), `.claude/agents/worker-lint.md`, `tests/test_lint.py` (2 tests), and a
   new `tests/test_log_rotation.py` (5 tests); upstream's `TestSessionStop` is
-  unchanged. pm-wiki's existing lint entries stay. The suite passed: 468
+  unchanged. Commit `24c445c`. pm-wiki's existing lint entries stay. The suite passed: 468
   passed, 2 skipped.
 - **Status:** active. Upstream candidate, not filed: the lint append and
   rotation are upstream code.
