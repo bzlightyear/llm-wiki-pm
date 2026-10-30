@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-31) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-32) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -679,6 +679,32 @@ skipped.
   commit the same day.
 - **Status:** active. Upstream candidate, not filed, except the "You owe"
   mention, which follows PATCH-23's table.
+
+#### PATCH-32 — A second brief on one date gets the next free name
+
+- **What:** a second brief of the same kind on one date never replaces the
+  first. It files at the next free name, `briefings/YYYY-MM-DD-2.md`, then
+  `-3`, and `weekly-brief-YYYY-MM-DD-2.md` for weekly briefs, with "(run 2)"
+  after the title's date, and leaves the earlier brief as it is. Needs Review
+  carry-forward reads the latest filed brief, since an unfiled brief's list
+  exists only in chat. Windows, log lines, lint and the hooks are unchanged.
+  Prose only.
+- **Why:** both runs targeted the same path, and no rule said whether to
+  replace, add to or rename. A replaced brief would lose the morning's full
+  brief to one covering a few hours. No collision has happened, but late runs
+  are common: on 10/30 a daily brief ran at 01:03 covering about 3 hours,
+  unfiled. pm-wiki's memory already said "a re-run is a new brief, not an
+  overwrite" without naming a path. Backlog NW19; the
+  [Same-Day Briefs Brief](same-day-briefs-brief.md).
+- **Where:** `skills/llm-wiki-brief/SKILL.md` (carry-forward, §1 ② and
+  filing, §2 ② and ⑧), `skills/llm-wiki-maintain/SKILL.md` (④, Brief
+  lifecycle convention), `skills/llm-wiki-pm/templates/vault-contract.md`
+  (dated names, which also gains the weekly name), commit `f8daf15`. The
+  suite passed: 474 passed, 2 skipped. pm-wiki's
+  `meta/contract.md`, `index.md` Briefings line and brief-path memory changed
+  to match.
+- **Status:** active. Upstream candidate after PATCH-21 to PATCH-27, not
+  filed.
 
 ### Log
 

@@ -330,33 +330,6 @@ points: the two findings below, and I8's revisit mechanism.
   2026-10-02. Field disagreement measured, and a missed reverse update seen
   during an ingest, also 2026-10-02.
 
-**NW19. A second daily run on the same day has no rule for its brief.**
-- **What happens:** maintain files a daily brief at `briefings/YYYY-MM-DD.md`,
-  dated by the run, so a second run that day targets the file the first run
-  wrote. No skill says whether to replace it, add to it or file elsewhere,
-  and brief's "same-day corrections are fine" allows a rewrite. The second
-  brief's window starts where the first one ended, so if the agent replaces
-  the file, a few hours' brief takes the place of the morning's full one. The
-  pre-write hook's checkpoint keeps the first brief in git, but the page
-  loses it. Maintain's brief step files "without offering", so the
-  no-silent-overwrites diff isn't reliable here either.
-- **Why it matters:** the filed daily brief is the day's record and the
-  next brief's starting point (window and Needs Review carry-forward). It
-  hasn't happened yet: pm-wiki's `log.md` has 7 daily brief entries, none
-  on the same date.
-- **Options:** add a section per run to the same file; file the later run
-  separately (e.g. `YYYY-MM-DD-2.md`); or re-cover the whole day from the
-  previous day's brief and replace the file.
-- **Scope:** a short brief first, choosing an option and covering what it
-  touches: the brief windows and log line, Needs Review carry-forward when
-  the latest brief is in the same file, the same question for weekly briefs,
-  the "frozen after its day" rule, lint and the `briefings/` index line, and
-  maintain's report and lint delta. Then wording in `llm-wiki-brief` and
-  `llm-wiki-maintain`, and tests where lint is affected.
-- **Related:** NW15 (the brief rules this extends), PATCH-27 (briefs are
-  frozen after their day).
-- **Found in:** a question in a session on 2026-10-30.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -1123,3 +1096,35 @@ NW12 (2026-10-08): the server indexes `_archive/` snapshots, and its
 - **Related:** NW17 (the errors these fixes would clear).
 - **Found in:** an idea raised 2026-09-30 during design step 7, held for step
   11, and split out of NW17 on 2026-10-30.
+
+**NW19. A second daily run on the same day has no rule for its brief.**
+- **Status: done 2026-10-30.** Changelog PATCH-32, per the
+  [Same-Day Briefs Brief](same-day-briefs-brief.md): a second brief of a
+  kind on one date files at the next free `-2`, `-3` name and leaves the
+  first as it is, and carry-forward reads the latest filed brief. No hook
+  guard. Wording only. The text below is as captured.
+- **What happens:** maintain files a daily brief at `briefings/YYYY-MM-DD.md`,
+  dated by the run, so a second run that day targets the file the first run
+  wrote. No skill says whether to replace it, add to it or file elsewhere,
+  and brief's "same-day corrections are fine" allows a rewrite. The second
+  brief's window starts where the first one ended, so if the agent replaces
+  the file, a few hours' brief takes the place of the morning's full one. The
+  pre-write hook's checkpoint keeps the first brief in git, but the page
+  loses it. Maintain's brief step files "without offering", so the
+  no-silent-overwrites diff isn't reliable here either.
+- **Why it matters:** the filed daily brief is the day's record and the
+  next brief's starting point (window and Needs Review carry-forward). It
+  hasn't happened yet: pm-wiki's `log.md` has 7 daily brief entries, none
+  on the same date.
+- **Options:** add a section per run to the same file; file the later run
+  separately (e.g. `YYYY-MM-DD-2.md`); or re-cover the whole day from the
+  previous day's brief and replace the file.
+- **Scope:** a short brief first, choosing an option and covering what it
+  touches: the brief windows and log line, Needs Review carry-forward when
+  the latest brief is in the same file, the same question for weekly briefs,
+  the "frozen after its day" rule, lint and the `briefings/` index line, and
+  maintain's report and lint delta. Then wording in `llm-wiki-brief` and
+  `llm-wiki-maintain`, and tests where lint is affected.
+- **Related:** NW15 (the brief rules this extends), PATCH-27 (briefs are
+  frozen after their day).
+- **Found in:** a question in a session on 2026-10-30.
