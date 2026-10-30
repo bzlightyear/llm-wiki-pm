@@ -17,6 +17,8 @@ the original analysis's findings that nothing picked up, and a priority order.
 - **Added:** NW17 (design step 11).
 - **Decided 2026-10-30:** NW9 phase 2 drops the map's Org Chart table.
 - **Done 2026-10-30:** the pm-wiki memory's reasons were rewritten.
+- **Done 2026-10-30:** NW11 (PATCH-29) and NW17 (PATCH-30). NW17's
+  unattended auto-fix decision became NW18.
 - **Still open:** the NW1a decisions.
 
 ## About This Document

@@ -8,6 +8,11 @@ lint rules, hooks, migration and implementation plan that enforce it.
 
 ## Revision History
 
+revised on: 2026-10-30
+Completed step 11: lint reports R3, R6 and R12 as 🔴 (fork changelog PATCH-30,
+backlog NW17). Section 8 records the result. Every step is now done or
+dropped. The unattended auto-fix idea raised during step 7 is backlog NW18.
+
 revised on: 2026-10-13
 Changed I7's mechanism: git checkpoint commits replace pre-write snapshots in
 `_archive/`, which crowded live pages out of search (backlog NW12). The
@@ -117,7 +122,7 @@ IDs and narrowed root-file snapshots.
 
 ## Status
 
-Status: **in progress**: steps 0–9, 10a and 10b done (see section 8)
+Status: **done**: steps 0–11 done, step 12 dropped (see section 8)
 
 ## About This Document
 
@@ -1432,6 +1437,14 @@ commits answer by ID on GitHub (the original of `4e61e6c`, `d566e55`, was
 still reachable), and the old objects stay in this clone's `.git/filter-repo/`
 and reflog. Making the fork private removes the exposure; the alternative is
 asking GitHub support to purge them.
+
+**Step 11 result (2026-10-30).** Done in your fork (changelog PATCH-30): R3,
+R6 and R12 are 🔴 in `lint.py`, and `post-validate.sh` reports R3 from the
+same list. Before the change, lint on a scratch copy of pm-wiki (383 pages)
+gave I1–I3 = 0 and no R3, R6 or R12 findings, and it still gives 0 errors
+after it. A page created from the vault contract's note template is now an
+R6 error until its placeholder source is filled in, which is intended. The
+suite passed: 468 passed, 2 skipped.
 
 ### Frontmatter changes and semver
 

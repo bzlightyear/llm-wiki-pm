@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-29) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-30) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -95,15 +95,15 @@ yet; no fork change has an upstream pull request.
   2026-10-02). Not an upstream llm-wiki-pm change by itself: the bug is in the
   MCP.
 
-### Sources and references design (steps 1–10a)
+### Sources and references design (steps 1–11)
 
 The [Sources and References Design](sources-and-references-design.md) gives a
 source one identity: a `raw/` record's file stem, declared by path in
 `sources:` and cited by ID in `[source: <id>, <location>]`, with exact
 resolution. Its section 8 orders the steps by dependency and marks each one
 "Up" or "Fork". Each step below is one patch. The design holds the detail, and
-the entries summarize. Step 11, which promotes R3, R6 and R12 to 🔴 and is when
-the set would go upstream with the migration script, isn't done.
+the entries summarize. Step 11 (PATCH-30), which promotes R3, R6 and R12 to
+🔴, is when the set would go upstream with the migration script.
 
 #### PATCH-3 — `wiki-search.sh` reads `.wiki-path` without a false error
 
@@ -255,6 +255,25 @@ the set would go upstream with the migration script, isn't done.
   `tests/test_migrate_sources.py`. Commits `c2e086b`, `0e5b578` (step 10a).
   pm-wiki was migrated with it on 2026-09-30 (step 10b).
 - **Status:** active. Fork-only until step 11, then upstream with it.
+
+#### PATCH-30 — R3, R6 and R12 are errors
+
+- **What:** lint reports R3 (a citation of an ID no `sources:` entry
+  declares), R6 (a `sources:` entry that isn't an existing record or page)
+  and R12 (frontmatter outside the profile) as 🔴 instead of 🟡.
+  `check_provenance_cross_reference()` returns R3 under `errors`, R4 staying
+  a warning, and `post-validate.sh` reads it there. A page made from the vault
+  contract's note template is an R6 error until its placeholder source is
+  filled in.
+- **Why:** design step 11. After the migration pm-wiki had no R3, R6 or R12
+  findings (I1–I3 = 0 on 383 pages, 2026-10-29), so the warnings no longer
+  stood for a known backlog, and a new one is a real defect. Backlog NW17.
+- **Where:** `skills/llm-wiki-pm/scripts/lint.py`, `hooks/post-validate.sh`,
+  `references/lint-guide.md`, `tests/test_lint.py`, `tests/test_scaffold.py`.
+  Commit `b893b94`. Lint on a scratch copy of pm-wiki still gives 0 errors.
+  The suite passed: 468 passed, 2 skipped.
+- **Status:** active. Upstream candidate with PATCH-6 to PATCH-12, not filed;
+  a major (3.0.0) change there, since existing wikis start reporting errors.
 
 ### Page names
 
