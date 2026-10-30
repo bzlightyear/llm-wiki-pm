@@ -483,6 +483,101 @@ def test_content_fix_keeps_a_path_whose_id_names_two_files(tmp_path):
     assert page_path.read_text() == original
 
 
+def test_content_fix_declares_a_cited_id_that_names_one_file(tmp_path):
+    """R3's auto-fix adds the path to sources:, and leaves an ID that names no
+    file, or two, for a person."""
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/articles/vendor-y-docs-2026.md")
+    write(wiki, "raw/transcripts/sync-2026-01-15.md")
+    write(wiki, "raw/articles/dup-2026.md")
+    write(wiki, "raw/papers/dup-2026.md")
+    original = wiki_page(
+        "[raw/articles/vendor-y-docs-2026.md]",
+        "One [source: vendor-y-docs-2026].\nTwo [source: sync-2026-01-15, \"Pricing\"].\n"
+        "Three [source: dup-2026]. Four [source: missing-2026].\n",
+    )
+    page_path = write(wiki, "concepts/p.md", original)
+
+    report(wiki, "--auto-fix")
+    assert page_path.read_text() == original  # plain --auto-fix declares nothing
+
+    report(wiki, "--auto-fix=content")
+    assert page_path.read_text() == original.replace(
+        "sources: [raw/articles/vendor-y-docs-2026.md]",
+        "sources: [raw/articles/vendor-y-docs-2026.md, raw/transcripts/sync-2026-01-15.md]",
+    )
+    text = report(wiki)
+    assert "2 citation(s) of IDs not declared in sources: (R3): concepts/p.md — 'dup-2026', 'missing-2026'" in text
+
+
+def test_content_fix_reports_each_declaration_in_the_report_and_log(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/transcripts/sync-2026-01-15.md")
+    write(wiki, "concepts/p.md", wiki_page(body="[source: sync-2026-01-15]\n"))
+    text = report(wiki, "--auto-fix=content")
+    line = "declared 1 cited source(s) (R3) in concepts/p.md: raw/transcripts/sync-2026-01-15.md"
+    assert f"- {line}" in text
+    assert line in (wiki / "log.md").read_text()
+
+
+def test_content_fix_skips_r7_markers_and_self_citations(tmp_path):
+    """A marker R7 can't repair isn't read for declarations, and a page never
+    declares itself."""
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/transcripts/sync-2026-01-15.md")
+    original = wiki_page(
+        body="One [source: user, conversation, 2026-01-15;\n  sync-2026-01-15].\n"
+        "Two [source: p, \"Background\"].\n"
+    )
+    page_path = write(wiki, "concepts/p.md", original)
+    report(wiki, "--auto-fix=content")
+    assert page_path.read_text() == original
+
+
+def test_content_fix_leaves_a_brief_filed_before_today_alone(tmp_path):
+    """A brief is frozen after its day (PATCH-27); one filed today isn't yet."""
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/transcripts/sync-2024-01-01.md")
+    old = (
+        "---\ntitle: Brief\ncreated: '2024-01-01'\nupdated: '2024-01-01'\ntype: query\n"
+        "tags: [question]\nsources: []\nlifecycle: dated-digest\n---\n"
+        "# Brief\n[source: sync-2024-01-01]\n"
+    )
+    old_path = write(wiki, "briefings/2024-01-01.md", old)
+    new_path = write(wiki, f"briefings/{TODAY}.md", old.replace("2024-01-01'", f"{TODAY}'"))
+    report(wiki, "--auto-fix=content")
+    assert old_path.read_text() == old
+    assert "sources: [raw/transcripts/sync-2024-01-01.md]" in new_path.read_text()
+
+
+def test_content_fix_changes_nothing_above_the_page_cap(tmp_path):
+    """More than CONTENT_FIX_PAGE_CAP pages to change needs the user's
+    sign-off: lint applies none of the content fixes and says why."""
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/transcripts/sync-2026-01-15.md")
+    n = lint.CONTENT_FIX_PAGE_CAP + 1
+    originals = {}
+    for i in range(n):
+        originals[i] = write(wiki, f"concepts/p{i}.md", wiki_page(body="[source: sync-2026-01-15]\n"))
+    tiers = findings(wiki, "--auto-fix=content")
+    assert all(p.read_text() == wiki_page(body="[source: sync-2026-01-15]\n") for p in originals.values())
+    assert (
+        f"content fixes not applied: they would change {n} pages, more than "
+        f"{lint.CONTENT_FIX_PAGE_CAP} — review the R3, R7 and R12 findings, "
+        f"then run lint --auto-fix=content"
+    ) in tiers["warnings"]
+
+
+def test_content_fix_applies_at_the_page_cap(tmp_path):
+    wiki = make_wiki(tmp_path)
+    write(wiki, "raw/transcripts/sync-2026-01-15.md")
+    paths = [
+        write(wiki, f"concepts/p{i}.md", wiki_page(body="[source: sync-2026-01-15]\n"))
+        for i in range(lint.CONTENT_FIX_PAGE_CAP)
+    ]
+    report(wiki, "--auto-fix=content")
+    assert all("raw/transcripts/sync-2026-01-15.md" in p.read_text() for p in paths)
+
 def test_auto_fix_commits_the_wiki_before_changing_a_page(tmp_path):
     wiki = git_init(make_wiki(tmp_path))
     original = wiki_page(body="See \\[\\[other]].\n")

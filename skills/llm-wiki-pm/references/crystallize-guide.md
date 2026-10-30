@@ -92,7 +92,8 @@ After ingesting a transcript into `raw/transcripts/`:
 ⑤ **Update affected pages**:
    - Entity pages: note new facts citing the transcript's record ID, and declare
      its path in `sources:` (`citation-spec.md`)
-   - Concept pages: reinforce or challenge, bump confidence
+   - Concept pages: reinforce or challenge, bump confidence, and declare the
+     path of each record you cite in `sources:`
    - Roadmap pages: add action items or decisions
 
 ⑥ **Log**:

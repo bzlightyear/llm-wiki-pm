@@ -235,7 +235,8 @@ In brief:
 ④ **Apply page thresholds** (2+ sources or central) and **enrich from connected
    tools BEFORE writing** (Freshness-first) — never build a page from other pages' prose.
 ⑤ **Write/update** with required frontmatter, taxonomy tags, ≥2 `[[wikilinks]]`,
-   inline `[source: ...]` markers, and `coverage:`/`gaps:`/`confidence:` set.
+   inline `[source: ...]` markers (declare each cited record's path in `sources:`
+   in the same edit), and `coverage:`/`gaps:`/`confidence:` set.
 ⑥ **Crystallize** every meeting transcript into its own
    `queries/crystallize-<topic>-<meeting date>.md`, in every ingest (single,
    batch or maintenance), and research chains into a `queries/` digest
@@ -309,7 +310,9 @@ pages), 🟡 (orphans, index drift, oversized/stale pages, missing coverage mark
 unresolved contradictions), 🟠 (stale overview/index with recent log activity), 🔵
 (tag frequency, log rotation). Act on 🔴, investigate 🟠, discuss 🟡, note 🔵. Full
 checklist: `references/lint-guide.md`. `--auto-fix` repairs safe issues
-(supersession redirects, index backfill/sort). `lint.py` adds a `log.md` entry
+(supersession redirects, index backfill/sort); `--auto-fix=content` also repairs
+citation markers and dates and declares cited sources, but changes nothing when
+it would change more than 10 pages. `lint.py` adds a `log.md` entry
 only when `--auto-fix` changes pages. Don't log lint runs yourself; note lint
 results in the entry for the work they check.
 

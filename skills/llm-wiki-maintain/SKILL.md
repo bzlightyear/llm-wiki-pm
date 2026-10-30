@@ -107,13 +107,17 @@ run?") and proceed on the answer; default to interactive.
 
 ⑤ **Health check.** Run `scripts/lint.py $WIKI`. Surface the tiered summary,
    the export-surface (shareable) audit, and any new orphans/broken links.
-   Optionally `lint.py $WIKI --auto-fix` (interactive: offer it; autonomous: run
-   it). Plain `--auto-fix` only backfills and alpha-sorts `index.md`, repairs
-   escaped `\[\[` brackets, and redirects links to superseded pages; it makes no
-   other content edits.
+   Then `lint.py $WIKI --auto-fix=content` (interactive: offer it; autonomous: run
+   it). It backfills and alpha-sorts `index.md`, repairs escaped `\[\[` brackets
+   and redirects links to superseded pages, and repairs citation markers (R7),
+   declares cited sources that name exactly one file (R3) and rewrites midnight
+   timestamps (R12). When the content fixes would change more than 10 pages it
+   applies none of them and says so in a 🟡 warning: put that in Needs Review
+   for the user to review and run by hand.
 
 ⑥ **Report.** One consolidated summary: sweep coverage ledger, pages
-   created/updated, brief link, lint health delta, and the Needs Review queue.
+   created/updated, brief link, lint health delta with the number of fixes
+   auto-fix applied, and the Needs Review queue.
    The delta compares ⑤'s counts with the newest `queries/lint-*.md` dated
    before this run, read before ⑤ runs lint.
    The brief's `log.md` line is its own entry (`llm-wiki-brief` → Daily and

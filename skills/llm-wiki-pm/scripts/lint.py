@@ -5,7 +5,7 @@ log.md entry only when --auto-fix changed something.
 Usage:
     lint.py <wiki_path>              # report only
     lint.py <wiki_path> --auto-fix   # report + repair safe issues
-    lint.py <wiki_path> --auto-fix=content   # + repair citations and dates
+    lint.py <wiki_path> --auto-fix=content   # + repair citations, declarations and dates
     lint.py <wiki_path> --json       # counts and lists as JSON; writes nothing
     lint.py <wiki_path> --cited-sources <page>   # paths for a page's sources:
 """
@@ -109,6 +109,9 @@ SPLIT_POINTER = (
     "follow the split procedure in references/citation-spec.md and set each "
     "page's sources with lint.py --cited-sources"
 )
+# --auto-fix=content changes no pages when it would change more than this many:
+# 10+ page updates need the user's sign-off (core skill, Pitfalls).
+CONTENT_FIX_PAGE_CAP = 10
 # The wiki-search MCP's date damage (N15): a date written back as a timestamp.
 # At exactly midnight the time part carries nothing, so dropping it is lossless.
 MIDNIGHT_RE = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2})T00:00:00(?:\.0+)?(?:Z|\+00:00)?")
@@ -473,7 +476,8 @@ def check_contract(wiki):
 
 
 # ── --auto-fix=content: repairs that change page text ──
-# Run only on request, never unattended (references/lint-guide.md).
+# The maintain loop runs these unattended; main() applies none when they would
+# change more than CONTENT_FIX_PAGE_CAP pages (references/lint-guide.md).
 
 
 def fix_citations(text, files):
@@ -490,6 +494,55 @@ def fix_citations(text, files):
         body = body[:start] + f"[source: {cites}]" + body[end:]
         n += 1
     return text[:head] + body, n
+
+
+def fix_undeclared_citations(text, files, rel, today):
+    """R3: declare in sources: each cited ID that names exactly one record or
+    page, as migrate_sources.py --declare-cited does. Skips a citation with an
+    R7 problem, a page citing itself, and a dated digest created before today,
+    since a brief is frozen after its day. Returns (text, paths declared)."""
+    fm, _ = wikifm.parse(text)
+    if fm is None or not isinstance(fm.get("sources"), list):
+        return text, []  # R12 reports these
+    if (
+        wikifm.str_field(fm, "lifecycle") == "dated-digest"
+        and wikifm.str_field(fm, "created") < today
+    ):
+        return text, []
+    old = wikifm.sources(fm)
+    declared = {slug(s) for s in old}
+    fm_m = FRONTMATTER_RE.match(text)
+    added = []
+    for c in wikifm.citations(text[fm_m.end():] if fm_m else text):
+        if c.problems or not c.id or c.id in declared:
+            continue
+        paths = files.get(c.id, [])
+        if len(paths) == 1 and paths[0] != rel:
+            added.append(paths[0])
+            declared.add(c.id)
+    if not added:
+        return text, []
+    try:
+        return wikifm.set_list(text, "sources", old + added), added
+    except ValueError:
+        return text, []  # a duplicate key or an odd shape: left to a person
+
+
+def content_fixes(text, files, rel, today):
+    """Every --auto-fix=content repair of one page, in order: markers (R7),
+    then declarations (R3), which skip markers R7 can't repair, then dates
+    (R12). Returns (text, fix descriptions)."""
+    notes = []
+    text, n = fix_citations(text, files)
+    if n:
+        notes.append(f"rewrote {n} [source:] marker(s) in the citation grammar (R7) in {rel}")
+    text, added = fix_undeclared_citations(text, files, rel, today)
+    if added:
+        notes.append(f"declared {len(added)} cited source(s) (R3) in {rel}: " + ", ".join(added))
+    text, n = fix_dates(text)
+    if n:
+        notes.append(f"rewrote {n} timestamp date(s) as 'YYYY-MM-DD' (R12) in {rel}")
+    return text, notes
 
 
 def fix_dates(text):
@@ -634,6 +687,19 @@ def main():
     crystallized = set()  # records a queries/crystallize-* page declares
     uncrystallized = []  # meeting records no crystallize page declares
 
+    if content_fix:
+        would_change = [
+            p for p in pages
+            if content_fixes(p.read_text(), files, p.relative_to(wiki).as_posix(), today)[1]
+        ]
+        if len(would_change) > CONTENT_FIX_PAGE_CAP:
+            content_fix = False
+            warnings.append(
+                f"content fixes not applied: they would change {len(would_change)} pages, "
+                f"more than {CONTENT_FIX_PAGE_CAP} — review the R3, R7 and R12 findings, "
+                f"then run lint --auto-fix=content"
+            )
+
     errors.extend(check_ids(files))
     contract_note = check_contract(wiki)
     if contract_note:
@@ -662,16 +728,8 @@ def main():
         if escape_note:
             (fixes_applied if auto_fix else errors).append(escape_note)
         if content_fix:
-            text, n = fix_citations(text, files)
-            if n:
-                fixes_applied.append(
-                    f"rewrote {n} [source:] marker(s) in the citation grammar (R7) in {rel}"
-                )
-            text, n = fix_dates(text)
-            if n:
-                fixes_applied.append(
-                    f"rewrote {n} timestamp date(s) as 'YYYY-MM-DD' (R12) in {rel}"
-                )
+            text, notes = content_fixes(text, files, rel, today)
+            fixes_applied.extend(notes)
         if auto_fix and text != original:
             p.write_text(text)
         fm, fm_errors = wikifm.parse(text)

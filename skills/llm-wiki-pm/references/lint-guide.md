@@ -92,7 +92,7 @@ ID is the slug of the file it names.
 
 | Rule | Finds | Tier | Fix |
 |---|---|---|---|
-| R3 | A citation whose ID is the slug of no `sources:` entry on the same page | 🔴 | Declare the path the message names; for a statement with no record, capture one (`capture.py`) |
+| R3 | A citation whose ID is the slug of no `sources:` entry on the same page | 🔴 | `--auto-fix=content` declares the path when the ID names exactly one file; otherwise declare the path the message names, or for a statement with no record, capture one (`capture.py`) |
 | R4 | A page with 5+ sources that cites fewer than half of them | 🟡 | Trim `sources:` to what the page cites or is built from |
 | R6 | A `sources:` entry that isn't the path of an existing record or page (a bare name, a root file like SCHEMA.md, an asset, a missing file) | 🔴 | Declare `raw/<folder>/<id>.md` or the page's path; capture a record for anything else |
 | R7 | A marker outside the grammar: wrapped over lines, a nested `source:`, "a vs. b", a path, a URL, a wikilink, or text that isn't an ID | 🟡 | `--auto-fix=content` repairs the first four when every ID in the marker names exactly one file; the rest by hand |
@@ -136,18 +136,24 @@ can undo its fixes.
 python3 scripts/lint.py $WIKI --auto-fix=content
 ```
 
-Runs the safe repairs, then two that change page content:
+Runs the safe repairs, then three that change page content:
 
 - **Citation markers** (R7): joins a wrapped marker onto one line, drops a
   nested `source:`, turns "a vs. b" into "a; b" and a path into its ID, in
   markers whose IDs each name exactly one record or page.
+- **Undeclared citations** (R3): adds to `sources:` the path of each cited ID
+  that names exactly one record or page. It skips a marker R7 can't repair, a
+  page citing itself, and a dated digest created before today, since a brief
+  is frozen after its day.
 - **Timestamp dates** (R12): rewrites a `created`, `updated` or
   `last_verified` timestamp at midnight, like `2026-09-03T00:00:00.000Z`, as
   `'2026-09-03'`.
 
-Run it only when the user asks, after reading the R7 and R12 findings it
-would repair. Unattended runs (scheduled, autonomous) never pass `=content`;
-they use plain `--auto-fix`.
+If these would change more than 10 pages, it changes none of them and says
+so in a 🟡 warning: 10+ page updates need the user's sign-off. Review the R3,
+R7 and R12 findings, then run it again by hand. The maintain loop runs
+`--auto-fix=content` unattended in autonomous mode and offers it in interactive
+mode; session start never fixes anything.
 
 NOT auto-fixed (requires human judgement):
 - Missing frontmatter fields
@@ -155,7 +161,8 @@ NOT auto-fixed (requires human judgement):
 - Orphan pages (need backlinks or archival)
 - Stale pages (fine vs out of date)
 - Unresolved contradictions
-- Sources and citations that don't resolve (R3, R6)
+- Sources and citations that don't resolve (R6, and R3 when the ID names no
+  file or several)
 - Meetings with no crystallize page (need a crystallize run)
 
 Always re-run without `--auto-fix` after to confirm cleanup. Lint reports
