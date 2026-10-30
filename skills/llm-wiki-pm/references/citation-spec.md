@@ -90,8 +90,10 @@ sources: [raw/assets/deck-2026-01.pdf]           # declare the record, not the a
 
 **Grounding.** A factual page (entity, concept, comparison, persona) needs at
 least one primary source (SCHEMA.md → Grounding). A dated digest
-(`lifecycle: dated-digest`) summarizes the wiki and needs none: declare
-`sources: []` rather than listing root files.
+(`lifecycle: dated-digest`) needs none. It may declare the raw records it was
+built from, and should then anchor claims from them with `[source:]` markers;
+one built only from the wiki declares `sources: []` rather than listing root
+files.
 
 ## Inline citations
 
