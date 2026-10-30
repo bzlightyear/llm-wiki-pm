@@ -10,6 +10,13 @@ which revises the approved Sweep Window Design (NW14) before it is built.
 ## Revision History
 
 revised on: 2026-10-29
+Recorded A, C and E as implemented (changelog PATCH-27), completing NW15. A's
+§1 rewrite had been overtaken by PATCH-23, so only the citation-spec sentence
+and pm-wiki's `Usage Guide.md` remained. C reads only the latest brief's Needs
+Review, which also appears in interactive briefs; E also keeps the ingest and
+update flows out of older briefs.
+
+revised on: 2026-10-29
 Recorded F as implemented (changelog PATCH-26). pm-wiki's Briefings list is
 one pointer line, and the pm-wiki memory that said to list briefs was
 updated. `worker-link-validator` needed no change: it follows lint's
@@ -29,9 +36,9 @@ revision.
 
 ## Status
 
-Status: approved 2026-10-28, all four choices under To approve. B, D and G
-implemented 2026-10-28 (changelog PATCH-23); F implemented 2026-10-29
-(PATCH-26); A, C and E not implemented.
+Status: approved 2026-10-28, all four choices under To approve. All
+implemented: B, D and G 2026-10-28 (changelog PATCH-23); F 2026-10-29
+(PATCH-26); A, C and E 2026-10-29 (PATCH-27). NW15 is closed.
 Backlog item: NW15 in the [llm-wiki-pm Fork Backlog](llm-wiki-pm-fork-backlog.md).
 Related: NW14 and NW8 (the [Sweep Window Design](sweep-window-design.md)), NW4
 (the action-items file), NW1 (`overview.md` freshness, including its "Pete

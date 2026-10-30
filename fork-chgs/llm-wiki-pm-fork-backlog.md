@@ -392,29 +392,6 @@ on the per-day report in `queries/`. Found in the design review
   from any project).
 - **Found in:** the NW10 analysis, an llm-wiki-pm session on 2026-10-02.
 
-**NW15. Briefs are built, filed and used in ways the skills don't describe.**
-- **Status: approved 2026-10-28, all four choices. B, D and G done
-  2026-10-28 with NW14 (changelog PATCH-23); F done 2026-10-29 (PATCH-26);
-  A, C and E not implemented.**
-- **What happens:** daily briefs are built from each source sweep, in a format
-  no skill defines; brief §1 still describes a 24–48h `log.md` summary. Weekly
-  briefs have no lifecycle or date rule, and NW14 files them in `queries/`,
-  where none have been since you moved them to `briefings/` on 2026-10-28. A
-  brief's "You owe" and "Needs review" items are never carried into the next
-  brief, filed briefs are sometimes edited later and sometimes not, lint never
-  adds briefs to `index.md`, and brief log entries take three forms.
-- **Seen:** the 10/28 weekly sweep covered 10/19–10/28 but its brief stops at
-  10/23, so seven 10/26–10/27 transcripts are in no brief. CFP-8814, queued in
-  the 9/17 brief's Needs review, is on no wiki page.
-- **Proposal:** seven groups of changes (A–G), in the
-  [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md). B and D
-  revise NW14 and are best done before or with it. Owed items ("You owe") are
-  left to NW1; briefs stay out of `index.md`, with one pointer line.
-- **Related:** NW14 and NW8, NW4 (the action-items file), NW1 (`overview.md`'s
-  "Pete owes" list).
-- **Found in:** a session on 2026-10-28 analyzing how briefs are created,
-  stored and used.
-
 ## Closed
 
 **NW5. One wiki-search server per wiki.**
@@ -940,3 +917,28 @@ on the per-day report in `queries/`. Found in the design review
   their crystallize pages), NW14 (maintain step ③ is edited by both).
 - **Found in:** the 2026-10-28 brief analysis (NW15), checking whether meetings
   have meeting-dated pages.
+
+**NW15. Briefs are built, filed and used in ways the skills don't describe.**
+- **Status: done 2026-10-29.** Built in your fork by PATCH-21 to PATCH-23
+  (B, D and G, with NW14 and NW8, 2026-10-28), PATCH-26 (F) and PATCH-27
+  (what PATCH-23 left of A, then C and E). pm-wiki's `meta/contract.md`,
+  `index.md` and `Usage Guide.md` changed to match. Owed items ("You owe")
+  stay with NW1. The text below describes the problem as found.
+- **What happens:** daily briefs are built from each source sweep, in a format
+  no skill defines; brief §1 still describes a 24–48h `log.md` summary. Weekly
+  briefs have no lifecycle or date rule, and NW14 files them in `queries/`,
+  where none have been since you moved them to `briefings/` on 2026-10-28. A
+  brief's "You owe" and "Needs review" items are never carried into the next
+  brief, filed briefs are sometimes edited later and sometimes not, lint never
+  adds briefs to `index.md`, and brief log entries take three forms.
+- **Seen:** the 10/28 weekly sweep covered 10/19–10/28 but its brief stops at
+  10/23, so seven 10/26–10/27 transcripts are in no brief. CFP-8814, queued in
+  the 9/17 brief's Needs review, is on no wiki page.
+- **Proposal:** seven groups of changes (A–G), in the
+  [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md). B and D
+  revise NW14 and are best done before or with it. Owed items ("You owe") are
+  left to NW1; briefs stay out of `index.md`, with one pointer line.
+- **Related:** NW14 and NW8, NW4 (the action-items file), NW1 (`overview.md`'s
+  "Pete owes" list).
+- **Found in:** a session on 2026-10-28 analyzing how briefs are created,
+  stored and used.

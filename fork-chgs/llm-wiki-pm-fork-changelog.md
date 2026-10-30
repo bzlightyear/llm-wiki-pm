@@ -3,7 +3,7 @@
 created: 2026-08-11
 
 How this fork differs from its baseline, upstream llm-wiki-pm 2.21.0: each
-change (PATCH-1 to PATCH-26) with its reason, files, commits and status, how
+change (PATCH-1 to PATCH-27) with its reason, files, commits and status, how
 the fork is installed, and what to check when merging an upstream release.
 
 ## About This Document
@@ -586,6 +586,39 @@ skipped.
   `6041ad8`. pm-wiki's `index.md` and its brief-filing memory changed to match.
 - **Status:** active. Upstream candidate, not filed.
 
+#### PATCH-27 — Needs Review carries forward; briefs are frozen after their day
+
+- **What:** every brief starts from the latest brief's Needs Review, daily or
+  weekly, and marks each item resolved, saying where it went, or carries it
+  forward with the date it was first raised. A brief with carried or new
+  items has a Needs Review section in interactive and autonomous runs alike,
+  where maintain and §2 had required one only in autonomous runs. "You owe"
+  isn't carried. A filed brief isn't edited after the day it was filed: a
+  later correction goes on the page that owns the fact, and same-day
+  corrections are fine. Ingest ③ and the update flow's search and
+  stale-claim sweep now leave a dated digest filed before today alone, as
+  they already did `_archive/`. citation-spec's Grounding says a dated digest
+  needs no primary source but may declare raw records, and should then use
+  `[source:]` markers. Prose only.
+- **Why:** nothing read a brief's Needs Review later, so a queued decision was
+  lost once the next brief was written: CFP-8814, in the 9/17 brief's list,
+  is on no wiki page. Later ingests edited four filed briefs in place to close
+  items, and left a fifth as it was, so a brief meant "as of that day"
+  sometimes and "as of now" at others. Recent briefs list raw sources and
+  carry `[source:]` markers, which citation-spec's digest rule
+  (`sources: []`) didn't allow for. Backlog NW15, parts A (what PATCH-23 left),
+  C and E; the [Daily and Weekly Briefs Brief](daily-and-weekly-briefs-brief.md).
+- **Where:** `skills/llm-wiki-pm/references/citation-spec.md` (Grounding),
+  commit `6c99e39`. `skills/llm-wiki-brief/SKILL.md` (Daily and Weekly
+  Briefs, §1, §2), `skills/llm-wiki-maintain/SKILL.md` (step ④),
+  `skills/llm-wiki-pm/SKILL.md` (§2 ③, §4 ① and ④),
+  `references/schema-guide.md` (`dated-digest`), `references/ingest-guide.md`
+  (③), `references/update-guide.md` (steps 1 and 4), commit `123109f`.
+  pm-wiki's `Usage Guide.md` names the current brief sections in a pm-wiki
+  commit the same day.
+- **Status:** active. Upstream candidate, not filed, except the "You owe"
+  mention, which follows PATCH-23's table.
+
 ### Repository-only files
 
 Not patches to upstream's code, and not offered upstream:
@@ -620,9 +653,9 @@ Not patches to upstream's code, and not offered upstream:
   `post-write.sh`).
 - `skills/llm-wiki-pm/SKILL.md` §2, §4 and the References and Scripts lists;
   `ingest-guide.md`, `update-guide.md`, `output-formats.md`; the `SCHEMA.md`
-  template (PATCH-7, PATCH-14).
+  template (PATCH-7, PATCH-14, PATCH-27).
 - `llm-wiki-maintain`, `llm-wiki-brief`, `source-discipline.md` and the
-  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23, PATCH-26).
+  `MY-INTEGRATIONS.md` template (PATCH-21 to PATCH-23, PATCH-26, PATCH-27).
   `ingest-guide.md`'s steps ⑥–⑪ were renumbered (PATCH-24), so an upstream
   edit to one of them may land under the wrong number. Step ①'s routing of
   pasted text changed in PATCH-25.
